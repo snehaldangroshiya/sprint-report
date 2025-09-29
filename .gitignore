@@ -1,0 +1,29 @@
+output
+.env
+scripts
+node_modules
+.DS_Store
+.vscode
+.idea
+*.log
+*.tmp
+*.bak
+
+
+# Ignore build directories
+dist
+build
+out
+coverage
+.cache
+
+# Ignore system files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Ignore dependency directories
+vendor
+.bower_components
+jspm_packages
