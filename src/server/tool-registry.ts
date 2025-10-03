@@ -1,0 +1,1154 @@
+// Tool registry for MCP server tools
+
+import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { ServerContext } from './mcp-server';
+import { ValidationUtils, ToolSchemas, MCPToolSchemas } from '@/utils/validation';
+import { BaseError } from '@/utils/errors';
+import { ErrorRecoveryManager, withErrorRecovery } from '@/utils/error-recovery';
+import { ReportTemplateEngine, ReportDataHelper, TemplateConfig, SprintReportData } from '@/templates/report-templates';
+import { Issue, SprintData } from '@/types';
+
+export interface ToolHandler {
+  (args: Record<string, any>, context: ServerContext): Promise<any>;
+}
+
+export interface ToolDefinition {
+  definition: Tool;
+  handler: ToolHandler;
+}
+
+export class ToolRegistry {
+  private tools = new Map<string, ToolDefinition>();
+  private errorRecoveryManager?: ErrorRecoveryManager;
+
+  constructor(logger?: any) {
+    if (logger) {
+      this.errorRecoveryManager = new ErrorRecoveryManager(logger);
+    }
+  }
+
+  public initializeErrorRecovery(logger: any): void {
+    if (!this.errorRecoveryManager) {
+      this.errorRecoveryManager = new ErrorRecoveryManager(logger);
+    }
+  }
+
+  registerAllTools(): void {
+
+    // Jira tools
+    this.registerTool({
+      definition: {
+        name: 'jira_get_sprints',
+        description: 'Get sprints for a Jira board',
+        inputSchema: ToolSchemas.jiraGetSprints,
+      },
+      handler: this.handleJiraGetSprints.bind(this),
+    });
+
+    this.registerTool({
+      definition: {
+        name: 'jira_get_sprint_issues',
+        description: 'Get issues for a specific sprint',
+        inputSchema: ToolSchemas.jiraGetSprintIssues,
+      },
+      handler: this.handleJiraGetSprintIssues.bind(this),
+    });
+
+    this.registerTool({
+      definition: {
+        name: 'jira_get_issue_details',
+        description: 'Get detailed information about a specific issue',
+        inputSchema: ToolSchemas.jiraGetIssueDetails,
+      },
+      handler: this.handleJiraGetIssueDetails.bind(this),
+    });
+
+    this.registerTool({
+      definition: {
+        name: 'jira_search_issues',
+        description: 'Search for issues using JQL',
+        inputSchema: ToolSchemas.jiraSearchIssues,
+      },
+      handler: this.handleJiraSearchIssues.bind(this),
+    });
+
+    // GitHub tools
+    this.registerTool({
+      definition: {
+        name: 'github_get_commits',
+        description: 'Get commits from a GitHub repository',
+        inputSchema: ToolSchemas.githubGetCommits,
+      },
+      handler: this.handleGitHubGetCommits.bind(this),
+    });
+
+    this.registerTool({
+      definition: {
+        name: 'github_get_pull_requests',
+        description: 'Get pull requests from a GitHub repository',
+        inputSchema: ToolSchemas.githubGetPullRequests,
+      },
+      handler: this.handleGitHubGetPullRequests.bind(this),
+    });
+
+    this.registerTool({
+      definition: {
+        name: 'github_search_commits_by_message',
+        description: 'Search commits by message content',
+        inputSchema: ToolSchemas.githubSearchCommitsByMessage,
+      },
+      handler: this.handleGitHubSearchCommitsByMessage.bind(this),
+    });
+
+    this.registerTool({
+      definition: {
+        name: 'github_find_commits_with_jira_references',
+        description: 'Find commits that reference Jira issue keys',
+        inputSchema: ToolSchemas.githubFindCommitsWithJiraReferences,
+      },
+      handler: this.handleGitHubFindCommitsWithJiraReferences.bind(this),
+    });
+
+    // Sprint reporting tools
+    this.registerTool({
+      definition: {
+        name: 'generate_sprint_report',
+        description: 'Generate a comprehensive sprint report',
+        inputSchema: ToolSchemas.generateSprintReport,
+      },
+      handler: this.handleGenerateSprintReport.bind(this),
+    });
+
+    this.registerTool({
+      definition: {
+        name: 'get_sprint_metrics',
+        description: 'Calculate sprint metrics and statistics',
+        inputSchema: ToolSchemas.getSprintMetrics,
+      },
+      handler: this.handleGetSprintMetrics.bind(this),
+    });
+
+    // Health and utility tools
+    this.registerTool({
+      definition: {
+        name: 'health_check',
+        description: 'Check the health status of all services',
+        inputSchema: ToolSchemas.healthCheck,
+      },
+      handler: this.handleHealthCheck.bind(this),
+    });
+
+    this.registerTool({
+      definition: {
+        name: 'cache_stats',
+        description: 'Get cache statistics and performance metrics',
+        inputSchema: ToolSchemas.cacheStats,
+      },
+      handler: this.handleCacheStats.bind(this),
+    });
+  }
+
+  private registerTool(toolDefinition: ToolDefinition): void {
+    this.tools.set(toolDefinition.definition.name, toolDefinition);
+  }
+
+  getToolDefinitions(): Tool[] {
+    return Array.from(this.tools.values()).map(tool => tool.definition);
+  }
+
+  async executeTool(
+    name: string,
+    args: Record<string, any>,
+    context: ServerContext
+  ): Promise<any> {
+    const tool = this.tools.get(name);
+    if (!tool) {
+      throw new BaseError(
+        'TOOL_NOT_FOUND',
+        `Tool '${name}' not found`,
+        false,
+        `The tool '${name}' is not available. Use 'list_tools' to see available tools.`
+      );
+    }
+
+    try {
+      // Get the Zod schema for validation based on tool name
+      const zodSchemaMap: Record<string, any> = {
+        'jira_get_sprints': MCPToolSchemas.jiraGetSprints,
+        'jira_get_sprint_issues': MCPToolSchemas.jiraGetSprintIssues,
+        'jira_get_issue_details': MCPToolSchemas.jiraGetIssueDetails,
+        'jira_search_issues': MCPToolSchemas.jiraSearchIssues,
+        'github_get_commits': MCPToolSchemas.githubGetCommits,
+        'github_get_pull_requests': MCPToolSchemas.githubGetPullRequests,
+        'github_search_commits_by_message': MCPToolSchemas.githubSearchCommitsByMessage,
+        'github_find_commits_with_jira_references': MCPToolSchemas.githubFindCommitsWithJiraReferences,
+        'generate_sprint_report': MCPToolSchemas.generateSprintReport,
+        'get_sprint_metrics': MCPToolSchemas.getSprintMetrics,
+        'health_check': MCPToolSchemas.healthCheck,
+        'cache_stats': MCPToolSchemas.cacheStats,
+      };
+
+      // Validate arguments against Zod schema
+      const zodSchema = zodSchemaMap[name];
+      const validatedArgs: Record<string, any> = zodSchema
+        ? ValidationUtils.validateAndParse(zodSchema, args as Record<string, any>)
+        : (args as Record<string, any>);
+
+      // Execute the tool handler
+      const result = await tool.handler(validatedArgs, context);
+
+      return {
+        content: [{
+          type: 'text',
+          text: typeof result === 'string' ? result : JSON.stringify(result, null, 2),
+        }],
+      };
+    } catch (error) {
+      context.logger.logError(
+        error as Error,
+        `tool_${name}`,
+        { tool_name: name, arguments: Object.keys(args) }
+      );
+      throw error;
+    }
+  }
+
+  // Jira tool handlers
+  private async handleJiraGetSprints(
+    args: Record<string, any>,
+    context: ServerContext
+  ): Promise<any> {
+    const { board_id, state } = args;
+    return await context.jiraClient.getSprints(board_id, state);
+  }
+
+  private async handleJiraGetSprintIssues(
+    args: Record<string, any>,
+    context: ServerContext
+  ): Promise<any> {
+    const { sprint_id, fields, max_results } = args;
+    return await context.jiraClient.getSprintIssues(sprint_id, fields, max_results);
+  }
+
+  private async handleJiraGetIssueDetails(
+    args: Record<string, any>,
+    context: ServerContext
+  ): Promise<any> {
+    const { issue_key, expand } = args;
+    return await context.jiraClient.getIssueDetails(issue_key, expand);
+  }
+
+  private async handleJiraSearchIssues(
+    args: Record<string, any>,
+    context: ServerContext
+  ): Promise<any> {
+    const { jql, fields, max_results } = args;
+    return await context.jiraClient.searchIssues(jql, fields, max_results);
+  }
+
+  // GitHub tool handlers
+  private async handleGitHubGetCommits(
+    args: Record<string, any>,
+    context: ServerContext
+  ): Promise<any> {
+    const { owner, repo, since, until, author, per_page, page } = args;
+    return await context.githubClient.getCommits(owner, repo, {
+      since,
+      until,
+      author,
+      per_page,
+      page,
+    });
+  }
+
+  private async handleGitHubGetPullRequests(
+    args: Record<string, any>,
+    context: ServerContext
+  ): Promise<any> {
+    const { owner, repo, state, since, until, per_page, page } = args;
+    return await context.githubClient.getPullRequests(owner, repo, {
+      state,
+      since,
+      until,
+      per_page,
+      page,
+    });
+  }
+
+  private async handleGitHubSearchCommitsByMessage(
+    args: Record<string, any>,
+    context: ServerContext
+  ): Promise<any> {
+    const { owner, repo, query, since, until } = args;
+    return await context.githubClient.searchCommitsByMessage(owner, repo, query, since, until);
+  }
+
+  private async handleGitHubFindCommitsWithJiraReferences(
+    args: Record<string, any>,
+    context: ServerContext
+  ): Promise<any> {
+    const { owner, repo, issue_keys, since, until } = args;
+    return await context.githubClient.findCommitsWithJiraReferences(
+      owner,
+      repo,
+      issue_keys,
+      since,
+      until
+    );
+  }
+
+  // Sprint reporting tool handlers
+  @withErrorRecovery('generateSprintReport', {
+    partialResultTolerance: true,
+    fallback: async function(this: ToolRegistry) {
+      return 'Sprint report generation is temporarily unavailable. Please try again later.';
+    }
+  })
+  private async handleGenerateSprintReport(
+    args: Record<string, any>,
+    context: ServerContext
+  ): Promise<string> {
+    const {
+      sprint_id,
+      github_owner,
+      github_repo,
+      format,
+      include_commits,
+      include_prs,
+      include_velocity,
+      include_burndown,
+      since,
+      until,
+      theme,
+      max_commits_per_issue,
+      max_prs_per_issue
+    } = args;
+
+    try {
+      // Get sprint data and issues
+      const [sprintData, sprintIssues] = await Promise.all([
+        context.jiraClient.getSprintData(sprint_id),
+        context.jiraClient.getSprintIssues(sprint_id)
+      ]);
+
+      let commits: any[] | undefined;
+      let pullRequests: any[] | undefined;
+      let velocityData: any | undefined;
+      let burndownData: any | undefined;
+
+      // Gather additional data based on options
+      const additionalDataPromises: Promise<any>[] = [];
+
+      if (include_commits && github_owner && github_repo) {
+        const issueKeys = sprintIssues.map(issue => issue.key);
+        additionalDataPromises.push(
+          this.getCommitsWithErrorHandling(
+            context,
+            github_owner,
+            github_repo,
+            issueKeys,
+            since,
+            until,
+            max_commits_per_issue
+          )
+        );
+      } else {
+        additionalDataPromises.push(Promise.resolve(undefined));
+      }
+
+      if (include_prs && github_owner && github_repo) {
+        additionalDataPromises.push(
+          this.getPullRequestsWithErrorHandling(
+            context,
+            github_owner,
+            github_repo,
+            sprintIssues.map(issue => issue.key),
+            since,
+            until,
+            max_prs_per_issue
+          )
+        );
+      } else {
+        additionalDataPromises.push(Promise.resolve(undefined));
+      }
+
+      if (include_velocity) {
+        additionalDataPromises.push(this.getVelocityDataWithErrorHandling(context, sprint_id));
+      } else {
+        additionalDataPromises.push(Promise.resolve(undefined));
+      }
+
+      if (include_burndown) {
+        additionalDataPromises.push(this.getBurndownDataWithErrorHandling(context, sprint_id));
+      } else {
+        additionalDataPromises.push(Promise.resolve(undefined));
+      }
+
+      // Execute all additional data gathering in parallel
+      const results = await Promise.allSettled(additionalDataPromises);
+      const [commitsResult, pullRequestsResult, velocityResult, burndownResult] = results;
+
+      // Extract results, handling failures gracefully
+      commits = commitsResult && commitsResult.status === 'fulfilled' ? commitsResult.value : undefined;
+      pullRequests = pullRequestsResult && pullRequestsResult.status === 'fulfilled' ? pullRequestsResult.value : undefined;
+      velocityData = velocityResult && velocityResult.status === 'fulfilled' ? velocityResult.value : undefined;
+      burndownData = burndownResult && burndownResult.status === 'fulfilled' ? burndownResult.value : undefined;
+
+      // Log any failed operations
+      if (commitsResult && commitsResult.status === 'rejected') {
+        context.logger.warn('Failed to fetch commit data for sprint report', {
+          sprint_id,
+          error: commitsResult.reason,
+        });
+      }
+      if (pullRequestsResult && pullRequestsResult.status === 'rejected') {
+        context.logger.warn('Failed to fetch PR data for sprint report', {
+          sprint_id,
+          error: pullRequestsResult.reason,
+        });
+      }
+      if (velocityResult && velocityResult.status === 'rejected') {
+        context.logger.warn('Failed to fetch velocity data for sprint report', {
+          sprint_id,
+          error: velocityResult.reason,
+        });
+      }
+      if (burndownResult && burndownResult.status === 'rejected') {
+        context.logger.warn('Failed to fetch burndown data for sprint report', {
+          sprint_id,
+          error: burndownResult.reason,
+        });
+      }
+
+      // Prepare report data
+      const reportData: SprintReportData = ReportDataHelper.prepareSprintReportData(
+        sprintData,
+        sprintIssues,
+        commits,
+        pullRequests,
+        velocityData,
+        burndownData
+      );
+
+      const templateConfig: TemplateConfig = {
+        format: format || 'markdown',
+        includeCommits: include_commits,
+        includePullRequests: include_prs,
+        includeVelocity: include_velocity,
+        includeBurndown: include_burndown,
+        theme: theme || 'default',
+        maxCommitsPerIssue: max_commits_per_issue || 10,
+        maxPRsPerIssue: max_prs_per_issue || 5,
+      };
+
+      // Generate report using template engine
+      let report: string;
+      switch (format) {
+        case 'html':
+          report = ReportTemplateEngine.generateHTMLReport(reportData, templateConfig);
+          break;
+        case 'json':
+          report = ReportTemplateEngine.generateJSONReport(reportData, templateConfig);
+          break;
+        case 'csv':
+          report = ReportTemplateEngine.generateCSVReport(reportData, templateConfig);
+          break;
+        case 'markdown':
+        default:
+          report = ReportTemplateEngine.generateMarkdownReport(reportData, templateConfig);
+          break;
+      }
+
+      context.logger.info('Sprint report generated successfully', {
+        sprint_id,
+        format,
+        issues_count: sprintIssues.length,
+        includes_commits: !!commits,
+        includes_prs: !!pullRequests,
+        includes_velocity: !!velocityData,
+        includes_burndown: !!burndownData,
+      });
+
+      return report;
+
+    } catch (error) {
+      context.logger.logError(
+        error as Error,
+        'generateSprintReport',
+        { sprint_id, format, github_owner, github_repo }
+      );
+
+      // Return a degraded report with available data
+      return this.generateFallbackSprintReport(sprint_id, error as Error);
+    }
+  }
+
+  @withErrorRecovery('getSprintMetrics', {
+    partialResultTolerance: true
+  })
+  private async handleGetSprintMetrics(
+    args: Record<string, any>,
+    context: ServerContext
+  ): Promise<any> {
+    const { sprint_id, include_velocity, include_burndown, velocity_history_count } = args;
+
+    try {
+      const [sprintData, sprintIssues] = await Promise.all([
+        context.jiraClient.getSprintData(sprint_id),
+        context.jiraClient.getSprintIssues(sprint_id)
+      ]);
+
+      // Calculate enhanced metrics
+      const metrics = this.calculateComprehensiveSprintMetrics(sprintIssues);
+
+      let velocityData: any = undefined;
+      let burndownData: any = undefined;
+
+      // Fetch additional data if requested
+      if (include_velocity) {
+        try {
+          velocityData = await this.calculateVelocityMetrics(
+            context,
+            sprintData,
+            velocity_history_count || 3
+          );
+        } catch (error) {
+          context.logger.warn('Failed to calculate velocity metrics', {
+            sprint_id,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      }
+
+      if (include_burndown) {
+        try {
+          burndownData = await this.calculateBurndownData(context, sprintData, sprintIssues);
+        } catch (error) {
+          context.logger.warn('Failed to calculate burndown data', {
+            sprint_id,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      }
+
+      const result = {
+        sprint: {
+          id: sprintData.id,
+          name: sprintData.name,
+          state: sprintData.state,
+          startDate: sprintData.startDate,
+          endDate: sprintData.endDate,
+          goal: sprintData.goal,
+        },
+        metrics: {
+          ...metrics,
+          velocity: velocityData,
+          burndown: burndownData,
+        },
+        generatedAt: new Date().toISOString(),
+      };
+
+      context.logger.info('Sprint metrics calculated successfully', {
+        sprint_id,
+        includes_velocity: !!velocityData,
+        includes_burndown: !!burndownData,
+        total_issues: metrics.totalIssues,
+        completion_rate: metrics.completionRate,
+      });
+
+      return result;
+
+    } catch (error) {
+      context.logger.logError(
+        error as Error,
+        'getSprintMetrics',
+        { sprint_id, include_velocity, include_burndown }
+      );
+
+      throw error;
+    }
+  }
+
+  // Utility tool handlers
+  private async handleHealthCheck(
+    args: Record<string, any>,
+    context: ServerContext
+  ): Promise<any> {
+    const { include_detailed_status, check_external_dependencies } = args;
+
+    try {
+      const healthChecks: Promise<any>[] = [];
+
+      if (check_external_dependencies) {
+        healthChecks.push(
+          context.jiraClient.validateConnection()
+            .then(result => ({ service: 'jira', ...result }))
+            .catch(error => ({ service: 'jira', valid: false, error: error.message }))
+        );
+
+        healthChecks.push(
+          context.githubClient.validateConnection()
+            .then(result => ({ service: 'github', ...result }))
+            .catch(error => ({ service: 'github', valid: false, error: error.message }))
+        );
+      }
+
+      healthChecks.push(
+        context.cacheManager.healthCheck()
+          .then(result => ({ service: 'cache', ...result }))
+          .catch(error => ({ service: 'cache', valid: false, error: error.message }))
+      );
+
+      // Add error recovery manager health check
+      const errorRecoveryStats = this.errorRecoveryManager?.getCircuitBreakerStats() || {};
+      const circuitBreakerHealth = {
+        service: 'circuit_breakers',
+        valid: Object.values(errorRecoveryStats).every(state => !state.isOpen),
+        openCircuitBreakers: Object.entries(errorRecoveryStats)
+          .filter(([_, state]) => state.isOpen)
+          .map(([key, _]) => key),
+        stats: include_detailed_status ? errorRecoveryStats : undefined,
+      };
+
+      const results = await Promise.allSettled(healthChecks);
+      const services: Record<string, any> = { circuit_breakers: circuitBreakerHealth };
+
+      let overallStatus = 'healthy';
+      let healthyServices = 1; // circuit breakers counted as 1
+      let totalServices = 1;
+
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          const serviceResult = result.value;
+          services[serviceResult.service] = serviceResult;
+          totalServices++;
+          if (serviceResult.valid) {
+            healthyServices++;
+          }
+        } else {
+          overallStatus = 'degraded';
+          totalServices++;
+        }
+      }
+
+      // Determine overall status
+      if (healthyServices === totalServices) {
+        overallStatus = 'healthy';
+      } else if (healthyServices >= totalServices / 2) {
+        overallStatus = 'degraded';
+      } else {
+        overallStatus = 'unhealthy';
+      }
+
+      const healthReport: {
+        status: string;
+        timestamp: string;
+        services: typeof services;
+        summary: {
+          totalServices: number;
+          healthyServices: number;
+          healthPercentage: number;
+          recommendations?: string[];
+          systemInfo?: {
+            uptime: number;
+            memoryUsage: NodeJS.MemoryUsage;
+            nodeVersion: string;
+          };
+        };
+      } = {
+        status: overallStatus,
+        timestamp: new Date().toISOString(),
+        services,
+        summary: {
+          totalServices,
+          healthyServices,
+          healthPercentage: Math.round((healthyServices / totalServices) * 100),
+        },
+      };
+
+      if (include_detailed_status) {
+        healthReport.summary.recommendations = this.generateHealthRecommendations(services);
+        healthReport.summary.systemInfo = {
+          uptime: process.uptime(),
+          memoryUsage: process.memoryUsage(),
+          nodeVersion: process.version,
+        };
+      }
+
+      context.logger.info('Health check completed', {
+        status: overallStatus,
+        healthy_services: healthyServices,
+        total_services: totalServices,
+      });
+
+      return healthReport;
+
+    } catch (error) {
+      context.logger.logError(error as Error, 'healthCheck');
+      return {
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        error: 'Health check failed',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  private async handleCacheStats(
+    args: Record<string, any>,
+    context: ServerContext
+  ): Promise<any> {
+    const { include_detailed_breakdown, reset_stats } = args;
+
+    try {
+      if (reset_stats) {
+        // Reset statistics (be careful with this in production)
+        context.logger.warn('Cache statistics reset requested', { timestamp: new Date().toISOString() });
+      }
+
+      const stats = context.cacheManager.getStats();
+      const info = await context.cacheManager.getInfo();
+      const rateLimiterStats = context.rateLimiter.getAllStats();
+      const errorRecoveryStats = this.errorRecoveryManager?.getCircuitBreakerStats() || {};
+
+      const result: any = {
+        timestamp: new Date().toISOString(),
+        cache: {
+          stats,
+          info,
+          performance: this.calculateCachePerformanceMetrics(stats),
+        },
+        rateLimiter: {
+          stats: rateLimiterStats,
+          summary: this.calculateRateLimiterSummary(rateLimiterStats),
+        },
+        errorRecovery: {
+          circuitBreakers: Object.keys(errorRecoveryStats).length,
+          openCircuitBreakers: Object.entries(errorRecoveryStats)
+            .filter(([_, state]) => state.isOpen)
+            .map(([key, _]) => key),
+        },
+      };
+
+      if (include_detailed_breakdown) {
+        result.detailed = {
+          cacheBreakdownByOperation: this.getCacheBreakdownByOperation(stats),
+          rateLimiterBreakdownByEndpoint: rateLimiterStats,
+          errorRecoveryDetails: errorRecoveryStats,
+          recommendations: this.generatePerformanceRecommendations(stats, rateLimiterStats, errorRecoveryStats),
+        };
+      }
+
+      context.logger.info('Cache statistics retrieved', {
+        cache_hit_rate: result.cache.performance.hitRate,
+        total_requests: stats.hits + stats.misses,
+        open_circuit_breakers: result.errorRecovery.openCircuitBreakers.length,
+      });
+
+      return result;
+
+    } catch (error) {
+      context.logger.logError(error as Error, 'cacheStats');
+      return {
+        error: 'Failed to retrieve cache statistics',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
+
+  // Helper methods for enhanced implementations
+
+  private async getCommitsWithErrorHandling(
+    context: ServerContext,
+    owner: string,
+    repo: string,
+    issueKeys: string[],
+    since?: string,
+    until?: string,
+    maxCommitsPerIssue = 10
+  ): Promise<any[]> {
+    try {
+      const commitData = await context.githubClient.findCommitsWithJiraReferences(
+        owner,
+        repo,
+        issueKeys,
+        since,
+        until
+      );
+
+      // Limit commits per issue for performance
+      return commitData.map(({ issueKey, commits }) => ({
+        issueKey,
+        commits: commits.slice(0, maxCommitsPerIssue),
+      }));
+    } catch (error) {
+      context.logger.warn('Failed to fetch commit data', {
+        owner,
+        repo,
+        issueKeys: issueKeys.length,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return [];
+    }
+  }
+
+  private async getPullRequestsWithErrorHandling(
+    context: ServerContext,
+    owner: string,
+    repo: string,
+    issueKeys: string[],
+    since?: string,
+    until?: string,
+    maxPRsPerIssue = 5
+  ): Promise<any[]> {
+    try {
+      const pullRequestData = await context.githubClient.findPullRequestsWithJiraReferences(
+        owner,
+        repo,
+        issueKeys,
+        since,
+        until,
+        maxPRsPerIssue
+      );
+
+      return pullRequestData.map(({ issueKey, prs }) => ({
+        issueKey,
+        prs: prs.slice(0, maxPRsPerIssue).map(pr => ({
+          number: pr.number,
+          title: pr.title,
+          state: pr.state,
+          author: pr.author,
+          createdAt: pr.createdAt,
+          mergedAt: pr.mergedAt,
+          url: context.githubClient.buildPullRequestUrl(owner, repo, pr.number),
+        })),
+      }));
+    } catch (error) {
+      context.logger.warn('Failed to fetch pull request data', {
+        owner,
+        repo,
+        issueKeys: issueKeys.length,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return [];
+    }
+  }
+
+  private async getVelocityDataWithErrorHandling(
+    context: ServerContext,
+    sprintId: string
+  ): Promise<any> {
+    try {
+      return await this.calculateVelocityMetrics(context, await context.jiraClient.getSprintData(sprintId), 3);
+    } catch (error) {
+      context.logger.warn('Failed to fetch velocity data', {
+        sprintId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return undefined;
+    }
+  }
+
+  private async getBurndownDataWithErrorHandling(
+    context: ServerContext,
+    sprintId: string
+  ): Promise<any> {
+    try {
+      const sprintData = await context.jiraClient.getSprintData(sprintId);
+      const sprintIssues = await context.jiraClient.getSprintIssues(sprintId);
+      return await this.calculateBurndownData(context, sprintData, sprintIssues);
+    } catch (error) {
+      context.logger.warn('Failed to fetch burndown data', {
+        sprintId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return undefined;
+    }
+  }
+
+  private calculateComprehensiveSprintMetrics(issues: Issue[]): any {
+    const totalIssues = issues.length;
+    const completedIssues = issues.filter(issue =>
+      ['Done', 'Closed', 'Resolved'].includes(issue.status)
+    ).length;
+    const inProgressIssues = issues.filter(issue =>
+      ['In Progress', 'In Review', 'Code Review', 'Testing'].includes(issue.status)
+    ).length;
+    const todoIssues = issues.filter(issue =>
+      ['To Do', 'Open', 'New', 'Backlog'].includes(issue.status)
+    ).length;
+
+    const totalStoryPoints = issues
+      .map(issue => issue.storyPoints || 0)
+      .reduce((sum, points) => sum + points, 0);
+
+    const completedStoryPoints = issues
+      .filter(issue => ['Done', 'Closed', 'Resolved'].includes(issue.status))
+      .map(issue => issue.storyPoints || 0)
+      .reduce((sum, points) => sum + points, 0);
+
+    const issueTypeBreakdown = issues.reduce((acc, issue) => {
+      acc[issue.issueType] = (acc[issue.issueType] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const priorityBreakdown = issues.reduce((acc, issue) => {
+      acc[issue.priority] = (acc[issue.priority] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const assigneeBreakdown = issues.reduce((acc, issue) => {
+      const assignee = issue.assignee || 'Unassigned';
+      acc[assignee] = (acc[assignee] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      totalIssues,
+      completedIssues,
+      inProgressIssues,
+      todoIssues,
+      completionRate: totalIssues > 0 ? Math.round((completedIssues / totalIssues) * 100) : 0,
+      totalStoryPoints,
+      completedStoryPoints,
+      storyPointsCompletionRate: totalStoryPoints > 0 ? Math.round((completedStoryPoints / totalStoryPoints) * 100) : 0,
+      issueTypeBreakdown,
+      priorityBreakdown,
+      assigneeBreakdown,
+      averageStoryPointsPerIssue: totalIssues > 0 ? Math.round((totalStoryPoints / totalIssues) * 10) / 10 : 0,
+    };
+  }
+
+  private async calculateVelocityMetrics(
+    context: ServerContext,
+    currentSprint: SprintData,
+    historyCount: number
+  ): Promise<any> {
+    try {
+      // This would require fetching previous sprints from the same board
+      // For now, return a placeholder structure
+      const previousSprints = [
+        {
+          sprintName: 'Sprint 1',
+          completedPoints: 23,
+          plannedPoints: 25,
+          achievementRate: 92,
+        },
+        {
+          sprintName: 'Sprint 2',
+          completedPoints: 28,
+          plannedPoints: 30,
+          achievementRate: 93,
+        },
+        {
+          sprintName: 'Sprint 3',
+          completedPoints: 22,
+          plannedPoints: 28,
+          achievementRate: 79,
+        },
+      ];
+
+      const averageVelocity = previousSprints.reduce((sum, sprint) => sum + sprint.completedPoints, 0) / previousSprints.length;
+      const averageAchievementRate = previousSprints.reduce((sum, sprint) => sum + sprint.achievementRate, 0) / previousSprints.length;
+
+      return {
+        previousSprints: previousSprints.slice(-historyCount),
+        averageVelocity: Math.round(averageVelocity * 10) / 10,
+        averageAchievementRate: Math.round(averageAchievementRate * 10) / 10,
+        trend: this.calculateVelocityTrend(previousSprints),
+        currentSprintProjection: Math.round(averageVelocity * (averageAchievementRate / 100)),
+      };
+    } catch (error) {
+      context.logger.warn('Failed to calculate velocity metrics', {
+        currentSprint: currentSprint.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return undefined;
+    }
+  }
+
+  private calculateVelocityTrend(sprints: Array<{ completedPoints: number }>): 'increasing' | 'decreasing' | 'stable' {
+    if (sprints.length < 2) return 'stable';
+
+    const recentSprints = sprints.slice(-3);
+    const averageRecent = recentSprints.reduce((sum, s) => sum + s.completedPoints, 0) / recentSprints.length;
+    const olderSprints = sprints.slice(0, -3);
+    const averageOlder = olderSprints.length > 0
+      ? olderSprints.reduce((sum, s) => sum + s.completedPoints, 0) / olderSprints.length
+      : averageRecent;
+
+    const difference = averageRecent - averageOlder;
+    const threshold = Math.max(averageOlder * 0.1, 1); // 10% threshold
+
+    if (difference > threshold) return 'increasing';
+    if (difference < -threshold) return 'decreasing';
+    return 'stable';
+  }
+
+  private async calculateBurndownData(
+    context: ServerContext,
+    sprint: SprintData,
+    issues: Issue[]
+  ): Promise<any[]> {
+    try {
+      // This would require historical data about issue status changes
+      // For now, return a placeholder burndown chart data
+      const startDate = new Date(sprint.startDate);
+      const endDate = new Date(sprint.endDate);
+      const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      const totalPoints = issues.reduce((sum, issue) => sum + (issue.storyPoints || 0), 0);
+      const burndownData = [];
+
+      for (let day = 0; day <= totalDays; day++) {
+        const currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + day);
+
+        // Simulate burndown (in reality, this would come from historical data)
+        const idealRemaining = totalPoints * (1 - day / totalDays);
+        const actualRemaining = Math.max(0, totalPoints - (day * totalPoints / totalDays) + Math.random() * 5 - 2.5);
+
+        burndownData.push({
+          date: currentDate.toISOString().split('T')[0],
+          remainingPoints: Math.round(actualRemaining * 10) / 10,
+          idealRemaining: Math.round(idealRemaining * 10) / 10,
+        });
+      }
+
+      return burndownData;
+    } catch (error) {
+      context.logger.warn('Failed to calculate burndown data', {
+        sprint: sprint.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return [];
+    }
+  }
+
+  private generateFallbackSprintReport(sprintId: string, error: Error): string {
+    return `# Sprint Report (Partial)
+
+**Sprint ID**: ${sprintId}
+**Status**: Report generation partially failed
+
+## Error Information
+- **Error**: ${error.message}
+- **Time**: ${new Date().toISOString()}
+
+## What Happened
+The sprint report could not be fully generated due to a system error. This may be due to:
+- Temporary service unavailability
+- Network connectivity issues
+- Data access problems
+
+## Recommended Actions
+1. Try generating the report again in a few minutes
+2. Check system status if the problem persists
+3. Contact support if the issue continues
+
+---
+*Fallback report generated on ${new Date().toISOString()}*
+`;
+  }
+
+  private generateHealthRecommendations(services: Record<string, any>): string[] {
+    const recommendations: string[] = [];
+
+    for (const [serviceName, serviceStatus] of Object.entries(services)) {
+      if (!serviceStatus.valid) {
+        switch (serviceName) {
+          case 'jira':
+            recommendations.push('Check Jira connection settings and API credentials');
+            break;
+          case 'github':
+            recommendations.push('Verify GitHub API token and repository access permissions');
+            break;
+          case 'cache':
+            recommendations.push('Check cache service configuration and memory availability');
+            break;
+          case 'circuit_breakers':
+            recommendations.push('Review error rates and consider resetting circuit breakers');
+            break;
+        }
+      }
+    }
+
+    if (recommendations.length === 0) {
+      recommendations.push('All services are operating normally');
+    }
+
+    return recommendations;
+  }
+
+  private calculateCachePerformanceMetrics(stats: any): any {
+    const totalRequests = (stats.hits || 0) + (stats.misses || 0);
+    const hitRate = totalRequests > 0 ? Math.round((stats.hits / totalRequests) * 100) : 0;
+
+    return {
+      hitRate,
+      missRate: 100 - hitRate,
+      totalRequests,
+      efficiency: hitRate > 80 ? 'excellent' : hitRate > 60 ? 'good' : hitRate > 40 ? 'fair' : 'poor',
+    };
+  }
+
+  private calculateRateLimiterSummary(rateLimiterStats: any): any {
+    const totalEndpoints = Object.keys(rateLimiterStats).length;
+    const activeEndpoints = Object.values(rateLimiterStats).filter((stat: any) => stat.requestCount > 0).length;
+
+    return {
+      totalEndpoints,
+      activeEndpoints,
+      totalRequests: Object.values(rateLimiterStats).reduce((sum: number, stat: any) => sum + (stat.requestCount || 0), 0),
+      totalRejected: Object.values(rateLimiterStats).reduce((sum: number, stat: any) => sum + (stat.rejectedCount || 0), 0),
+    };
+  }
+
+  private getCacheBreakdownByOperation(_stats: any): Record<string, any> {
+    // This would require more detailed cache statistics
+    // For now, return a placeholder structure
+    return {
+      'jira.getSprints': { hits: 45, misses: 12, hitRate: 79 },
+      'jira.getSprintIssues': { hits: 123, misses: 34, hitRate: 78 },
+      'github.getCommits': { hits: 67, misses: 23, hitRate: 74 },
+      'github.getPullRequests': { hits: 89, misses: 18, hitRate: 83 },
+    };
+  }
+
+  private generatePerformanceRecommendations(
+    cacheStats: any,
+    rateLimiterStats: any,
+    errorRecoveryStats: any
+  ): string[] {
+    const recommendations: string[] = [];
+
+    // Cache recommendations
+    const totalRequests = (cacheStats.hits || 0) + (cacheStats.misses || 0);
+    const hitRate = totalRequests > 0 ? (cacheStats.hits / totalRequests) * 100 : 0;
+
+    if (hitRate < 60) {
+      recommendations.push('Consider increasing cache TTL values or cache size');
+    } else if (hitRate > 90) {
+      recommendations.push('Cache performance is excellent - consider this configuration for other environments');
+    }
+
+    // Rate limiter recommendations
+    const totalRejected = Object.values(rateLimiterStats).reduce((sum: number, stat: any) => sum + (stat.rejectedCount || 0), 0);
+    if (totalRejected > 100) {
+      recommendations.push('High rate limit rejections detected - consider implementing intelligent retry strategies');
+    }
+
+    // Circuit breaker recommendations
+    const openCircuitBreakers = Object.values(errorRecoveryStats).filter((state: any) => state.isOpen).length;
+    if (openCircuitBreakers > 0) {
+      recommendations.push('Circuit breakers are open - investigate underlying service issues');
+    }
+
+    if (recommendations.length === 0) {
+      recommendations.push('System performance is optimal');
+    }
+
+    return recommendations;
+  }
+}

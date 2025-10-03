@@ -1,0 +1,572 @@
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { BarChart3, FileText, Activity, CheckCircle, TrendingUp, Target, Calendar, Database, Github } from 'lucide-react';
+import { api } from '../lib/api';
+import { combineAndSortSprints } from '../lib/sprint-utils';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { Skeleton } from '../components/ui/skeleton';
+import { Separator } from '../components/ui/separator';
+
+export function Dashboard() {
+  const { data: metrics } = useQuery({
+    queryKey: ['metrics'],
+    queryFn: api.getMetrics,
+    refetchInterval: 60000, // Check every minute
+  });
+
+  // Fetch system status for Jira, GitHub, Cache
+  const { data: systemStatus, isLoading: systemStatusLoading } = useQuery({
+    queryKey: ['system-status'],
+    queryFn: api.getSystemStatus,
+    refetchInterval: 30000, // Check every 30 seconds
+  });
+
+  // Fetch boards for recent activity
+  const { data: boards, isLoading: boardsLoading } = useQuery({
+    queryKey: ['boards'],
+    queryFn: api.getBoards,
+  });
+
+  // Fetch active sprint
+  const { data: activeSprints } = useQuery({
+    queryKey: ['active-sprints', boards?.[0]?.id],
+    queryFn: () => api.getSprints(boards![0].id, 'active'),
+    enabled: !!boards && boards.length > 0,
+  });
+
+  // Fetch recent closed sprints
+  const { data: closedSprints } = useQuery({
+    queryKey: ['closed-sprints', boards?.[0]?.id],
+    queryFn: () => api.getSprints(boards![0].id, 'closed'),
+    enabled: !!boards && boards.length > 0,
+  });
+
+  // Combine active and closed sprints, sorted by start date descending (newest first)
+  const recentSprints = combineAndSortSprints(activeSprints, closedSprints, 5);
+
+  const sprintsLoading = !boards || boards.length === 0;
+
+  // Fetch velocity data for quick stats
+  const { data: velocityData, isLoading: velocityLoading } = useQuery({
+    queryKey: ['velocity-stats', boards?.[0]?.id],
+    queryFn: () => api.getVelocityData(boards![0].id, 5),
+    enabled: !!boards && boards.length > 0,
+  });
+
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Monitor sprint reporting system status and generate reports
+        </p>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Active Sprint */}
+        {sprintsLoading ? (
+          <Skeleton className="h-32 w-full" />
+        ) : (
+          <Card className="bg-white border border-blue-100 hover:border-blue-300 transition-all duration-200 hover:shadow-lg overflow-hidden">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-blue-50 rounded-xl">
+                    <Calendar className="h-7 w-7 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Active Sprint</p>
+                    <p className="text-2xl font-bold text-gray-900 truncate max-w-[180px]">
+                      {activeSprints && activeSprints.length > 0
+                        ? activeSprints[0].name
+                        : 'None'}
+                    </p>
+                    {activeSprints && activeSprints.length > 0 && (
+                      <p className="text-xs text-blue-600 font-medium mt-1">
+                        {activeSprints[0].state === 'active' ? 'In Progress' : 'Upcoming'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Average Velocity */}
+        {velocityLoading ? (
+          <Skeleton className="h-32 w-full" />
+        ) : (
+          <Card className="bg-white border border-emerald-100 hover:border-emerald-300 transition-all duration-200 hover:shadow-lg overflow-hidden">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-emerald-50 rounded-xl">
+                    <TrendingUp className="h-7 w-7 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Average Velocity</p>
+                    <p className="text-3xl font-bold text-gray-900">{velocityData?.average?.toFixed(1) || '0'}</p>
+                    <p className="text-xs text-emerald-600 font-medium mt-1">Story points/sprint</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Completion Rate */}
+        {velocityLoading ? (
+          <Skeleton className="h-32 w-full" />
+        ) : (
+          <Card className="bg-white border border-violet-100 hover:border-violet-300 transition-all duration-200 hover:shadow-lg overflow-hidden">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-violet-50 rounded-xl">
+                    <Target className="h-7 w-7 text-violet-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Completion Rate</p>
+                    <p className="text-3xl font-bold text-gray-900">
+                      {velocityData?.sprints && velocityData.sprints.length > 0
+                        ? (() => {
+                            const total = velocityData.sprints.reduce((sum, s) => sum + s.commitment, 0);
+                            const completed = velocityData.sprints.reduce((sum, s) => sum + s.completed, 0);
+                            return total > 0 ? Math.round((completed / total) * 100) : 0;
+                          })()
+                        : 0}%
+                    </p>
+                    <p className="text-xs text-violet-600 font-medium mt-1">Last 5 sprints</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Total Sprints Tracked */}
+        {boardsLoading ? (
+          <Skeleton className="h-32 w-full" />
+        ) : (
+          <Card className="bg-white border border-amber-100 hover:border-amber-300 transition-all duration-200 hover:shadow-lg overflow-hidden">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-amber-50 rounded-xl">
+                    <Database className="h-7 w-7 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Sprints Tracked</p>
+                    <p className="text-3xl font-bold text-gray-900">{recentSprints?.length || 0}</p>
+                    <p className="text-xs text-amber-600 font-medium mt-1">Recent sprints</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Link
+          to="/generate"
+          className="relative rounded-lg border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white px-6 py-5 shadow-sm hover:border-blue-400 hover:shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          <div className="flex items-center">
+            <div className="flex-shrink-0 p-3 bg-blue-100 rounded-lg">
+              <FileText className="h-8 w-8 text-blue-600" />
+            </div>
+            <div className="ml-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Generate Report
+              </h3>
+              <p className="text-sm text-gray-600">
+                Create sprint reports (HTML/MD/JSON)
+              </p>
+            </div>
+          </div>
+        </Link>
+
+        <Link
+          to="/velocity"
+          className="relative rounded-lg border-2 border-green-200 bg-gradient-to-br from-green-50 to-white px-6 py-5 shadow-sm hover:border-green-400 hover:shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+        >
+          <div className="flex items-center">
+            <div className="flex-shrink-0 p-3 bg-green-100 rounded-lg">
+              <BarChart3 className="h-8 w-8 text-green-600" />
+            </div>
+            <div className="ml-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Sprint Velocity
+              </h3>
+              <p className="text-sm text-gray-600">
+                Track velocity trends & metrics
+              </p>
+            </div>
+          </div>
+        </Link>
+
+        <Link
+          to="/tools"
+          className="relative rounded-lg border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white px-6 py-5 shadow-sm hover:border-purple-400 hover:shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+        >
+          <div className="flex items-center">
+            <div className="flex-shrink-0 p-3 bg-purple-100 rounded-lg">
+              <Activity className="h-8 w-8 text-purple-600" />
+            </div>
+            <div className="ml-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                MCP Tools Status
+              </h3>
+              <p className="text-sm text-gray-600">
+                Monitor 12 MCP tools & health
+              </p>
+            </div>
+          </div>
+        </Link>
+      </div>
+
+      <Separator className="my-6" />
+
+      {/* System Status - Jira, GitHub, Cache */}
+      {systemStatusLoading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-48 w-full" />
+        </div>
+      ) : systemStatus ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Activity className="h-5 w-5 mr-2 text-blue-600" />
+              System Status
+            </CardTitle>
+            <CardDescription>
+              Health monitoring for Jira, GitHub, and Cache services
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {/* Jira Status */}
+              <div className="border-2 rounded-lg p-4 transition-all hover:shadow-md" style={{
+                borderColor: systemStatus.jira.status === 'healthy' ? '#10b981' : systemStatus.jira.status === 'degraded' ? '#f59e0b' : '#ef4444'
+              }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <div className={`p-2 rounded-lg ${
+                      systemStatus.jira.status === 'healthy' ? 'bg-green-100' :
+                      systemStatus.jira.status === 'degraded' ? 'bg-yellow-100' : 'bg-red-100'
+                    }`}>
+                      <Activity className={`h-5 w-5 ${
+                        systemStatus.jira.status === 'healthy' ? 'text-green-600' :
+                        systemStatus.jira.status === 'degraded' ? 'text-yellow-600' : 'text-red-600'
+                      }`} />
+                    </div>
+                    <h4 className="ml-3 text-lg font-semibold text-gray-900">Jira</h4>
+                  </div>
+                  <Badge
+                    variant={
+                      systemStatus.jira.status === 'healthy' ? 'default' :
+                      systemStatus.jira.status === 'degraded' ? 'secondary' :
+                      'destructive'
+                    }
+                    className="capitalize"
+                  >
+                    {systemStatus.jira.status}
+                  </Badge>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-gray-600">
+                    Status: <span className="capitalize font-semibold">{systemStatus.jira.status}</span>
+                  </p>
+                  {systemStatus.jira.latency !== undefined && (
+                    <p className="text-sm text-gray-600">
+                      Latency: <span className="font-semibold">{systemStatus.jira.latency}ms</span>
+                    </p>
+                  )}
+                  {systemStatus.jira.error && (
+                    <p className="text-xs text-red-600 mt-2">{systemStatus.jira.error}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* GitHub Status */}
+              <div className="border-2 rounded-lg p-4 transition-all hover:shadow-md" style={{
+                borderColor: systemStatus.github.status === 'healthy' ? '#10b981' : systemStatus.github.status === 'degraded' ? '#f59e0b' : '#ef4444'
+              }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <div className={`p-2 rounded-lg ${
+                      systemStatus.github.status === 'healthy' ? 'bg-green-100' :
+                      systemStatus.github.status === 'degraded' ? 'bg-yellow-100' : 'bg-red-100'
+                    }`}>
+                      <Github className={`h-5 w-5 ${
+                        systemStatus.github.status === 'healthy' ? 'text-green-600' :
+                        systemStatus.github.status === 'degraded' ? 'text-yellow-600' : 'text-red-600'
+                      }`} />
+                    </div>
+                    <h4 className="ml-3 text-lg font-semibold text-gray-900">GitHub</h4>
+                  </div>
+                  <Badge
+                    variant={
+                      systemStatus.github.status === 'healthy' ? 'default' :
+                      systemStatus.github.status === 'degraded' ? 'secondary' :
+                      'destructive'
+                    }
+                    className="capitalize"
+                  >
+                    {systemStatus.github.status}
+                  </Badge>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-gray-600">
+                    Status: <span className="capitalize font-semibold">{systemStatus.github.status}</span>
+                  </p>
+                  {systemStatus.github.latency !== undefined && (
+                    <p className="text-sm text-gray-600">
+                      Latency: <span className="font-semibold">{systemStatus.github.latency}ms</span>
+                    </p>
+                  )}
+                  {systemStatus.github.error && (
+                    <p className="text-xs text-red-600 mt-2">{systemStatus.github.error}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Cache Status */}
+              <div className="border-2 rounded-lg p-4 transition-all hover:shadow-md" style={{
+                borderColor: systemStatus.cache.status === 'healthy' ? '#10b981' : systemStatus.cache.status === 'degraded' ? '#f59e0b' : '#ef4444'
+              }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <div className={`p-2 rounded-lg ${
+                      systemStatus.cache.status === 'healthy' ? 'bg-green-100' :
+                      systemStatus.cache.status === 'degraded' ? 'bg-yellow-100' : 'bg-red-100'
+                    }`}>
+                      <Database className={`h-5 w-5 ${
+                        systemStatus.cache.status === 'healthy' ? 'text-green-600' :
+                        systemStatus.cache.status === 'degraded' ? 'text-yellow-600' : 'text-red-600'
+                      }`} />
+                    </div>
+                    <h4 className="ml-3 text-lg font-semibold text-gray-900">Cache</h4>
+                  </div>
+                  <Badge
+                    variant={
+                      systemStatus.cache.status === 'healthy' ? 'default' :
+                      systemStatus.cache.status === 'degraded' ? 'secondary' :
+                      'destructive'
+                    }
+                    className="capitalize"
+                  >
+                    {systemStatus.cache.status}
+                  </Badge>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-gray-600">
+                    Status: <span className="capitalize font-semibold">{systemStatus.cache.status}</span>
+                  </p>
+                  {systemStatus.cache.hitRate !== undefined && (
+                    <p className="text-sm text-gray-600">
+                      Hit Rate: <span className="font-semibold">{(systemStatus.cache.hitRate * 100).toFixed(1)}%</span>
+                    </p>
+                  )}
+                  {systemStatus.cache.size !== undefined && (
+                    <p className="text-sm text-gray-600">
+                      Size: <span className="font-semibold">{systemStatus.cache.size} entries</span>
+                    </p>
+                  )}
+                  {systemStatus.cache.error && (
+                    <p className="text-xs text-red-600 mt-2">{systemStatus.cache.error}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <Separator className="my-6" />
+
+      {/* Performance Metrics */}
+      {metrics && (
+        <div className="bg-white overflow-hidden shadow rounded-lg border-l-4 border-blue-500">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4 flex items-center">
+              <Activity className="h-5 w-5 mr-2 text-blue-600" />
+              Performance Metrics
+            </h3>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {metrics.summary && metrics.summary.cacheHitRate !== undefined && (
+                <div className="border-2 border-blue-100 rounded-lg p-4 bg-blue-50">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-gray-900">Cache Hit Rate</p>
+                    <p className="text-2xl font-semibold text-blue-600">
+                      {Math.round(metrics.summary.cacheHitRate)}%
+                    </p>
+                  </div>
+                  <div className="mt-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full"
+                        style={{ width: `${Math.round(metrics.summary.cacheHitRate)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {metrics.summary && metrics.summary.memoryTrend && (
+                <div className={`border-2 rounded-lg p-4 ${
+                  metrics.summary.memoryTrend === 'increasing' ? 'border-red-100 bg-red-50' :
+                  metrics.summary.memoryTrend === 'decreasing' ? 'border-green-100 bg-green-50' :
+                  'border-gray-100 bg-gray-50'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-gray-900">Memory Trend</p>
+                    <p className={`text-lg font-semibold capitalize ${
+                      metrics.summary.memoryTrend === 'increasing' ? 'text-red-600' :
+                      metrics.summary.memoryTrend === 'decreasing' ? 'text-green-600' :
+                      'text-gray-600'
+                    }`}>
+                      {metrics.summary.memoryTrend}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {metrics.cacheOptimization && (
+                <div className="border-2 border-purple-100 rounded-lg p-4 bg-purple-50">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-gray-900">Optimization</p>
+                    <p className="text-2xl font-semibold text-purple-600">
+                      {metrics.cacheOptimization.recommendations?.length || 0}
+                    </p>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">recommendations</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Separator className="my-6" />
+
+      {/* Recent Sprint Activity */}
+      {sprintsLoading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-24 w-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        </div>
+      ) : recentSprints && recentSprints.length > 0 ? (
+        <div className="bg-white overflow-hidden shadow rounded-lg border-l-4 border-green-500">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4 flex items-center">
+              <Calendar className="h-5 w-5 mr-2 text-green-600" />
+              Recent Sprint Activity
+            </h3>
+
+            <div className="flow-root">
+              <ul className="-mb-8">
+                {recentSprints.slice(0, 5).map((sprint, idx) => {
+                  const isActive = sprint.state === 'active';
+                  const sprintEndDate = sprint.endDate ? new Date(sprint.endDate) : null;
+                  const sprintStartDate = sprint.startDate ? new Date(sprint.startDate) : null;
+
+                  // Calculate relative time
+                  let relativeTime = null;
+                  if (isActive && sprintEndDate) {
+                    const daysUntilEnd = Math.ceil((sprintEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                    if (daysUntilEnd > 0) {
+                      relativeTime = `${daysUntilEnd} day${daysUntilEnd !== 1 ? 's' : ''} remaining`;
+                    } else if (daysUntilEnd === 0) {
+                      relativeTime = 'Ends today';
+                    } else {
+                      relativeTime = 'Overdue';
+                    }
+                  } else if (!isActive && sprintEndDate) {
+                    const daysAgo = Math.floor((Date.now() - sprintEndDate.getTime()) / (1000 * 60 * 60 * 24));
+                    relativeTime = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo} days ago`;
+                  }
+
+                  return (
+                    <li key={sprint.id}>
+                      <div className="relative pb-8">
+                        {idx !== Math.min(4, recentSprints.length - 1) && (
+                          <span
+                            className={`absolute top-4 left-4 -ml-px h-full w-0.5 ${
+                              isActive ? 'bg-blue-200' : 'bg-gray-200'
+                            }`}
+                            aria-hidden="true"
+                          />
+                        )}
+                        <div className="relative flex space-x-3">
+                          <div>
+                            <span className={`h-8 w-8 rounded-full ${
+                              isActive
+                                ? 'bg-blue-500 ring-4 ring-blue-100'
+                                : 'bg-green-100'
+                            } flex items-center justify-center ring-8 ring-white`}>
+                              {isActive ? (
+                                <Activity className="h-5 w-5 text-white" />
+                              ) : (
+                                <CheckCircle className="h-5 w-5 text-green-600" />
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className={`text-sm font-medium ${
+                                  isActive ? 'text-blue-700' : 'text-gray-900'
+                                }`}>
+                                  {sprint.name}
+                                </p>
+                                {isActive && (
+                                  <Badge variant="default" className="bg-blue-500 text-white text-xs">
+                                    Active
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-500 mt-1">
+                                <span className="capitalize">{sprint.state}</span>
+                                {sprintStartDate && sprintEndDate && (
+                                  <> • {sprintStartDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {sprintEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</>
+                                )}
+                                {relativeTime && (
+                                  <> • <span className={isActive ? 'text-blue-600 font-medium' : 'text-gray-400'}>
+                                    {relativeTime}
+                                  </span></>
+                                )}
+                              </p>
+                            </div>
+                            <div className="whitespace-nowrap text-right text-sm">
+                              <Link to="/velocity" className="text-blue-600 hover:text-blue-800 font-medium hover:underline">
+                                View Details →
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
