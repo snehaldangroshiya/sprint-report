@@ -44,7 +44,8 @@
       "Bash(xargs:*)",
       "Bash(git add:*)",
       "Bash(do test -f \"$file\")",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
