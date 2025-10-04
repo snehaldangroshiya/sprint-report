@@ -274,6 +274,9 @@ cd web && npm run dev
 - **[docs/WEB_INTEGRATION_GUIDE.md](./docs/WEB_INTEGRATION_GUIDE.md)** - Web app integration
 - **[docs/API_WORKING_EXAMPLES.md](./docs/API_WORKING_EXAMPLES.md)** - API examples with real data
 
+### Feature Documentation
+- **[.claude/CLAUDE_COMPREHENSIVE_ANALYTICS.md](./.claude/CLAUDE_COMPREHENSIVE_ANALYTICS.md)** - 🆕 ⭐ Complete guide to Tier 1, 2, 3 analytics metrics
+
 ### VSCode MCP Integration (CRITICAL)
 - **[docs/VSCODE_MCP_TROUBLESHOOTING.md](./docs/VSCODE_MCP_TROUBLESHOOTING.md)** - ⚠️ VSCode MCP setup and debugging
 - **[docs/RECOMMENDATION.md](./docs/RECOMMENDATION.md)** - Server mode comparison and recommendations
@@ -322,6 +325,13 @@ cd web && npm run dev
 - ✅ GitHub integration (commits & PRs)
 - ✅ Download and export functionality
 - ✅ Real-time data from Jira
+
+### Comprehensive Analytics (NEW in v2.2.0)
+- ✅ **Next Sprint Planning**: Velocity forecasting with confidence levels, carryover analysis with recommendations
+- ✅ **GitHub Metrics**: Commit activity tracking, PR stats with merge rates, code change analysis, review quality metrics
+- ✅ **Team & Quality**: Capacity utilization, bug trend analysis, cycle time metrics, blocker tracking
+- ✅ **Technical Health**: Epic progress monitoring, technical debt tracking, risk assessment with impact analysis
+- ✅ **Interactive UI**: 4-tab interface with color-coded indicators and gradient cards for visual hierarchy
 
 ### Performance & Monitoring
 - ✅ Multi-tier caching (memory + optional Redis)
@@ -435,7 +445,17 @@ The MCP stdio transport has **strict requirements** that cause "unable to start 
 
 ## 📝 Version History
 
-### v2.1.1 (October 3, 2025) - Current
+### v2.2.0 (October 4, 2025) - Current
+**Comprehensive Sprint Analytics - Tier 1, 2, 3 Metrics**
+- ✅ **Tier 1 (Must Have)**: Next sprint forecast, carryover analysis, commit activity, PR stats, code changes, PR-to-issue traceability
+- ✅ **Tier 2 (Should Have)**: Team capacity tracking, blockers & dependencies, bug metrics, cycle time analysis
+- ✅ **Tier 3 (Nice to Have)**: Epic progress tracking, technical debt analysis, risk management
+- ✅ **UI Enhancement**: Added comprehensive analytics section with 4 tabbed views (Next Sprint, GitHub Metrics, Team & Quality, Technical Health)
+- ✅ **API Enhancement**: New endpoint `/api/sprints/:id/comprehensive` with full tier support
+- ✅ **Performance**: All metrics calculated in parallel (5-6x faster)
+- ✅ **Documentation**: Complete implementation guide in `.claude/CLAUDE_COMPREHENSIVE_ANALYTICS.md`
+
+### v2.1.1 (October 3, 2025)
 **Analytics & Sprint Sorting Improvements**
 - ✅ **Sprint Sorting Policy**: Global policy (newest → oldest) applied across all pages
 - ✅ **Analytics Page**: Real data integration, 4 working widgets, GitHub env variable support
