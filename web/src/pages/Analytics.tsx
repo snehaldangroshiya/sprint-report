@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, BarChart3, PieChart as PieChartIcon, Calendar, Download } from 'lucide-react';
+import { TrendingUp, BarChart3, PieChart as PieChartIcon, Calendar, Download, Target, GitBranch, Users, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { api } from '../lib/api';
 import { Select, SelectTrigger, SelectContent,SelectItem, SelectValue } from '@/components/ui/select';
 
 export function Analytics() {
   const [selectedBoard, setSelectedBoard] = useState('6306');
+  const [selectedSprint, setSelectedSprint] = useState<string>('');
   const [dateRange, setDateRange] = useState('3months');
   // GitHub integration from environment or default config
   const [githubOwner] = useState(import.meta.env.VITE_GITHUB_OWNER || '');
@@ -45,6 +49,28 @@ export function Analytics() {
     queryKey: ['team-performance', selectedBoard, sprintCount],
     queryFn: () => api.getTeamPerformance(selectedBoard, sprintCount),
     enabled: !!selectedBoard,
+  });
+
+  // Fetch all sprints for comprehensive analytics selection
+  const { data: allSprints } = useQuery({
+    queryKey: ['all-sprints', selectedBoard],
+    queryFn: () => api.getSprints(selectedBoard, 'closed'),
+    enabled: !!selectedBoard,
+  });
+
+  // Fetch comprehensive report for selected sprint
+  const { data: comprehensiveData, isLoading: comprehensiveLoading } = useQuery({
+    queryKey: ['comprehensive', selectedSprint, githubOwner, githubRepo],
+    queryFn: () => api.getComprehensiveSprintReport(selectedSprint, {
+      github_owner: githubOwner,
+      github_repo: githubRepo,
+      include_tier1: true,
+      include_tier2: true,
+      include_tier3: true,
+      include_forward_looking: true,
+      include_enhanced_github: !!githubOwner && !!githubRepo,
+    }),
+    enabled: !!selectedSprint,
   });
 
   // Fetch issue type distribution - now from real API
@@ -561,6 +587,427 @@ export function Analytics() {
           </div>
         </div>
       )}
+
+      {/* Comprehensive Sprint Analytics */}
+      <div className="bg-white shadow rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Comprehensive Sprint Analytics</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Detailed insights including forecasts, code metrics, team capacity, and technical health
+              </p>
+            </div>
+            <div className="w-64">
+              <label htmlFor="sprint-select" className="block text-sm font-medium text-gray-700 mb-1">
+                Select Sprint
+              </label>
+              <Select value={selectedSprint} onValueChange={setSelectedSprint}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a sprint..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allSprints?.map((sprint) => (
+                    <SelectItem key={sprint.id} value={sprint.id}>
+                      {sprint.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {!selectedSprint ? (
+            <Alert>
+              <Target className="h-4 w-4" />
+              <AlertDescription>
+                Select a sprint above to view comprehensive analytics including next sprint forecasts, GitHub metrics,
+                team capacity, bug trends, and technical debt analysis.
+              </AlertDescription>
+            </Alert>
+          ) : comprehensiveLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          ) : comprehensiveData ? (
+            <Tabs defaultValue="forecast" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="forecast">
+                  <Target className="h-4 w-4 mr-2" />
+                  Next Sprint
+                </TabsTrigger>
+                <TabsTrigger value="github">
+                  <GitBranch className="h-4 w-4 mr-2" />
+                  GitHub Metrics
+                </TabsTrigger>
+                <TabsTrigger value="team">
+                  <Users className="h-4 w-4 mr-2" />
+                  Team & Quality
+                </TabsTrigger>
+                <TabsTrigger value="technical">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Technical Health
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Next Sprint Planning Tab */}
+              <TabsContent value="forecast" className="space-y-6">
+                {comprehensiveData.nextSprintForecast && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
+                      <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                        <Target className="h-5 w-5 mr-2 text-blue-600" />
+                        Next Sprint Forecast
+                      </h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Forecasted Velocity</span>
+                          <Badge variant="outline" className="text-lg font-semibold">
+                            {comprehensiveData.nextSprintForecast.forecastedVelocity} pts
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Confidence Level</span>
+                          <Badge className={
+                            comprehensiveData.nextSprintForecast.confidenceLevel === 'high' ? 'bg-green-500' :
+                            comprehensiveData.nextSprintForecast.confidenceLevel === 'medium' ? 'bg-yellow-500' :
+                            'bg-red-500'
+                          }>
+                            {comprehensiveData.nextSprintForecast.confidenceLevel}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Available Capacity</span>
+                          <span className="font-medium">{comprehensiveData.nextSprintForecast.availableCapacity} pts</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Carryover Items</span>
+                          <span className="font-medium text-orange-600">
+                            {comprehensiveData.nextSprintForecast.carryoverItems} items ({comprehensiveData.nextSprintForecast.carryoverStoryPoints} pts)
+                          </span>
+                        </div>
+                      </div>
+                      {comprehensiveData.nextSprintForecast.recommendations.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-blue-200">
+                          <p className="text-xs font-medium text-gray-700 mb-2">Recommendations:</p>
+                          <ul className="text-xs text-gray-600 space-y-1">
+                            {comprehensiveData.nextSprintForecast.recommendations.map((rec: string, idx: number) => (
+                              <li key={idx}>• {rec}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    {comprehensiveData.carryoverItems && (
+                      <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-6 rounded-lg border border-orange-200">
+                        <h4 className="font-semibold text-gray-900 mb-4">Carryover Analysis</h4>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Total Items</span>
+                            <span className="font-medium">{comprehensiveData.carryoverItems.totalItems}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Total Story Points</span>
+                            <span className="font-medium">{comprehensiveData.carryoverItems.totalStoryPoints}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">% of Original Commitment</span>
+                            <span className="font-medium text-orange-600">
+                              {comprehensiveData.carryoverItems.analysis.percentageOfOriginalCommitment.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                        {comprehensiveData.carryoverItems.items.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-orange-200">
+                            <p className="text-xs font-medium text-gray-700 mb-2">Top Carryover Items:</p>
+                            <div className="space-y-1">
+                              {comprehensiveData.carryoverItems.items.slice(0, 3).map((item: any, idx: number) => (
+                                <div key={idx} className="text-xs">
+                                  <span className="font-medium text-gray-900">{item.key}</span>
+                                  {item.storyPoints && <span className="text-gray-500"> ({item.storyPoints} pts)</span>}
+                                  <span className="text-gray-600"> - {item.reason}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* GitHub Metrics Tab */}
+              <TabsContent value="github" className="space-y-6">
+                {comprehensiveData.enhancedGitHubMetrics ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-white p-6 rounded-lg border border-gray-200">
+                      <h4 className="font-semibold text-gray-900 mb-4">Commit Activity</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Total Commits</span>
+                          <span className="font-medium">{comprehensiveData.enhancedGitHubMetrics.commitActivity.totalCommits}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Avg Commits/Day</span>
+                          <span className="font-medium">{comprehensiveData.enhancedGitHubMetrics.commitActivity.averageCommitsPerDay.toFixed(1)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Peak Activity Day</span>
+                          <span className="font-medium">{comprehensiveData.enhancedGitHubMetrics.commitActivity.peakCommitDay}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-lg border border-gray-200">
+                      <h4 className="font-semibold text-gray-900 mb-4">Pull Request Stats</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Total PRs</span>
+                          <span className="font-medium">{comprehensiveData.enhancedGitHubMetrics.pullRequestStats.totalPRs}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Merge Rate</span>
+                          <Badge className="bg-green-500">
+                            {comprehensiveData.enhancedGitHubMetrics.pullRequestStats.mergeRate.toFixed(1)}%
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Avg Time to Merge</span>
+                          <span className="font-medium">{comprehensiveData.enhancedGitHubMetrics.pullRequestStats.averageTimeToMerge.toFixed(1)}h</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Avg Review Comments</span>
+                          <span className="font-medium">{comprehensiveData.enhancedGitHubMetrics.pullRequestStats.averageReviewComments.toFixed(1)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-lg border border-gray-200">
+                      <h4 className="font-semibold text-gray-900 mb-4">Code Changes</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Lines Added</span>
+                          <span className="font-medium text-green-600">+{comprehensiveData.enhancedGitHubMetrics.codeChanges.totalLinesAdded}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Lines Deleted</span>
+                          <span className="font-medium text-red-600">-{comprehensiveData.enhancedGitHubMetrics.codeChanges.totalLinesDeleted}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Net Change</span>
+                          <span className="font-medium">{comprehensiveData.enhancedGitHubMetrics.codeChanges.netLineChange > 0 ? '+' : ''}{comprehensiveData.enhancedGitHubMetrics.codeChanges.netLineChange}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-lg border border-gray-200">
+                      <h4 className="font-semibold text-gray-900 mb-4">Code Review Quality</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Total Reviews</span>
+                          <span className="font-medium">{comprehensiveData.enhancedGitHubMetrics.codeReviewStats.totalReviews}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Approval Rate</span>
+                          <Badge className="bg-green-500">
+                            {comprehensiveData.enhancedGitHubMetrics.codeReviewStats.approvalRate.toFixed(1)}%
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Changes Requested Rate</span>
+                          <Badge variant="outline">
+                            {comprehensiveData.enhancedGitHubMetrics.codeReviewStats.changesRequestedRate.toFixed(1)}%
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <Alert>
+                    <GitBranch className="h-4 w-4" />
+                    <AlertDescription>
+                      GitHub metrics not available. Configure VITE_GITHUB_OWNER and VITE_GITHUB_REPO environment variables to enable.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </TabsContent>
+
+              {/* Team & Quality Tab */}
+              <TabsContent value="team" className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {comprehensiveData.teamCapacity && (
+                    <div className="bg-white p-6 rounded-lg border border-gray-200">
+                      <h4 className="font-semibold text-gray-900 mb-4">Team Capacity</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Total Capacity</span>
+                          <span className="font-medium">{comprehensiveData.teamCapacity.totalCapacityHours}h</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Utilization</span>
+                          <Badge className={
+                            comprehensiveData.teamCapacity.utilizationPercentage >= 80 ? 'bg-green-500' :
+                            comprehensiveData.teamCapacity.utilizationPercentage >= 60 ? 'bg-yellow-500' :
+                            'bg-red-500'
+                          }>
+                            {comprehensiveData.teamCapacity.utilizationPercentage}%
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {comprehensiveData.bugMetrics && (
+                    <div className="bg-white p-6 rounded-lg border border-gray-200">
+                      <h4 className="font-semibold text-gray-900 mb-4">Bug Metrics</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Bugs Created</span>
+                          <span className="font-medium text-red-600">{comprehensiveData.bugMetrics.bugsCreated}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Bugs Resolved</span>
+                          <span className="font-medium text-green-600">{comprehensiveData.bugMetrics.bugsResolved}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Net Change</span>
+                          <Badge variant={comprehensiveData.bugMetrics.netBugChange <= 0 ? 'default' : 'destructive'}>
+                            {comprehensiveData.bugMetrics.netBugChange > 0 ? '+' : ''}{comprehensiveData.bugMetrics.netBugChange}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Critical Outstanding</span>
+                          <span className={`font-medium ${comprehensiveData.bugMetrics.criticalBugsOutstanding > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {comprehensiveData.bugMetrics.criticalBugsOutstanding}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {comprehensiveData.cycleTimeMetrics && (
+                    <div className="bg-white p-6 rounded-lg border border-gray-200">
+                      <h4 className="font-semibold text-gray-900 mb-4">Cycle Time Metrics</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Average</span>
+                          <span className="font-medium">{comprehensiveData.cycleTimeMetrics.averageCycleTime} days</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Median</span>
+                          <span className="font-medium">{comprehensiveData.cycleTimeMetrics.medianCycleTime} days</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">90th Percentile</span>
+                          <span className="font-medium">{comprehensiveData.cycleTimeMetrics.p90CycleTime} days</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {comprehensiveData.blockers && comprehensiveData.blockers.length > 0 && (
+                    <div className="bg-white p-6 rounded-lg border border-gray-200">
+                      <h4 className="font-semibold text-gray-900 mb-4">Blockers & Impediments</h4>
+                      <div className="space-y-2">
+                        {comprehensiveData.blockers.slice(0, 5).map((blocker: any, idx: number) => (
+                          <div key={idx} className="text-xs border-l-4 border-red-500 pl-2 py-1">
+                            <div className="font-medium text-gray-900">{blocker.issueKey}</div>
+                            <div className="text-gray-600">{blocker.blockerReason}</div>
+                            <div className="text-gray-500">{blocker.daysBlocked} days blocked</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Technical Health Tab */}
+              <TabsContent value="technical" className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {comprehensiveData.technicalDebt && (
+                    <div className="bg-white p-6 rounded-lg border border-gray-200">
+                      <h4 className="font-semibold text-gray-900 mb-4">Technical Debt</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Total Tech Debt Items</span>
+                          <span className="font-medium">{comprehensiveData.technicalDebt.totalTechDebtIssues}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Story Points</span>
+                          <span className="font-medium">{comprehensiveData.technicalDebt.techDebtStoryPoints}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">Net Change</span>
+                          <Badge variant={comprehensiveData.technicalDebt.netTechDebtChange <= 0 ? 'default' : 'destructive'}>
+                            {comprehensiveData.technicalDebt.netTechDebtChange > 0 ? '+' : ''}{comprehensiveData.technicalDebt.netTechDebtChange}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-600">% of Sprint Capacity</span>
+                          <span className="font-medium">{comprehensiveData.technicalDebt.percentageOfSprintCapacity.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {comprehensiveData.epicProgress && comprehensiveData.epicProgress.length > 0 && (
+                    <div className="bg-white p-6 rounded-lg border border-gray-200">
+                      <h4 className="font-semibold text-gray-900 mb-4">Epic Progress</h4>
+                      <div className="space-y-3">
+                        {comprehensiveData.epicProgress.slice(0, 5).map((epic: any, idx: number) => (
+                          <div key={idx} className="border-b border-gray-100 pb-2 last:border-0">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-sm font-medium text-gray-900">{epic.epicKey}</span>
+                              <Badge variant="outline">{epic.completionPercentage.toFixed(0)}%</Badge>
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {epic.completedIssues}/{epic.totalIssues} issues • {epic.completedStoryPoints}/{epic.totalStoryPoints} pts
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {comprehensiveData.risks && comprehensiveData.risks.length > 0 && (
+                    <div className="bg-white p-6 rounded-lg border border-gray-200 lg:col-span-2">
+                      <h4 className="font-semibold text-gray-900 mb-4">Risk Items</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {comprehensiveData.risks.slice(0, 4).map((risk: any, idx: number) => (
+                          <div key={idx} className="border border-gray-200 rounded p-3">
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="text-sm font-medium text-gray-900">{risk.id}</span>
+                              <div className="flex gap-2">
+                                <Badge variant="outline" className="text-xs">{risk.probability}</Badge>
+                                <Badge variant={risk.impact === 'high' ? 'destructive' : 'default'} className="text-xs">{risk.impact}</Badge>
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-600 mb-2">{risk.description}</p>
+                            <div className="text-xs">
+                              <span className="text-gray-500">Owner:</span>
+                              <span className="ml-1 font-medium">{risk.owner}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <Alert>
+              <AlertDescription>
+                No comprehensive data available for the selected sprint.
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

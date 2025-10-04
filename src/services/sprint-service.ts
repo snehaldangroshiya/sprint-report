@@ -2,6 +2,7 @@ import { JiraClient } from '../clients/jira-client.js';
 import { GitHubClient } from '../clients/github-client.js';
 import { CacheManager } from '../cache/cache-manager.js';
 import { Logger } from '../utils/logger.js';
+import { AnalyticsService } from './analytics-service.js';
 import {
   Sprint,
   SprintReport,
@@ -11,12 +12,14 @@ import {
   TeamPerformanceData,
   SprintMetrics,
   Commit,
-  PullRequest
+  PullRequest,
+  Issue
 } from '../types/index.js';
 
 export class SprintService {
   private logger: Logger;
   private cache: CacheManager;
+  private analyticsService: AnalyticsService;
 
   constructor(
     private jiraClient: JiraClient,
@@ -27,6 +30,7 @@ export class SprintService {
     this.cache = cacheManager || new CacheManager({
       memory: { maxSize: 100, ttl: 300 }
     });
+    this.analyticsService = new AnalyticsService(this.githubClient, this, this.cache);
   }
 
   /**
@@ -84,6 +88,9 @@ export class SprintService {
       // Get sprint details first (needed for subsequent calls)
       const sprint = await this.getSprintDetails(request.sprint_id);
 
+      // Determine if we need enhanced issue data (with changelog)
+      const needsEnhancedIssues = request.include_tier1 || request.include_tier2 || request.include_tier3;
+
       // Initialize report data
       const reportData: Partial<SprintReport> = {
         sprint,
@@ -94,14 +101,24 @@ export class SprintService {
           includeCommits: request.include_commits,
           includePrs: request.include_prs,
           includeVelocity: request.include_velocity,
-          includeBurndown: request.include_burndown
+          includeBurndown: request.include_burndown,
+          includeTier1: request.include_tier1 ?? false,
+          includeTier2: request.include_tier2 ?? false,
+          includeTier3: request.include_tier3 ?? false,
+          includeForwardLooking: request.include_forward_looking ?? false,
+          includeEnhancedGitHub: request.include_enhanced_github ?? false,
         }
       };
 
       // OPTIMIZATION: Parallelize all independent API calls (5-6x faster!)
-      const [metrics, commits, pullRequests, velocity, burndown, teamPerformance] = await Promise.all([
+      const [metrics, enhancedIssues, commits, pullRequests, velocity, burndown, teamPerformance] = await Promise.all([
         // Calculate sprint metrics (dependent on sprint data)
         this.calculateSprintMetrics(sprint),
+
+        // Get enhanced issues if comprehensive metrics requested
+        needsEnhancedIssues
+          ? this.getEnhancedSprintIssues(request.sprint_id)
+          : Promise.resolve(undefined),
 
         // Get commits if requested (independent)
         request.include_commits && request.github_owner && request.github_repo
@@ -115,12 +132,19 @@ export class SprintService {
 
         // Get pull requests if requested (independent)
         request.include_prs && request.github_owner && request.github_repo
-          ? this.getSprintPullRequests(
-              request.github_owner,
-              request.github_repo,
-              sprint.startDate,
-              sprint.endDate
-            )
+          ? (request.include_enhanced_github
+              ? this.getEnhancedSprintPullRequests(
+                  request.github_owner,
+                  request.github_repo,
+                  sprint.startDate,
+                  sprint.endDate
+                )
+              : this.getSprintPullRequests(
+                  request.github_owner,
+                  request.github_repo,
+                  sprint.startDate,
+                  sprint.endDate
+                ))
           : Promise.resolve(undefined),
 
         // Get velocity data if requested (independent)
@@ -137,7 +161,7 @@ export class SprintService {
         this.getTeamPerformanceData(sprint.boardId, 1)
       ]);
 
-      // Assign results
+      // Assign basic results
       reportData.metrics = metrics;
       if (commits) reportData.commits = commits as Commit[];
       if (pullRequests) reportData.pullRequests = pullRequests as PullRequest[];
@@ -145,9 +169,118 @@ export class SprintService {
       if (burndown) reportData.burndown = burndown;
       reportData.teamPerformance = teamPerformance;
 
+      // Use enhanced issues for comprehensive metrics, or fall back to sprint.issues
+      const issues = enhancedIssues || sprint.issues || [];
+
+      // Calculate Tier 1 metrics
+      if (request.include_tier1 && issues.length > 0) {
+        reportData.sprintGoal = this.analyticsService.analyzeSprintGoal(sprint, issues);
+        reportData.scopeChanges = this.analyticsService.detectScopeChanges(issues, sprint);
+        reportData.spilloverAnalysis = this.analyticsService.analyzeSpillover(issues);
+      }
+
+      // Calculate Tier 2 metrics
+      if (request.include_tier2 && issues.length > 0) {
+        reportData.blockers = this.analyticsService.extractBlockers(issues);
+        reportData.bugMetrics = this.analyticsService.calculateBugMetrics(issues, sprint);
+        reportData.cycleTimeMetrics = this.analyticsService.calculateCycleTimeMetrics(issues);
+        reportData.teamCapacity = this.analyticsService.calculateTeamCapacity(issues);
+      }
+
+      // Calculate Tier 3 metrics
+      if (request.include_tier3 && issues.length > 0) {
+        reportData.epicProgress = this.analyticsService.calculateEpicProgress(issues);
+        reportData.technicalDebt = this.analyticsService.calculateTechnicalDebt(issues);
+        reportData.risks = this.analyticsService.extractRisks(issues);
+      }
+
+      // Calculate Forward Looking metrics
+      if (request.include_forward_looking && reportData.spilloverAnalysis) {
+        const velocityHistory = velocity?.sprints.map(s => s.velocity) || [];
+        reportData.nextSprintForecast = this.analyticsService.generateNextSprintForecast(
+          velocityHistory,
+          reportData.spilloverAnalysis
+        );
+
+        const totalCommitment = metrics.storyPoints;
+        reportData.carryoverItems = this.analyticsService.analyzeCarryoverItems(
+          reportData.spilloverAnalysis,
+          totalCommitment
+        );
+      }
+
+      // Calculate Enhanced GitHub metrics
+      if (request.include_enhanced_github && pullRequests && Array.isArray(pullRequests) && pullRequests.length > 0) {
+        const prs = pullRequests as PullRequest[];
+        const commitsList = (commits as Commit[]) || [];
+
+        // Calculate PR stats
+        const mergedPRs = prs.filter(pr => pr.state === 'merged');
+        const closedPRs = prs.filter(pr => pr.state === 'closed');
+        const openPRs = prs.filter(pr => pr.state === 'open');
+
+        // Calculate average review comments
+        const totalComments = prs.reduce((sum, pr) => sum + (pr.reviewComments || 0), 0);
+        const avgComments = prs.length > 0 ? totalComments / prs.length : 0;
+
+        // Count PRs by author
+        const prsByAuthor: Record<string, number> = {};
+        prs.forEach(pr => {
+          prsByAuthor[pr.author] = (prsByAuthor[pr.author] || 0) + 1;
+        });
+
+        // Build traceability array from linked issues
+        const traceabilityMap = new Map<string, { prs: number[]; commits: number; changes: number }>();
+
+        prs.forEach(pr => {
+          if (pr.linkedIssues && pr.linkedIssues.length > 0) {
+            pr.linkedIssues.forEach(issueKey => {
+              if (!traceabilityMap.has(issueKey)) {
+                traceabilityMap.set(issueKey, { prs: [], commits: 0, changes: 0 });
+              }
+              const entry = traceabilityMap.get(issueKey)!;
+              entry.prs.push(pr.number);
+              entry.commits += pr.commits || 0;
+              entry.changes += (pr.additions || 0) + (pr.deletions || 0);
+            });
+          }
+        });
+
+        const prToIssueTraceability = Array.from(traceabilityMap.entries()).map(([issueKey, data]) => ({
+          issueKey,
+          prs: data.prs,
+          commits: data.commits,
+          totalChanges: data.changes,
+          status: (data.prs.length > 0 ? 'complete' : 'none') as 'complete' | 'partial' | 'none',
+        }));
+
+        reportData.enhancedGitHubMetrics = {
+          commitActivity: this.githubClient.calculateCommitActivityStats(commitsList),
+          pullRequestStats: {
+            totalPRs: prs.length,
+            mergedPRs: mergedPRs.length,
+            closedWithoutMerge: closedPRs.length - mergedPRs.length,
+            openPRs: openPRs.length,
+            mergeRate: prs.length > 0
+              ? (mergedPRs.length / prs.length) * 100
+              : 0,
+            averageTimeToFirstReview: this.calculateAverageTimeToFirstReview(prs),
+            averageTimeToMerge: this.calculateAverageTimeToMerge(prs),
+            averageReviewComments: Math.round(avgComments * 10) / 10,
+            prsByAuthor,
+          },
+          codeChanges: this.githubClient.calculateCodeChangeStats(commitsList),
+          prToIssueTraceability,
+          codeReviewStats: this.githubClient.calculateCodeReviewStats(prs),
+        };
+      }
+
       this.logger.info('Sprint report generated successfully (parallel execution)', {
         sprintId: request.sprint_id,
-        metrics: reportData.metrics
+        metrics: reportData.metrics,
+        tier1: request.include_tier1,
+        tier2: request.include_tier2,
+        tier3: request.include_tier3,
       });
 
       return reportData as SprintReport;
@@ -408,6 +541,83 @@ export class SprintService {
     }
 
     return performanceData as TeamPerformanceData[];
+  }
+
+  /**
+   * Get enhanced sprint issues with changelog data
+   */
+  private async getEnhancedSprintIssues(sprintId: string): Promise<Issue[]> {
+    const cacheKey = `jira:enhanced-issues:${sprintId}`;
+    let enhancedIssues = await this.cache.get(cacheKey);
+
+    if (!enhancedIssues) {
+      enhancedIssues = await this.jiraClient.getEnhancedSprintIssues(sprintId);
+      await this.cache.set(cacheKey, enhancedIssues, { ttl: 300 }); // 5 minutes
+    }
+
+    return enhancedIssues as Issue[];
+  }
+
+  /**
+   * Get enhanced pull requests with review data
+   */
+  private async getEnhancedSprintPullRequests(
+    owner: string,
+    repo: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<PullRequest[]> {
+    if (!startDate || !endDate) return [];
+
+    const cacheKey = `github:enhanced-prs:${owner}:${repo}:${startDate}:${endDate}`;
+    let enhancedPRs = await this.cache.get(cacheKey);
+
+    if (!enhancedPRs) {
+      enhancedPRs = await this.githubClient.getEnhancedPullRequests(
+        owner,
+        repo,
+        {
+          since: startDate,
+          until: endDate,
+          state: 'all'
+        }
+      );
+      await this.cache.set(cacheKey, enhancedPRs, { ttl: 600 }); // 10 minutes
+    }
+
+    return enhancedPRs as PullRequest[];
+  }
+
+  /**
+   * Calculate average time to first review for PRs
+   */
+  private calculateAverageTimeToFirstReview(prs: PullRequest[]): number {
+    const prsWithReview = prs.filter(pr => pr.timeToFirstReview !== undefined);
+
+    if (prsWithReview.length === 0) return 0;
+
+    const totalTime = prsWithReview.reduce(
+      (sum, pr) => sum + (pr.timeToFirstReview || 0),
+      0
+    );
+
+    return Math.round((totalTime / prsWithReview.length) * 10) / 10;
+  }
+
+  /**
+   * Calculate average time to merge for PRs
+   */
+  private calculateAverageTimeToMerge(prs: PullRequest[]): number {
+    const mergedPRs = prs.filter(pr => pr.timeToMerge !== undefined);
+
+    if (mergedPRs.length === 0) return 0;
+
+    const totalTime = mergedPRs.reduce(
+      (sum, pr) => sum + (pr.timeToMerge || 0),
+      0
+    );
+
+    return Math.round((totalTime / mergedPRs.length) * 10) / 10;
   }
 
   /**

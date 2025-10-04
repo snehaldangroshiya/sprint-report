@@ -11,6 +11,23 @@ export interface SprintData {
   boardId: number;
 }
 
+// New types for enhanced issue tracking
+export interface StatusChange {
+  from: string;
+  to: string;
+  timestamp: string;
+  author: string;
+  duration?: number; // Time in previous status (hours)
+}
+
+export interface SprintChange {
+  sprintId: string;
+  sprintName: string;
+  action: 'added' | 'removed';
+  timestamp: string;
+  author: string;
+}
+
 export interface Issue {
   id: string;
   key: string;
@@ -27,6 +44,16 @@ export interface Issue {
   labels: string[];
   components: string[];
   fixVersions: string[];
+  // Enhanced fields for comprehensive reporting
+  epicLink?: string;
+  epicName?: string;
+  flagged?: boolean;
+  blockerReason?: string;
+  statusHistory?: StatusChange[];
+  sprintHistory?: SprintChange[];
+  timeInStatus?: Record<string, number>; // Status -> hours
+  cycleTime?: number; // Days from start to done
+  leadTime?: number; // Days from created to done
 }
 
 export interface GitHubRepository {
@@ -70,6 +97,21 @@ export interface PullRequest {
   additions: number;
   deletions: number;
   changedFiles: number;
+  // Enhanced PR metrics
+  reviews?: PRReview[];
+  timeToFirstReview?: number; // Hours
+  timeToMerge?: number; // Hours
+  reviewComments?: number;
+  conversationsResolved?: number;
+  conversationsTotal?: number;
+  linkedIssues?: string[]; // Jira issue keys
+}
+
+export interface PRReview {
+  reviewer: string;
+  state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED';
+  submittedAt: string;
+  comments: number;
 }
 
 export interface LegacySprintMetrics {
@@ -319,6 +361,7 @@ export interface Sprint {
   startDate?: string;
   endDate?: string;
   boardId: string;
+  goal?: string;
   issues?: Issue[];
 }
 
@@ -335,6 +378,220 @@ export interface SprintMetrics {
   averageLeadTime: number;
 }
 
+// Tier 1: Must Have
+export interface SprintGoalAnalysis {
+  goal: string;
+  achieved: boolean;
+  achievementPercentage: number;
+  notes?: string;
+}
+
+export interface ScopeChange {
+  issueKey: string;
+  issueSummary: string;
+  action: 'added' | 'removed';
+  timestamp: string;
+  storyPoints?: number;
+  reason?: string;
+  author: string;
+}
+
+export interface SpilloverAnalysis {
+  totalSpilloverIssues: number;
+  spilloverStoryPoints: number;
+  spilloverPercentage: number;
+  issues: Array<{
+    key: string;
+    summary: string;
+    storyPoints?: number;
+    reason: string;
+    assignee: string;
+  }>;
+}
+
+// Tier 2: Should Have
+export interface BlockerImpediment {
+  issueKey: string;
+  issueSummary: string;
+  blockerReason: string;
+  raisedDate: string;
+  resolvedDate?: string;
+  daysBlocked: number;
+  impact: 'high' | 'medium' | 'low';
+  assignee: string;
+}
+
+export interface BugMetrics {
+  bugsCreated: number;
+  bugsResolved: number;
+  bugsCarriedOver: number;
+  netBugChange: number; // negative is good
+  bugsByPriority: Record<string, number>;
+  bugsBySeverity?: Record<string, number>;
+  averageBugResolutionTime: number; // hours
+  criticalBugsOutstanding: number;
+}
+
+export interface CycleTimeMetrics {
+  averageCycleTime: number; // days
+  medianCycleTime: number;
+  p90CycleTime: number; // 90th percentile
+  cycleTimeByType: Record<string, number>;
+  cycleTimeByPriority: Record<string, number>;
+  improvementVsPreviousSprint: number; // percentage
+}
+
+export interface TeamCapacity {
+  totalCapacityHours: number;
+  plannedCapacityHours: number;
+  actualCapacityHours: number;
+  utilizationPercentage: number;
+  capacityByMember: Array<{
+    name: string;
+    planned: number;
+    actual: number;
+    utilization: number;
+    ptoHours: number;
+    sickHours: number;
+    otherHours: number;
+  }>;
+  capacityLoss: {
+    pto: number;
+    sick: number;
+    meetings: number;
+    training: number;
+    other: number;
+  };
+}
+
+// Tier 3: Nice to Have
+export interface EpicProgress {
+  epicKey: string;
+  epicName: string;
+  totalIssues: number;
+  completedIssues: number;
+  inProgressIssues: number;
+  todoIssues: number;
+  totalStoryPoints: number;
+  completedStoryPoints: number;
+  completionPercentage: number;
+  remainingWork: number;
+}
+
+export interface TechnicalDebt {
+  totalTechDebtIssues: number;
+  techDebtStoryPoints: number;
+  techDebtAddressed: number;
+  techDebtAdded: number;
+  netTechDebtChange: number;
+  techDebtByCategory: Record<string, number>;
+  percentageOfSprintCapacity: number;
+}
+
+export interface RetrospectiveAction {
+  id: string;
+  action: string;
+  category: 'process' | 'technical' | 'team' | 'other';
+  priority: 'high' | 'medium' | 'low';
+  owner: string;
+  status: 'completed' | 'in_progress' | 'not_started' | 'deferred';
+  dueDate?: string;
+  completionDate?: string;
+  impact?: string;
+}
+
+export interface RiskItem {
+  id: string;
+  description: string;
+  probability: 'high' | 'medium' | 'low';
+  impact: 'high' | 'medium' | 'low';
+  mitigation?: string;
+  owner: string;
+  status: 'active' | 'mitigated' | 'occurred';
+  raisedDate: string;
+  relatedIssues: string[];
+}
+
+// Forward Looking
+export interface NextSprintForecast {
+  forecastedVelocity: number;
+  confidenceLevel: 'high' | 'medium' | 'low';
+  recommendedCapacity: number;
+  carryoverItems: number;
+  carryoverStoryPoints: number;
+  availableCapacity: number;
+  recommendations: string[];
+  risks: string[];
+}
+
+export interface CarryoverItems {
+  totalItems: number;
+  totalStoryPoints: number;
+  items: Array<{
+    key: string;
+    summary: string;
+    storyPoints?: number;
+    reason: string;
+    priority: string;
+    assignee: string;
+    daysInProgress: number;
+  }>;
+  analysis: {
+    percentageOfOriginalCommitment: number;
+    mostCommonReasons: Record<string, number>;
+    recommendedActions: string[];
+  };
+}
+
+// Enhanced GitHub Metrics
+export interface EnhancedGitHubMetrics {
+  commitActivity: {
+    totalCommits: number;
+    commitsByAuthor: Record<string, number>;
+    commitsByDay: Array<{ date: string; count: number }>;
+    averageCommitsPerDay: number;
+    peakCommitDay: string;
+  };
+  pullRequestStats: {
+    totalPRs: number;
+    mergedPRs: number;
+    closedWithoutMerge: number;
+    openPRs: number;
+    mergeRate: number; // percentage
+    averageTimeToFirstReview: number; // hours
+    averageTimeToMerge: number; // hours
+    averageReviewComments: number;
+    prsByAuthor: Record<string, number>;
+  };
+  codeChanges: {
+    totalLinesAdded: number;
+    totalLinesDeleted: number;
+    netLineChange: number;
+    filesChanged: number;
+    changesByAuthor: Record<string, { additions: number; deletions: number }>;
+  };
+  prToIssueTraceability: Array<{
+    issueKey: string;
+    prs: number[];
+    commits: number;
+    totalChanges: number;
+    status: 'complete' | 'partial' | 'none';
+  }>;
+  codeReviewStats: {
+    totalReviews: number;
+    reviewsByReviewer: Record<string, number>;
+    averageReviewsPerPR: number;
+    approvalRate: number; // percentage
+    changesRequestedRate: number; // percentage
+  };
+  testCoverage?: {
+    currentCoverage: number;
+    previousCoverage: number;
+    coverageChange: number;
+    uncoveredFiles: string[];
+  };
+}
+
 export interface SprintReportRequest {
   sprint_id: string;
   github_owner?: string;
@@ -345,6 +602,14 @@ export interface SprintReportRequest {
   include_velocity: boolean;
   include_burndown: boolean;
   theme: 'default' | 'dark' | 'corporate';
+  // Comprehensive report options
+  include_tier1?: boolean; // Sprint Goal, Scope Changes, Spillover
+  include_tier2?: boolean; // Blockers, Bug Metrics, Cycle Time, Capacity
+  include_tier3?: boolean; // Epic Progress, Tech Debt, Retro Actions, Risks
+  include_forward_looking?: boolean; // Next Sprint Forecast, Carryover Items
+  include_enhanced_github?: boolean; // Enhanced GitHub metrics
+  // Optional: Fetch previous sprint for comparisons
+  compare_with_previous?: boolean;
 }
 
 export type ReportFormat = 'html' | 'markdown' | 'json' | 'csv';
@@ -357,6 +622,25 @@ export interface SprintReport {
   velocity?: VelocityData;
   burndown?: BurndownData;
   teamPerformance?: TeamPerformanceData[];
+  // Tier 1: Must Have
+  sprintGoal?: SprintGoalAnalysis;
+  scopeChanges?: ScopeChange[];
+  spilloverAnalysis?: SpilloverAnalysis;
+  // Tier 2: Should Have
+  blockers?: BlockerImpediment[];
+  bugMetrics?: BugMetrics;
+  cycleTimeMetrics?: CycleTimeMetrics;
+  teamCapacity?: TeamCapacity;
+  // Tier 3: Nice to Have
+  epicProgress?: EpicProgress[];
+  technicalDebt?: TechnicalDebt;
+  retrospectiveActions?: RetrospectiveAction[];
+  risks?: RiskItem[];
+  // Forward Looking
+  nextSprintForecast?: NextSprintForecast;
+  carryoverItems?: CarryoverItems;
+  // Enhanced GitHub Metrics
+  enhancedGitHubMetrics?: EnhancedGitHubMetrics;
   metadata: {
     generatedAt: string;
     generatedBy: string;
@@ -365,6 +649,12 @@ export interface SprintReport {
     includePrs: boolean;
     includeVelocity: boolean;
     includeBurndown: boolean;
+    // New flags for comprehensive features
+    includeTier1: boolean;
+    includeTier2: boolean;
+    includeTier3: boolean;
+    includeForwardLooking: boolean;
+    includeEnhancedGitHub: boolean;
   };
 }
 

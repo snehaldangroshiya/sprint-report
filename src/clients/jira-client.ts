@@ -335,7 +335,7 @@ export class JiraClient extends BaseAPIClient {
   private transformIssueData(issue: any): Issue {
     const fields = issue.fields;
 
-    return {
+    const enhancedIssue: Issue = {
       id: issue.id,
       key: issue.key,
       summary: fields.summary || '',
@@ -351,7 +351,23 @@ export class JiraClient extends BaseAPIClient {
       labels: fields.labels || [],
       components: fields.components?.map((c: any) => c.name) || [],
       fixVersions: fields.fixVersions?.map((v: any) => v.name) || [],
+      // Enhanced fields for comprehensive reporting (optional)
+      flagged: this.extractFlagged(fields),
+      // Note: statusHistory, sprintHistory, timeInStatus, cycleTime, leadTime
+      // are populated by separate methods that fetch changelog data
     };
+
+    // Add optional fields only if they exist
+    const epicLink = this.extractEpicLink(fields);
+    if (epicLink) enhancedIssue.epicLink = epicLink;
+
+    const epicName = this.extractEpicName(fields);
+    if (epicName) enhancedIssue.epicName = epicName;
+
+    const blockerReason = this.extractBlockerReason(fields);
+    if (blockerReason) enhancedIssue.blockerReason = blockerReason;
+
+    return enhancedIssue;
   }
 
   private mapSprintState(state: string): 'ACTIVE' | 'CLOSED' | 'FUTURE' {
@@ -385,6 +401,295 @@ export class JiraClient extends BaseAPIClient {
     }
 
     return undefined;
+  }
+
+  private extractEpicLink(fields: any): string | undefined {
+    // Common epic link field names
+    const epicLinkFields = [
+      'customfield_10014', // Common epic link field
+      'customfield_10008', // Alternative epic link
+      'epicLink',
+      'parent', // For Jira next-gen projects
+    ];
+
+    for (const fieldName of epicLinkFields) {
+      const value = fields[fieldName];
+      if (typeof value === 'string' && value) {
+        return value;
+      }
+      if (value && typeof value === 'object' && value.key) {
+        return value.key; // For parent field
+      }
+    }
+
+    return undefined;
+  }
+
+  private extractEpicName(fields: any): string | undefined {
+    // Epic name from various sources
+    if (fields.parent && fields.parent.fields && fields.parent.fields.summary) {
+      return fields.parent.fields.summary;
+    }
+
+    const epicNameFields = ['customfield_10011', 'customfield_10009', 'epicName'];
+    for (const fieldName of epicNameFields) {
+      const value = fields[fieldName];
+      if (typeof value === 'string' && value) {
+        return value;
+      }
+    }
+
+    return undefined;
+  }
+
+  private extractFlagged(fields: any): boolean {
+    // Common flagged field names
+    const flaggedFields = ['customfield_10021', 'customfield_10015', 'flagged'];
+
+    for (const fieldName of flaggedFields) {
+      const value = fields[fieldName];
+      if (value !== null && value !== undefined) {
+        // Field can be array of flags or a single flag
+        if (Array.isArray(value)) {
+          return value.length > 0;
+        }
+        if (typeof value === 'string') {
+          return value.toLowerCase() === 'impediment' || value.toLowerCase() === 'blocked';
+        }
+        if (typeof value === 'object' && value.value) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  private extractBlockerReason(fields: any): string | undefined {
+    // Extract blocker/impediment reason from various fields
+    const blockerFields = ['customfield_10021', 'customfield_10015', 'flagged'];
+
+    for (const fieldName of blockerFields) {
+      const value = fields[fieldName];
+      if (Array.isArray(value) && value.length > 0) {
+        // Return the first flag's value
+        return value[0].value || value[0];
+      }
+      if (typeof value === 'object' && value.value) {
+        return value.value;
+      }
+    }
+
+    return undefined;
+  }
+
+  // Get issue changelog for comprehensive analysis
+  async getIssueChangelog(issueKey: string): Promise<any> {
+    const response = await this.makeRequest<any>(
+      `/rest/api/2/issue/${issueKey}`,
+      {
+        method: 'GET',
+        params: { expand: 'changelog' },
+      },
+      { ttl: 300000 } // 5 minutes cache
+    );
+
+    return response.changelog;
+  }
+
+  // Get enhanced issue data with changelog
+  async getEnhancedIssue(issueKey: string): Promise<Issue> {
+    const response = await this.makeRequest<any>(
+      `/rest/api/2/issue/${issueKey}`,
+      {
+        method: 'GET',
+        params: { expand: 'changelog' },
+      },
+      { ttl: 300000 }
+    );
+
+    const issue = this.transformIssueData(response);
+
+    // Process changelog to add enhanced metrics
+    if (response.changelog && response.changelog.histories) {
+      const statusHistory = this.extractStatusHistory(response.changelog.histories);
+      const sprintHistory = this.extractSprintHistory(response.changelog.histories);
+      const timeInStatus = this.calculateTimeInStatus(statusHistory);
+
+      issue.statusHistory = statusHistory;
+      issue.sprintHistory = sprintHistory;
+      issue.timeInStatus = timeInStatus;
+      issue.cycleTime = this.calculateCycleTime(statusHistory, issue.created);
+      issue.leadTime = this.calculateLeadTime(issue.created, issue.resolved);
+    }
+
+    return issue;
+  }
+
+  // Get enhanced issues for sprint with changelog data
+  async getEnhancedSprintIssues(sprintId: string, maxResults = 100): Promise<Issue[]> {
+    const issues = await this.getSprintIssues(sprintId, undefined, maxResults);
+
+    // Fetch enhanced data for each issue (with batching to avoid rate limits)
+    const enhancedIssues: Issue[] = [];
+
+    for (let i = 0; i < issues.length; i++) {
+      const issue = issues[i];
+      if (!issue) continue;
+
+      try {
+        const enhanced = await this.getEnhancedIssue(issue.key);
+        enhancedIssues.push(enhanced);
+
+        // Add delay every 10 requests to avoid rate limiting
+        if ((i + 1) % 10 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      } catch (error) {
+        // If enhancement fails, use basic issue data
+        console.warn(`Failed to enhance issue ${issue.key}, using basic data`, error);
+        enhancedIssues.push(issue);
+      }
+    }
+
+    return enhancedIssues;
+  }
+
+  // Extract status change history from changelog
+  private extractStatusHistory(histories: any[]): import('@/types').StatusChange[] {
+    const statusChanges: import('@/types').StatusChange[] = [];
+
+    for (const history of histories) {
+      const statusItem = history.items?.find((item: any) => item.field === 'status');
+      if (statusItem) {
+        statusChanges.push({
+          from: statusItem.fromString || '',
+          to: statusItem.toString || '',
+          timestamp: history.created,
+          author: history.author?.displayName || 'Unknown',
+        });
+      }
+    }
+
+    // Calculate duration for each status
+    for (let i = 0; i < statusChanges.length - 1; i++) {
+      const current = statusChanges[i];
+      const next = statusChanges[i + 1];
+      if (current && next) {
+        const currentTime = new Date(current.timestamp).getTime();
+        const nextTime = new Date(next.timestamp).getTime();
+        current.duration = (nextTime - currentTime) / (1000 * 60 * 60); // hours
+      }
+    }
+
+    // Last status duration is from last change to now
+    if (statusChanges.length > 0) {
+      const lastChange = statusChanges[statusChanges.length - 1];
+      if (lastChange) {
+        const lastTime = new Date(lastChange.timestamp).getTime();
+        const now = new Date().getTime();
+        lastChange.duration = (now - lastTime) / (1000 * 60 * 60); // hours
+      }
+    }
+
+    return statusChanges;
+  }
+
+  // Extract sprint change history from changelog
+  private extractSprintHistory(histories: any[]): import('@/types').SprintChange[] {
+    const sprintChanges: import('@/types').SprintChange[] = [];
+
+    for (const history of histories) {
+      const sprintItem = history.items?.find((item: any) => item.field === 'Sprint');
+      if (sprintItem) {
+        // Added to sprint
+        if (sprintItem.toString) {
+          const sprintMatches = sprintItem.toString.match(/\[name=(.*?),/);
+          sprintChanges.push({
+            sprintId: sprintItem.to || '',
+            sprintName: sprintMatches ? sprintMatches[1] : sprintItem.toString,
+            action: 'added',
+            timestamp: history.created,
+            author: history.author?.displayName || 'Unknown',
+          });
+        }
+
+        // Removed from sprint
+        if (sprintItem.fromString && !sprintItem.toString) {
+          const sprintMatches = sprintItem.fromString.match(/\[name=(.*?),/);
+          sprintChanges.push({
+            sprintId: sprintItem.from || '',
+            sprintName: sprintMatches ? sprintMatches[1] : sprintItem.fromString,
+            action: 'removed',
+            timestamp: history.created,
+            author: history.author?.displayName || 'Unknown',
+          });
+        }
+      }
+    }
+
+    return sprintChanges;
+  }
+
+  // Calculate time spent in each status
+  private calculateTimeInStatus(statusHistory: import('@/types').StatusChange[]): Record<string, number> {
+    const timeInStatus: Record<string, number> = {};
+
+    for (const change of statusHistory) {
+      if (change.duration) {
+        const status = change.from;
+        timeInStatus[status] = (timeInStatus[status] || 0) + change.duration;
+      }
+    }
+
+    // Add current status time
+    if (statusHistory.length > 0) {
+      const lastChange = statusHistory[statusHistory.length - 1];
+      if (lastChange) {
+        const currentStatus = lastChange.to;
+        const currentDuration = lastChange.duration || 0;
+        timeInStatus[currentStatus] = (timeInStatus[currentStatus] || 0) + currentDuration;
+      }
+    }
+
+    return timeInStatus;
+  }
+
+  // Calculate cycle time (time from "In Progress" to "Done")
+  private calculateCycleTime(statusHistory: import('@/types').StatusChange[], _createdDate: string): number {
+    const inProgressStatuses = ['In Progress', 'In Development', 'In Review', 'Testing'];
+    const doneStatuses = ['Done', 'Closed', 'Resolved', 'Complete'];
+
+    let startTime: number | null = null;
+    let endTime: number | null = null;
+
+    for (const change of statusHistory) {
+      // Find first transition to "in progress"
+      if (!startTime && inProgressStatuses.some(s => change.to.toLowerCase().includes(s.toLowerCase()))) {
+        startTime = new Date(change.timestamp).getTime();
+      }
+
+      // Find transition to "done"
+      if (doneStatuses.some(s => change.to.toLowerCase().includes(s.toLowerCase()))) {
+        endTime = new Date(change.timestamp).getTime();
+      }
+    }
+
+    if (startTime && endTime) {
+      return (endTime - startTime) / (1000 * 60 * 60 * 24); // days
+    }
+
+    return 0;
+  }
+
+  // Calculate lead time (time from creation to done)
+  private calculateLeadTime(createdDate: string, resolvedDate?: string): number {
+    if (!resolvedDate) return 0;
+
+    const created = new Date(createdDate).getTime();
+    const resolved = new Date(resolvedDate).getTime();
+
+    return (resolved - created) / (1000 * 60 * 60 * 24); // days
   }
 
   // Utility methods

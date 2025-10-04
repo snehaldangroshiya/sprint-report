@@ -330,6 +330,43 @@ export class WebAPIServer {
       }
     });
 
+    // Get comprehensive sprint report (JSON only, with all tiers)
+    this.app.get('/api/sprints/:sprintId/comprehensive', async (req, res) => {
+      try {
+        const { sprintId } = req.params;
+        const {
+          github_owner,
+          github_repo,
+          include_tier1 = 'true',
+          include_tier2 = 'true',
+          include_tier3 = 'true',
+          include_forward_looking = 'true',
+          include_enhanced_github = 'true'
+        } = req.query;
+
+        const result = await this.callMCPTool('generate_sprint_report', {
+          sprint_id: sprintId,
+          github_owner: github_owner as string,
+          github_repo: github_repo as string,
+          format: 'json',
+          include_commits: !!github_owner && !!github_repo,
+          include_prs: !!github_owner && !!github_repo,
+          include_velocity: true,
+          include_burndown: true,
+          theme: 'default',
+          include_tier1: include_tier1 === 'true',
+          include_tier2: include_tier2 === 'true',
+          include_tier3: include_tier3 === 'true',
+          include_forward_looking: include_forward_looking === 'true',
+          include_enhanced_github: include_enhanced_github === 'true',
+        });
+
+        res.json(JSON.parse(result as string));
+      } catch (error) {
+        this.handleAPIError(error, res, 'Failed to get comprehensive sprint report');
+      }
+    });
+
     // GitHub repository info
     this.app.get('/api/github/repos/:owner/:repo/commits', async (req, res) => {
       try {

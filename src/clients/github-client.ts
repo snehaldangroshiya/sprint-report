@@ -352,6 +352,252 @@ export class GitHubClient extends BaseAPIClient {
   }
 
 
+  // Get PR reviews for enhanced metrics
+  async getPullRequestReviews(owner: string, repo: string, prNumber: number): Promise<import('@/types').PRReview[]> {
+    const response = await this.makeRequest<any[]>(
+      `/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
+      { method: 'GET' },
+      { ttl: 300000 } // 5 minutes cache
+    );
+
+    return response.map(review => ({
+      reviewer: review.user.login,
+      state: review.state,
+      submittedAt: review.submitted_at,
+      comments: 0, // Will be populated separately
+    }));
+  }
+
+  // Get PR review comments count
+  async getPullRequestComments(owner: string, repo: string, prNumber: number): Promise<number> {
+    const response = await this.makeRequest<any[]>(
+      `/repos/${owner}/${repo}/pulls/${prNumber}/comments`,
+      { method: 'GET' },
+      { ttl: 300000 }
+    );
+
+    return response.length;
+  }
+
+  // Get enhanced PR with review metrics
+  async getEnhancedPullRequest(owner: string, repo: string, prNumber: number): Promise<PullRequest> {
+    // Get basic PR data
+    const pr = await this.getPullRequestDetails(owner, repo, prNumber);
+
+    try {
+      // Get reviews
+      const reviews = await this.getPullRequestReviews(owner, repo, prNumber);
+
+      // Get comment count
+      const commentCount = await this.getPullRequestComments(owner, repo, prNumber);
+
+      // Calculate time to first review
+      const timeToFirstReview = reviews.length > 0 && reviews[0]
+        ? this.calculateTimeToFirstReview(pr.createdAt, reviews[0].submittedAt)
+        : undefined;
+
+      // Calculate time to merge
+      const timeToMerge = pr.mergedAt
+        ? this.calculateTimeToMerge(pr.createdAt, pr.mergedAt)
+        : undefined;
+
+      // Extract linked Jira issues
+      const linkedIssues = [
+        ...this.extractIssueKeysFromCommitMessage(pr.title),
+        ...this.extractIssueKeysFromCommitMessage(pr.body),
+      ];
+
+      // Enhance PR with metrics
+      if (timeToFirstReview !== undefined) pr.timeToFirstReview = timeToFirstReview;
+      if (timeToMerge !== undefined) pr.timeToMerge = timeToMerge;
+      pr.reviews = reviews;
+      pr.reviewComments = commentCount;
+      pr.linkedIssues = [...new Set(linkedIssues)];
+
+      return pr;
+    } catch (error) {
+      // If enhancement fails, return basic PR
+      console.warn(`Failed to enhance PR ${prNumber}, using basic data`, error);
+      return pr;
+    }
+  }
+
+  // Get enhanced PRs with review metrics
+  async getEnhancedPullRequests(
+    owner: string,
+    repo: string,
+    options: {
+      state?: 'open' | 'closed' | 'all';
+      since?: string;
+      until?: string;
+      limit?: number;
+    } = {}
+  ): Promise<PullRequest[]> {
+    const basicPRs = await this.getAllPullRequests(
+      owner,
+      repo,
+      options.since,
+      options.until
+    );
+
+    const limit = options.limit || 50;
+    const prsToEnhance = basicPRs.slice(0, limit);
+    const enhancedPRs: PullRequest[] = [];
+
+    for (let i = 0; i < prsToEnhance.length; i++) {
+      const pr = prsToEnhance[i];
+      if (!pr) continue;
+
+      try {
+        const enhanced = await this.getEnhancedPullRequest(owner, repo, pr.number);
+        enhancedPRs.push(enhanced);
+
+        // Rate limiting: delay every 5 requests
+        if ((i + 1) % 5 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      } catch (error) {
+        console.warn(`Failed to enhance PR ${pr.number}`, error);
+        enhancedPRs.push(pr);
+      }
+    }
+
+    return enhancedPRs;
+  }
+
+  // Calculate time to first review in hours
+  private calculateTimeToFirstReview(createdAt: string, firstReviewAt: string): number {
+    const created = new Date(createdAt).getTime();
+    const reviewed = new Date(firstReviewAt).getTime();
+    return (reviewed - created) / (1000 * 60 * 60); // hours
+  }
+
+  // Calculate time to merge in hours
+  private calculateTimeToMerge(createdAt: string, mergedAt: string): number {
+    const created = new Date(createdAt).getTime();
+    const merged = new Date(mergedAt).getTime();
+    return (merged - created) / (1000 * 60 * 60); // hours
+  }
+
+  // Calculate code review stats for a set of PRs
+  calculateCodeReviewStats(prs: PullRequest[]): {
+    totalReviews: number;
+    reviewsByReviewer: Record<string, number>;
+    averageReviewsPerPR: number;
+    approvalRate: number;
+    changesRequestedRate: number;
+  } {
+    let totalReviews = 0;
+    const reviewsByReviewer: Record<string, number> = {};
+    let approvedCount = 0;
+    let changesRequestedCount = 0;
+
+    for (const pr of prs) {
+      if (pr.reviews) {
+        totalReviews += pr.reviews.length;
+
+        for (const review of pr.reviews) {
+          reviewsByReviewer[review.reviewer] = (reviewsByReviewer[review.reviewer] || 0) + 1;
+
+          if (review.state === 'APPROVED') {
+            approvedCount++;
+          } else if (review.state === 'CHANGES_REQUESTED') {
+            changesRequestedCount++;
+          }
+        }
+      }
+    }
+
+    return {
+      totalReviews,
+      reviewsByReviewer,
+      averageReviewsPerPR: prs.length > 0 ? totalReviews / prs.length : 0,
+      approvalRate: totalReviews > 0 ? (approvedCount / totalReviews) * 100 : 0,
+      changesRequestedRate: totalReviews > 0 ? (changesRequestedCount / totalReviews) * 100 : 0,
+    };
+  }
+
+  // Calculate commit activity stats
+  calculateCommitActivityStats(commits: Commit[]): {
+    totalCommits: number;
+    commitsByAuthor: Record<string, number>;
+    commitsByDay: Array<{ date: string; count: number }>;
+    averageCommitsPerDay: number;
+    peakCommitDay: string;
+  } {
+    const commitsByAuthor: Record<string, number> = {};
+    const commitsByDay: Map<string, number> = new Map();
+
+    for (const commit of commits) {
+      // Count by author
+      const author = commit.author.name;
+      commitsByAuthor[author] = (commitsByAuthor[author] || 0) + 1;
+
+      // Count by day
+      const dateStr = commit.date || commit.author.date || new Date().toISOString();
+      const dateParts = dateStr.split('T');
+      const day = dateParts[0] || dateStr;
+      commitsByDay.set(day, (commitsByDay.get(day) || 0) + 1);
+    }
+
+    const commitsByDayArray = Array.from(commitsByDay.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const peakCommitDay = commitsByDayArray.length > 0
+      ? commitsByDayArray.reduce((max, day) =>
+          day.count > max.count ? day : max,
+          { date: '', count: 0 }
+        ).date
+      : '';
+
+    return {
+      totalCommits: commits.length,
+      commitsByAuthor,
+      commitsByDay: commitsByDayArray,
+      averageCommitsPerDay: commitsByDayArray.length > 0
+        ? commits.length / commitsByDayArray.length
+        : 0,
+      peakCommitDay,
+    };
+  }
+
+  // Calculate code change stats
+  calculateCodeChangeStats(commits: Commit[]): {
+    totalLinesAdded: number;
+    totalLinesDeleted: number;
+    netLineChange: number;
+    filesChanged: number;
+    changesByAuthor: Record<string, { additions: number; deletions: number }>;
+  } {
+    let totalLinesAdded = 0;
+    let totalLinesDeleted = 0;
+    const filesChanged = new Set<string>();
+    const changesByAuthor: Record<string, { additions: number; deletions: number }> = {};
+
+    for (const commit of commits) {
+      if (commit.stats) {
+        totalLinesAdded += commit.stats.additions;
+        totalLinesDeleted += commit.stats.deletions;
+
+        const author = commit.author.name;
+        if (!changesByAuthor[author]) {
+          changesByAuthor[author] = { additions: 0, deletions: 0 };
+        }
+        changesByAuthor[author].additions += commit.stats.additions;
+        changesByAuthor[author].deletions += commit.stats.deletions;
+      }
+    }
+
+    return {
+      totalLinesAdded,
+      totalLinesDeleted,
+      netLineChange: totalLinesAdded - totalLinesDeleted,
+      filesChanged: filesChanged.size,
+      changesByAuthor,
+    };
+  }
+
   // Health check implementation
   protected async performHealthCheck(): Promise<void> {
     await this.makeRequest<any>(
