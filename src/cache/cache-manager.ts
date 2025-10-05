@@ -165,8 +165,36 @@ export class CacheManager {
     try {
       const ttl = options.ttl || this.options.memory.ttl;
 
-      // L1: Memory cache
-      this.memoryCache.set(key, value, ttl);
+      // L1: Memory cache - handle max keys gracefully
+      try {
+        const success = this.memoryCache.set(key, value, ttl);
+        
+        // If set failed due to max keys, try to clear some space
+        if (!success) {
+          const keys = this.memoryCache.keys();
+          const currentSize = keys.length;
+          
+          // If we're at max capacity, clear 10% of oldest entries
+          if (currentSize >= this.options.memory.maxSize * 0.95) {
+            console.warn(`Memory cache near capacity (${currentSize}/${this.options.memory.maxSize}), clearing old entries`);
+            
+            // Clear 10% of entries by deleting keys
+            const numToDelete = Math.floor(this.options.memory.maxSize * 0.1);
+            const keysToDelete = keys.slice(0, numToDelete);
+            
+            for (const k of keysToDelete) {
+              this.memoryCache.del(k);
+            }
+            
+            // Try setting again
+            this.memoryCache.set(key, value, ttl);
+          }
+        }
+      } catch (memError: any) {
+        // If memory cache fails, log but continue - Redis might still work
+        console.warn(`Memory cache set error for key ${key}:`, memError.message || memError);
+        this.stats.errors++;
+      }
 
       // L2: Redis cache
       if (this.redisClient) {
@@ -183,7 +211,8 @@ export class CacheManager {
     } catch (error) {
       console.error(`Cache set error for key ${key}:`, error);
       this.stats.errors++;
-      throw new CacheError(`set:${key}`, error instanceof Error ? error : undefined);
+      // Don't throw error - degraded caching is better than no caching
+      console.warn(`Continuing without caching for key ${key}`);
     }
   }
 
@@ -192,10 +221,37 @@ export class CacheManager {
     try {
       if (entries.length === 0) return;
 
-      // L1: Memory cache (batch set)
+      // L1: Memory cache (batch set) - handle max keys gracefully
+      let successCount = 0;
+      let failureCount = 0;
+      
       for (const entry of entries) {
         const ttl = entry.ttl || this.options.memory.ttl;
-        this.memoryCache.set(entry.key, entry.value, ttl);
+        try {
+          const success = this.memoryCache.set(entry.key, entry.value, ttl);
+          if (success) {
+            successCount++;
+          } else {
+            failureCount++;
+          }
+        } catch (err) {
+          failureCount++;
+          console.warn(`Memory cache set failed for key ${entry.key}`);
+        }
+      }
+      
+      // If many failures, clear some space
+      if (failureCount > entries.length * 0.3) {
+        const keys = this.memoryCache.keys();
+        const currentSize = keys.length;
+        console.warn(`Memory cache batch set had ${failureCount} failures (${currentSize}/${this.options.memory.maxSize}), clearing old entries`);
+        
+        const numToDelete = Math.floor(this.options.memory.maxSize * 0.2);
+        const keysToDelete = keys.slice(0, numToDelete);
+        
+        for (const k of keysToDelete) {
+          this.memoryCache.del(k);
+        }
       }
 
       // L2: Redis cache (pipeline for batch operation)
@@ -230,7 +286,8 @@ export class CacheManager {
     } catch (error) {
       console.error('Cache setMany error:', error);
       this.stats.errors++;
-      throw new CacheError('setMany', error instanceof Error ? error : undefined);
+      // Don't throw error - degraded caching is better than no caching
+      console.warn('Continuing without full batch caching');
     }
   }
 

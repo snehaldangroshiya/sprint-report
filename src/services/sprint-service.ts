@@ -19,18 +19,17 @@ import {
 
 export class SprintService {
   private logger: Logger;
-  private cache: CacheManager;
   private analyticsService: AnalyticsService;
 
   constructor(
     private jiraClient: JiraClient,
     private githubClient: GitHubClient,
-    cacheManager?: CacheManager
+    private cache: CacheManager
   ) {
+    if (!cache) {
+      throw new Error('CacheManager is required for SprintService initialization');
+    }
     this.logger = new Logger('SprintService');
-    this.cache = cacheManager || new CacheManager({
-      memory: { maxSize: 100, ttl: 300 }
-    });
     this.analyticsService = new AnalyticsService(this.githubClient, this, this.cache);
   }
 

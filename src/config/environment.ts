@@ -26,7 +26,7 @@ const GitHubConfigSchema = z.object({
 
 const CacheConfigSchema = z.object({
   memory: z.object({
-    maxSize: z.number().int().min(10).max(1000).default(100),
+    maxSize: z.number().int().min(10).max(1000000).default(50000),
     ttl: z.number().int().min(60).max(3600).default(300),
   }),
   redis: z.object({

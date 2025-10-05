@@ -24,17 +24,16 @@ import {
 
 export class AnalyticsService {
   private logger: Logger;
-  private cache: CacheManager;
 
   constructor(
     private githubClient: GitHubClient,
     private sprintService: SprintService,
-    cacheManager?: CacheManager
+    private cache: CacheManager
   ) {
+    if (!cache) {
+      throw new Error('CacheManager is required for AnalyticsService initialization');
+    }
     this.logger = new Logger('AnalyticsService');
-    this.cache = cacheManager || new CacheManager({
-      memory: { maxSize: 100, ttl: 300 }
-    });
   }
 
   /**
