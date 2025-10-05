@@ -46,7 +46,13 @@
       "Bash(do test -f \"$file\")",
       "Bash(echo:*)",
       "Bash(git commit:*)",
-      "Bash(npm run test:playwright:*)"
+      "Bash(npm run test:playwright:*)",
+      "Bash(netstat:*)",
+      "Bash(/dev/null)",
+      "Bash(kill:*)",
+      "Bash(npm run dev:web:*)",
+      "Bash(cloc:*)",
+      "Read(//home/sd/**)"
     ],
     "deny": [],
     "ask": []
