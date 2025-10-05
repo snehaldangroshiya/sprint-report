@@ -3,6 +3,7 @@ import { GitHubClient } from '../clients/github-client.js';
 import { CacheManager } from '../cache/cache-manager.js';
 import { Logger } from '../utils/logger.js';
 import { AnalyticsService } from './analytics-service.js';
+import { CacheKeyBuilder } from '../utils/cache-keys.js';
 import {
   Sprint,
   SprintReport,
@@ -37,7 +38,7 @@ export class SprintService {
    * Get all available boards
    */
   async getBoards(): Promise<any[]> {
-    const cacheKey = 'jira:boards';
+    const cacheKey = CacheKeyBuilder.jira.boards();
     let boards = await this.cache.get(cacheKey);
 
     if (!boards) {
@@ -52,7 +53,7 @@ export class SprintService {
    * Get sprints for a specific board
    */
   async getSprints(boardId: string): Promise<Sprint[]> {
-    const cacheKey = `jira:sprints:${boardId}`;
+    const cacheKey = CacheKeyBuilder.jira.sprints(boardId);
     let sprints = await this.cache.get(cacheKey);
 
     if (!sprints) {
@@ -67,7 +68,7 @@ export class SprintService {
    * Get detailed sprint information
    */
   async getSprintDetails(sprintId: string): Promise<Sprint> {
-    const cacheKey = `jira:sprint:${sprintId}`;
+    const cacheKey = CacheKeyBuilder.jira.sprint(sprintId);
     let sprint = await this.cache.get(cacheKey);
 
     if (!sprint) {
@@ -149,7 +150,7 @@ export class SprintService {
 
         // Get velocity data if requested (independent)
         request.include_velocity
-          ? this.getVelocityData(sprint.boardId, 5)
+          ? this.getVelocityData(String(sprint.boardId), 5)
           : Promise.resolve(undefined),
 
         // Get burndown data if requested (independent)
@@ -158,7 +159,7 @@ export class SprintService {
           : Promise.resolve(undefined),
 
         // Get team performance data (independent)
-        this.getTeamPerformanceData(sprint.boardId, 1)
+        this.getTeamPerformanceData(String(sprint.boardId), 1)
       ]);
 
       // Assign basic results
@@ -173,10 +174,19 @@ export class SprintService {
       const issues = enhancedIssues || sprint.issues || [];
 
       // Calculate Tier 1 metrics
+      this.logger.info('[TIER DEBUG] Checking tier1 calculation', {
+        include_tier1: request.include_tier1,
+        issues_count: issues.length
+      });
       if (request.include_tier1 && issues.length > 0) {
         reportData.sprintGoal = this.analyticsService.analyzeSprintGoal(sprint, issues);
         reportData.scopeChanges = this.analyticsService.detectScopeChanges(issues, sprint);
         reportData.spilloverAnalysis = this.analyticsService.analyzeSpillover(issues);
+        this.logger.info('[TIER DEBUG] Tier1 calculated:', {
+          hasGoal: !!reportData.sprintGoal,
+          hasChanges: !!reportData.scopeChanges,
+          hasSpillover: !!reportData.spilloverAnalysis
+        });
       }
 
       // Calculate Tier 2 metrics
@@ -283,6 +293,16 @@ export class SprintService {
         tier3: request.include_tier3,
       });
 
+      // DEBUG: Log what we're about to return
+      console.log('[SPRINT-SERVICE] About to return report with keys:', Object.keys(reportData));
+      console.log('[SPRINT-SERVICE] Has metadata?', !!reportData.metadata);
+      console.log('[SPRINT-SERVICE] Has sprintGoal?', !!reportData.sprintGoal);
+      console.log('[SPRINT-SERVICE] Request flags:', {
+        tier1: request.include_tier1,
+        tier2: request.include_tier2,
+        tier3: request.include_tier3
+      });
+
       return reportData as SprintReport;
     } catch (error) {
       this.logger.error(error as Error, 'generate_sprint_report', { request });
@@ -350,19 +370,28 @@ export class SprintService {
   ) {
     if (!startDate || !endDate) return [];
 
-    const cacheKey = `github:commits:${owner}:${repo}:${startDate}:${endDate}`;
+    const cacheKey = CacheKeyBuilder.github.commits(owner, repo, startDate, endDate);
     let commits = await this.cache.get(cacheKey);
 
     if (!commits) {
-      commits = await this.githubClient.getCommits(
-        owner,
-        repo,
-        {
-          since: startDate,
-          until: endDate
-        }
-      );
-      await this.cache.set(cacheKey, commits, { ttl: 600 }); // 10 minutes
+      try {
+        commits = await this.githubClient.getCommits(
+          owner,
+          repo,
+          {
+            since: startDate,
+            until: endDate
+          }
+        );
+        await this.cache.set(cacheKey, commits, { ttl: 600 }); // 10 minutes
+      } catch (error) {
+        this.logger.warn('Failed to fetch commits, returning empty array', {
+          owner,
+          repo,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        return [];
+      }
     }
 
     return commits;
@@ -379,26 +408,35 @@ export class SprintService {
   ) {
     if (!startDate || !endDate) return [];
 
-    const cacheKey = `github:prs:${owner}:${repo}:${startDate}:${endDate}`;
+    const cacheKey = CacheKeyBuilder.github.prs(owner, repo, startDate, endDate);
     let pullRequests = await this.cache.get(cacheKey);
 
     if (!pullRequests) {
-      const allPRs = await this.githubClient.getPullRequests(
-        owner,
-        repo,
-        { state: 'all' }
-      );
+      try {
+        const allPRs = await this.githubClient.getPullRequests(
+          owner,
+          repo,
+          { state: 'all' }
+        );
 
-      // Filter by date range
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+        // Filter by date range
+        const start = new Date(startDate);
+        const end = new Date(endDate);
 
-      pullRequests = allPRs.filter((pr: any) => {
-        const createdAt = new Date(pr.created_at);
-        return createdAt >= start && createdAt <= end;
-      });
+        pullRequests = allPRs.filter((pr: any) => {
+          const createdAt = new Date(pr.created_at);
+          return createdAt >= start && createdAt <= end;
+        });
 
-      await this.cache.set(cacheKey, pullRequests, { ttl: 600 }); // 10 minutes
+        await this.cache.set(cacheKey, pullRequests, { ttl: 600 }); // 10 minutes
+      } catch (error) {
+        this.logger.warn('Failed to fetch pull requests, returning empty array', {
+          owner,
+          repo,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        return [];
+      }
     }
 
     return pullRequests;
@@ -408,7 +446,7 @@ export class SprintService {
    * Get velocity data for board
    */
   async getVelocityData(boardId: string, sprintCount: number = 5): Promise<VelocityData> {
-    const cacheKey = `jira:velocity:${boardId}:${sprintCount}`;
+    const cacheKey = CacheKeyBuilder.jira.velocity(boardId, sprintCount);
     let velocityData = await this.cache.get(cacheKey);
 
     if (!velocityData) {
@@ -466,7 +504,7 @@ export class SprintService {
    * Get burndown data for sprint
    */
   async getBurndownData(sprintId: string): Promise<BurndownData> {
-    const cacheKey = `jira:burndown:${sprintId}`;
+    const cacheKey = CacheKeyBuilder.jira.burndown(sprintId);
     let burndownData = await this.cache.get(cacheKey);
 
     if (!burndownData) {
@@ -514,7 +552,7 @@ export class SprintService {
    * Get team performance data
    */
   async getTeamPerformanceData(boardId: string, sprintCount: number = 10): Promise<TeamPerformanceData[]> {
-    const cacheKey = `jira:team-performance:${boardId}:${sprintCount}`;
+    const cacheKey = CacheKeyBuilder.jira.teamPerformance(boardId, sprintCount);
     let performanceData = await this.cache.get(cacheKey);
 
     if (!performanceData) {
@@ -547,7 +585,7 @@ export class SprintService {
    * Get enhanced sprint issues with changelog data
    */
   private async getEnhancedSprintIssues(sprintId: string): Promise<Issue[]> {
-    const cacheKey = `jira:enhanced-issues:${sprintId}`;
+    const cacheKey = CacheKeyBuilder.jira.enhancedIssues(sprintId);
     let enhancedIssues = await this.cache.get(cacheKey);
 
     if (!enhancedIssues) {
@@ -569,20 +607,29 @@ export class SprintService {
   ): Promise<PullRequest[]> {
     if (!startDate || !endDate) return [];
 
-    const cacheKey = `github:enhanced-prs:${owner}:${repo}:${startDate}:${endDate}`;
+    const cacheKey = CacheKeyBuilder.github.enhancedPrs(owner, repo, startDate, endDate);
     let enhancedPRs = await this.cache.get(cacheKey);
 
     if (!enhancedPRs) {
-      enhancedPRs = await this.githubClient.getEnhancedPullRequests(
-        owner,
-        repo,
-        {
-          since: startDate,
-          until: endDate,
-          state: 'all'
-        }
-      );
-      await this.cache.set(cacheKey, enhancedPRs, { ttl: 600 }); // 10 minutes
+      try {
+        enhancedPRs = await this.githubClient.getEnhancedPullRequests(
+          owner,
+          repo,
+          {
+            since: startDate,
+            until: endDate,
+            state: 'all'
+          }
+        );
+        await this.cache.set(cacheKey, enhancedPRs, { ttl: 600 }); // 10 minutes
+      } catch (error) {
+        this.logger.warn('Failed to fetch enhanced pull requests, returning empty array', {
+          owner,
+          repo,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        return [];
+      }
     }
 
     return enhancedPRs as PullRequest[];

@@ -22,14 +22,24 @@ export class ReportTools {
    * Generate sprint report
    */
   async generateSprintReport(args: any): Promise<any> {
+    console.log('[REPORT-TOOLS] generateSprintReport called with args:', Object.keys(args));
     const params = ValidationUtils.validateAndParse(MCPToolSchemas.generateSprintReport, args);
+    console.log('[REPORT-TOOLS] After validation, params:', {
+      sprint_id: params.sprint_id,
+      format: params.format,
+      include_tier1: params.include_tier1,
+      include_tier2: params.include_tier2,
+      include_tier3: params.include_tier3
+    });
     this.logger.info('Generating sprint report', {
       sprintId: params.sprint_id,
       format: params.format
     });
 
     try {
+      console.log('[REPORT-TOOLS] Calling reportGenerator.generateReport...');
       const result = await this.reportGenerator.generateReport(params as any);
+      console.log('[REPORT-TOOLS] Report generated, result keys:', Object.keys(result));
 
       this.logger.info('Successfully generated sprint report', {
         reportId: result.id,

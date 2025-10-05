@@ -2,6 +2,7 @@ import { GitHubClient } from '../clients/github-client.js';
 import { CacheManager } from '../cache/cache-manager.js';
 import { Logger } from '../utils/logger.js';
 import { SprintService } from './sprint-service.js';
+import { CacheKeyBuilder } from '../utils/cache-keys.js';
 import {
   Issue,
   Sprint,
@@ -44,7 +45,7 @@ export class AnalyticsService {
     repo: string,
     period: '1month' | '3months' | '6months' | '1year' = '6months'
   ): Promise<CommitTrendData[]> {
-    const cacheKey = `analytics:commit-trends:${owner}:${repo}:${period}`;
+    const cacheKey = CacheKeyBuilder.analytics.commitTrends(owner, repo, period);
     let trends = await this.cache.get(cacheKey);
 
     if (!trends) {
@@ -165,7 +166,7 @@ export class AnalyticsService {
     repo: string,
     period: '1month' | '3months' | '6months' | '1year'
   ) {
-    const cacheKey = `analytics:github-metrics:${owner}:${repo}:${period}`;
+    const cacheKey = CacheKeyBuilder.analytics.githubMetrics(owner, repo, period);
     let metrics = await this.cache.get(cacheKey);
 
     if (!metrics) {
