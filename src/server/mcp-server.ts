@@ -15,6 +15,11 @@ import { Logger, getLogger } from '@/utils/logger';
 import { createAppConfig } from '@/config/environment';
 import { BaseError } from '@/utils/errors';
 import { ToolRegistry } from './tool-registry';
+import { SprintService } from '@/services/sprint-service';
+import { AnalyticsService } from '@/services/analytics-service';
+import { ExportService } from '@/services/export-service';
+import { ReportGenerator } from '@/reporting/report-generator';
+import { ReportTools } from '@/tools/report-tools';
 
 export interface ServerContext {
   config: AppConfig;
@@ -23,6 +28,11 @@ export interface ServerContext {
   cacheManager: CacheManager;
   rateLimiter: ServiceRateLimiter;
   logger: Logger;
+  sprintService: SprintService;
+  analyticsService: AnalyticsService;
+  exportService: ExportService;
+  reportGenerator: ReportGenerator;
+  reportTools: ReportTools;
 }
 
 export class MCPServer {
@@ -168,6 +178,13 @@ export class MCPServer {
       const jiraClient = new JiraClient(config);
       const githubClient = new GitHubClient(config);
 
+      // Initialize reporting services
+      const sprintService = new SprintService(jiraClient, githubClient, cacheManager);
+      const analyticsService = (sprintService as any).analyticsService;
+      const exportService = new ExportService();
+      const reportGenerator = new ReportGenerator(sprintService);
+      const reportTools = new ReportTools(sprintService, analyticsService, exportService, reportGenerator);
+
       // Store context
       this.context = {
         config,
@@ -176,6 +193,11 @@ export class MCPServer {
         cacheManager,
         rateLimiter,
         logger,
+        sprintService,
+        analyticsService,
+        exportService,
+        reportGenerator,
+        reportTools,
       };
 
       // Register all tools with the registry

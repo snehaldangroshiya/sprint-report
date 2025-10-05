@@ -25,12 +25,29 @@ export class ReportGenerator {
   ): Promise<{ id: string; content: string | Buffer; contentType: string }> {
     this.logger.info('Generating sprint report', {
       sprintId: request.sprint_id,
-      format: request.format
+      format: request.format,
+      comprehensive: {
+        tier1: request.include_tier1,
+        tier2: request.include_tier2,
+        tier3: request.include_tier3,
+        forwardLooking: request.include_forward_looking,
+        enhancedGithub: request.include_enhanced_github
+      }
     });
 
     try {
-      // Get sprint data from service
+      // Get sprint data from service (handles all comprehensive flags internally)
+      console.log('[REPORT-GEN] Calling generateSprintReport with request:', {
+        sprint_id: request.sprint_id,
+        format: request.format,
+        include_tier1: request.include_tier1,
+        include_tier2: request.include_tier2,
+        include_tier3: request.include_tier3
+      });
       const reportData = await this.sprintService.generateSprintReport(request);
+      console.log('[REPORT-GEN] Received reportData with keys:', Object.keys(reportData));
+      console.log('[REPORT-GEN] Has metadata?', !!reportData.metadata);
+      console.log('[REPORT-GEN] Has sprintGoal?', !!reportData.sprintGoal);
 
       // Generate content based on format
       let content: string | Buffer;

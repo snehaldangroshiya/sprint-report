@@ -5,7 +5,6 @@ import { ServerContext } from './mcp-server';
 import { ValidationUtils, ToolSchemas, MCPToolSchemas } from '@/utils/validation';
 import { BaseError } from '@/utils/errors';
 import { ErrorRecoveryManager, withErrorRecovery } from '@/utils/error-recovery';
-import { ReportTemplateEngine, ReportDataHelper, TemplateConfig, SprintReportData } from '@/templates/report-templates';
 import { Issue, SprintData } from '@/types';
 
 export interface ToolHandler {
@@ -307,179 +306,38 @@ export class ToolRegistry {
   private async handleGenerateSprintReport(
     args: Record<string, any>,
     context: ServerContext
-  ): Promise<string> {
-    const {
-      sprint_id,
-      github_owner,
-      github_repo,
-      format,
-      include_commits,
-      include_prs,
-      include_velocity,
-      include_burndown,
-      since,
-      until,
-      theme,
-      max_commits_per_issue,
-      max_prs_per_issue
-    } = args;
-
+  ): Promise<any> {
     try {
-      // Get sprint data and issues
-      const [sprintData, sprintIssues] = await Promise.all([
-        context.jiraClient.getSprintData(sprint_id),
-        context.jiraClient.getSprintIssues(sprint_id)
-      ]);
+      console.log('[TOOL-REGISTRY] handleGenerateSprintReport called with format:', args.format);
 
-      let commits: any[] | undefined;
-      let pullRequests: any[] | undefined;
-      let velocityData: any | undefined;
-      let burndownData: any | undefined;
+      // Delegate to reportTools which has full tier analytics implementation
+      const result = await context.reportTools.generateSprintReport(args);
 
-      // Gather additional data based on options
-      const additionalDataPromises: Promise<any>[] = [];
-
-      if (include_commits && github_owner && github_repo) {
-        const issueKeys = sprintIssues.map(issue => issue.key);
-        additionalDataPromises.push(
-          this.getCommitsWithErrorHandling(
-            context,
-            github_owner,
-            github_repo,
-            issueKeys,
-            since,
-            until,
-            max_commits_per_issue
-          )
-        );
-      } else {
-        additionalDataPromises.push(Promise.resolve(undefined));
-      }
-
-      if (include_prs && github_owner && github_repo) {
-        additionalDataPromises.push(
-          this.getPullRequestsWithErrorHandling(
-            context,
-            github_owner,
-            github_repo,
-            sprintIssues.map(issue => issue.key),
-            since,
-            until,
-            max_prs_per_issue
-          )
-        );
-      } else {
-        additionalDataPromises.push(Promise.resolve(undefined));
-      }
-
-      if (include_velocity) {
-        additionalDataPromises.push(this.getVelocityDataWithErrorHandling(context, sprint_id));
-      } else {
-        additionalDataPromises.push(Promise.resolve(undefined));
-      }
-
-      if (include_burndown) {
-        additionalDataPromises.push(this.getBurndownDataWithErrorHandling(context, sprint_id));
-      } else {
-        additionalDataPromises.push(Promise.resolve(undefined));
-      }
-
-      // Execute all additional data gathering in parallel
-      const results = await Promise.allSettled(additionalDataPromises);
-      const [commitsResult, pullRequestsResult, velocityResult, burndownResult] = results;
-
-      // Extract results, handling failures gracefully
-      commits = commitsResult && commitsResult.status === 'fulfilled' ? commitsResult.value : undefined;
-      pullRequests = pullRequestsResult && pullRequestsResult.status === 'fulfilled' ? pullRequestsResult.value : undefined;
-      velocityData = velocityResult && velocityResult.status === 'fulfilled' ? velocityResult.value : undefined;
-      burndownData = burndownResult && burndownResult.status === 'fulfilled' ? burndownResult.value : undefined;
-
-      // Log any failed operations
-      if (commitsResult && commitsResult.status === 'rejected') {
-        context.logger.warn('Failed to fetch commit data for sprint report', {
-          sprint_id,
-          error: commitsResult.reason,
-        });
-      }
-      if (pullRequestsResult && pullRequestsResult.status === 'rejected') {
-        context.logger.warn('Failed to fetch PR data for sprint report', {
-          sprint_id,
-          error: pullRequestsResult.reason,
-        });
-      }
-      if (velocityResult && velocityResult.status === 'rejected') {
-        context.logger.warn('Failed to fetch velocity data for sprint report', {
-          sprint_id,
-          error: velocityResult.reason,
-        });
-      }
-      if (burndownResult && burndownResult.status === 'rejected') {
-        context.logger.warn('Failed to fetch burndown data for sprint report', {
-          sprint_id,
-          error: burndownResult.reason,
-        });
-      }
-
-      // Prepare report data
-      const reportData: SprintReportData = ReportDataHelper.prepareSprintReportData(
-        sprintData,
-        sprintIssues,
-        commits,
-        pullRequests,
-        velocityData,
-        burndownData
-      );
-
-      const templateConfig: TemplateConfig = {
-        format: format || 'markdown',
-        includeCommits: include_commits,
-        includePullRequests: include_prs,
-        includeVelocity: include_velocity,
-        includeBurndown: include_burndown,
-        theme: theme || 'default',
-        maxCommitsPerIssue: max_commits_per_issue || 10,
-        maxPRsPerIssue: max_prs_per_issue || 5,
-      };
-
-      // Generate report using template engine
-      let report: string;
-      switch (format) {
-        case 'html':
-          report = ReportTemplateEngine.generateHTMLReport(reportData, templateConfig);
-          break;
-        case 'json':
-          report = ReportTemplateEngine.generateJSONReport(reportData, templateConfig);
-          break;
-        case 'csv':
-          report = ReportTemplateEngine.generateCSVReport(reportData, templateConfig);
-          break;
-        case 'markdown':
-        default:
-          report = ReportTemplateEngine.generateMarkdownReport(reportData, templateConfig);
-          break;
-      }
-
-      context.logger.info('Sprint report generated successfully', {
-        sprint_id,
-        format,
-        issues_count: sprintIssues.length,
-        includes_commits: !!commits,
-        includes_prs: !!pullRequests,
-        includes_velocity: !!velocityData,
-        includes_burndown: !!burndownData,
+      console.log('[TOOL-REGISTRY] Result from reportTools:', {
+        contentType: result.contentType,
+        contentIsString: typeof result.content === 'string',
+        contentLength: typeof result.content === 'string' ? result.content.length : 'N/A',
+        contentPreview: typeof result.content === 'string' ? result.content.substring(0, 100) : 'object'
       });
 
-      return report;
+      // Return the report content - if format is JSON, parse the string to return object
+      if (args.format === 'json' && typeof result.content === 'string') {
+        console.log('[TOOL-REGISTRY] Parsing JSON content');
+        return JSON.parse(result.content);
+      }
+
+      console.log('[TOOL-REGISTRY] Returning content as-is');
+      return result.content;
 
     } catch (error) {
       context.logger.logError(
         error as Error,
         'generateSprintReport',
-        { sprint_id, format, github_owner, github_repo }
+        { args }
       );
 
       // Return a degraded report with available data
-      return this.generateFallbackSprintReport(sprint_id, error as Error);
+      return this.generateFallbackSprintReport(args.sprint_id, error as Error);
     }
   }
 
@@ -758,114 +616,6 @@ export class ToolRegistry {
   }
 
   // Helper methods for enhanced implementations
-
-  private async getCommitsWithErrorHandling(
-    context: ServerContext,
-    owner: string,
-    repo: string,
-    issueKeys: string[],
-    since?: string,
-    until?: string,
-    maxCommitsPerIssue = 10
-  ): Promise<any[]> {
-    try {
-      const commitData = await context.githubClient.findCommitsWithJiraReferences(
-        owner,
-        repo,
-        issueKeys,
-        since,
-        until
-      );
-
-      // Limit commits per issue for performance
-      return commitData.map(({ issueKey, commits }) => ({
-        issueKey,
-        commits: commits.slice(0, maxCommitsPerIssue),
-      }));
-    } catch (error) {
-      context.logger.warn('Failed to fetch commit data', {
-        owner,
-        repo,
-        issueKeys: issueKeys.length,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return [];
-    }
-  }
-
-  private async getPullRequestsWithErrorHandling(
-    context: ServerContext,
-    owner: string,
-    repo: string,
-    issueKeys: string[],
-    since?: string,
-    until?: string,
-    maxPRsPerIssue = 5
-  ): Promise<any[]> {
-    try {
-      const pullRequestData = await context.githubClient.findPullRequestsWithJiraReferences(
-        owner,
-        repo,
-        issueKeys,
-        since,
-        until,
-        maxPRsPerIssue
-      );
-
-      return pullRequestData.map(({ issueKey, prs }) => ({
-        issueKey,
-        prs: prs.slice(0, maxPRsPerIssue).map(pr => ({
-          number: pr.number,
-          title: pr.title,
-          state: pr.state,
-          author: pr.author,
-          createdAt: pr.createdAt,
-          mergedAt: pr.mergedAt,
-          url: context.githubClient.buildPullRequestUrl(owner, repo, pr.number),
-        })),
-      }));
-    } catch (error) {
-      context.logger.warn('Failed to fetch pull request data', {
-        owner,
-        repo,
-        issueKeys: issueKeys.length,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return [];
-    }
-  }
-
-  private async getVelocityDataWithErrorHandling(
-    context: ServerContext,
-    sprintId: string
-  ): Promise<any> {
-    try {
-      return await this.calculateVelocityMetrics(context, await context.jiraClient.getSprintData(sprintId), 3);
-    } catch (error) {
-      context.logger.warn('Failed to fetch velocity data', {
-        sprintId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return undefined;
-    }
-  }
-
-  private async getBurndownDataWithErrorHandling(
-    context: ServerContext,
-    sprintId: string
-  ): Promise<any> {
-    try {
-      const sprintData = await context.jiraClient.getSprintData(sprintId);
-      const sprintIssues = await context.jiraClient.getSprintIssues(sprintId);
-      return await this.calculateBurndownData(context, sprintData, sprintIssues);
-    } catch (error) {
-      context.logger.warn('Failed to fetch burndown data', {
-        sprintId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return undefined;
-    }
-  }
 
   private calculateComprehensiveSprintMetrics(issues: Issue[]): any {
     const totalIssues = issues.length;

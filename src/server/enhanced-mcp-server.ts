@@ -21,6 +21,11 @@ import {
   initializeGlobalPerformanceMonitor,
   measurePerformance
 } from '../performance/performance-monitor';
+import { SprintService } from '@/services/sprint-service';
+import { AnalyticsService } from '@/services/analytics-service';
+import { ExportService } from '@/services/export-service';
+import { ReportGenerator } from '@/reporting/report-generator';
+import { ReportTools } from '@/tools/report-tools';
 
 export interface EnhancedServerContext {
   config: AppConfig;
@@ -31,6 +36,11 @@ export interface EnhancedServerContext {
   rateLimiter: ServiceRateLimiter;
   logger: ReturnType<typeof getLogger>;
   performanceMonitor: PerformanceMonitor;
+  sprintService: SprintService;
+  analyticsService: AnalyticsService;
+  exportService: ExportService;
+  reportGenerator: ReportGenerator;
+  reportTools: ReportTools;
 }
 
 export class EnhancedMCPServer {
@@ -168,6 +178,14 @@ export class EnhancedMCPServer {
       // Initialize cache optimizer
       const cacheOptimizer = new CacheOptimizer(cacheManager, this.performanceMonitor);
 
+      // Initialize reporting services
+      // Note: SprintService creates its own AnalyticsService internally
+      const sprintService = new SprintService(jiraClient, githubClient, cacheManager);
+      const analyticsService = (sprintService as any).analyticsService; // Access internal instance
+      const exportService = new ExportService();
+      const reportGenerator = new ReportGenerator(sprintService);
+      const reportTools = new ReportTools(sprintService, analyticsService, exportService, reportGenerator);
+
       // Setup server context
       this.context = {
         config,
@@ -177,7 +195,12 @@ export class EnhancedMCPServer {
         cacheOptimizer,
         rateLimiter,
         logger,
-        performanceMonitor: this.performanceMonitor
+        performanceMonitor: this.performanceMonitor,
+        sprintService,
+        analyticsService,
+        exportService,
+        reportGenerator,
+        reportTools
       };
 
       // Initialize tool registry with enhanced context

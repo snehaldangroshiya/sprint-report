@@ -16,6 +16,10 @@ import { getLogger } from './utils/logger';
 import { createAppConfig } from './config/environment';
 import { ToolRegistry } from './server/tool-registry';
 import { ServerContext } from './server/mcp-server';
+import { SprintService } from './services/sprint-service';
+import { ExportService } from './services/export-service';
+import { ReportGenerator } from './reporting/report-generator';
+import { ReportTools } from './tools/report-tools';
 
 const PORT = process.env.MCP_HTTP_PORT ? parseInt(process.env.MCP_HTTP_PORT) : 3001;
 const HOST = process.env.MCP_SERVER_HOST || 'localhost';
@@ -41,6 +45,13 @@ async function main() {
   const jiraClient = new JiraClient(config);
   const githubClient = new GitHubClient(config);
 
+  // Initialize reporting services
+  const sprintService = new SprintService(jiraClient, githubClient, cacheManager);
+  const analyticsService = (sprintService as any).analyticsService;
+  const exportService = new ExportService();
+  const reportGenerator = new ReportGenerator(sprintService);
+  const reportTools = new ReportTools(sprintService, analyticsService, exportService, reportGenerator);
+
   const context: ServerContext = {
     config,
     jiraClient,
@@ -48,6 +59,11 @@ async function main() {
     cacheManager,
     rateLimiter,
     logger,
+    sprintService,
+    analyticsService,
+    exportService,
+    reportGenerator,
+    reportTools,
   };
 
   // Create MCP server instance
