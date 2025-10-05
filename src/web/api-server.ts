@@ -344,7 +344,7 @@ export class WebAPIServer {
           include_enhanced_github = 'true'
         } = req.query;
 
-        const result = await this.callMCPTool('generate_sprint_report', {
+        const toolParams = {
           sprint_id: sprintId,
           github_owner: github_owner as string,
           github_repo: github_repo as string,
@@ -359,9 +359,79 @@ export class WebAPIServer {
           include_tier3: include_tier3 === 'true',
           include_forward_looking: include_forward_looking === 'true',
           include_enhanced_github: include_enhanced_github === 'true',
+        };
+
+        console.log('[COMPREHENSIVE] Calling MCP tool with params:', {
+          include_tier1: toolParams.include_tier1,
+          include_tier2: toolParams.include_tier2,
+          include_tier3: toolParams.include_tier3,
+          include_forward_looking: toolParams.include_forward_looking,
+          include_enhanced_github: toolParams.include_enhanced_github,
         });
 
-        res.json(JSON.parse(result as string));
+        const result = await this.callMCPTool('generate_sprint_report', toolParams);
+        console.log('[COMPREHENSIVE] MCP tool raw result type:', typeof result);
+        console.log('[COMPREHENSIVE] MCP tool result keys:', result && typeof result === 'object' ? Object.keys(result) : 'N/A');
+
+        // Extract content from MCP tool result
+        let reportData;
+        if (typeof result === 'object' && result !== null && 'content' in result) {
+          const content = (result as any).content;
+          // If content is already an object, use it directly; otherwise parse the JSON string
+          reportData = typeof content === 'string' ? JSON.parse(content) : content;
+        } else if (typeof result === 'string') {
+          reportData = JSON.parse(result);
+        } else {
+          // If result is already an object, use it directly
+          reportData = result;
+        }
+
+        // Debug: Log what we received
+        console.log('[COMPREHENSIVE] Keys in reportData:', Object.keys(reportData));
+        console.log('[COMPREHENSIVE] Has sprintGoal?', !!reportData.sprintGoal);
+        console.log('[COMPREHENSIVE] Has blockers?', !!reportData.blockers);
+        console.log('[COMPREHENSIVE] Has epicProgress?', !!reportData.epicProgress);
+
+        // Reorganize data to match frontend expectations
+        const response: any = {
+          ...reportData,
+          tier1: reportData.sprintGoal || reportData.scopeChanges || reportData.spilloverAnalysis ? {
+            sprint_goal: reportData.sprintGoal,
+            scope_changes: reportData.scopeChanges,
+            spillover_analysis: reportData.spilloverAnalysis,
+          } : undefined,
+          tier2: reportData.blockers || reportData.bugMetrics || reportData.cycleTimeMetrics || reportData.teamCapacity ? {
+            blockers: reportData.blockers,
+            bug_metrics: reportData.bugMetrics,
+            cycle_time_metrics: reportData.cycleTimeMetrics,
+            team_capacity: reportData.teamCapacity,
+          } : undefined,
+          tier3: reportData.epicProgress || reportData.technicalDebt || reportData.risks ? {
+            epic_progress: reportData.epicProgress,
+            technical_debt: reportData.technicalDebt,
+            risks: reportData.risks,
+          } : undefined,
+          forward_looking: reportData.nextSprintForecast || reportData.carryoverItems ? {
+            next_sprint_forecast: reportData.nextSprintForecast,
+            carryover_items: reportData.carryoverItems,
+          } : undefined,
+          enhanced_github: reportData.enhancedGitHubMetrics ? {
+            commit_activity: reportData.enhancedGitHubMetrics.commitActivity,
+            pull_request_stats: reportData.enhancedGitHubMetrics.pullRequestStats,
+            code_change_stats: reportData.enhancedGitHubMetrics.codeChanges,
+            pr_to_issue_traceability: reportData.enhancedGitHubMetrics.prToIssueTraceability,
+            code_review_stats: reportData.enhancedGitHubMetrics.codeReviewStats,
+          } : undefined,
+        };
+
+        // Remove undefined fields
+        Object.keys(response).forEach(key => {
+          if (response[key] === undefined) {
+            delete response[key];
+          }
+        });
+
+        res.json(response);
       } catch (error) {
         this.handleAPIError(error, res, 'Failed to get comprehensive sprint report');
       }
@@ -519,18 +589,27 @@ export class WebAPIServer {
     try {
       const context = this.mcpServer.getContext();
       // Simulate MCP tool call via tool registry
+      console.log('[CALL-MCP-TOOL] Executing tool:', toolName, 'with args keys:', Object.keys(args));
       const toolRegistry = (this.mcpServer as any).toolRegistry;
       const result = await toolRegistry.executeTool(toolName, args, context);
+      console.log('[CALL-MCP-TOOL] Tool result type:', typeof result);
+      console.log('[CALL-MCP-TOOL] Tool result keys:', result && typeof result === 'object' ? Object.keys(result) : 'N/A');
 
       // Extract content from MCP response
       if (result.content && result.content[0] && result.content[0].text) {
+        console.log('[CALL-MCP-TOOL] Extracting from content[0].text, length:', result.content[0].text.length);
         try {
-          return JSON.parse(result.content[0].text);
+          const parsed = JSON.parse(result.content[0].text);
+          console.log('[CALL-MCP-TOOL] Parsed JSON keys:', Object.keys(parsed));
+          console.log('[CALL-MCP-TOOL] Has metadata in parsed?', !!parsed.metadata);
+          console.log('[CALL-MCP-TOOL] Has sprintGoal in parsed?', !!parsed.sprintGoal);
+          return parsed;
         } catch {
           return result.content[0].text;
         }
       }
 
+      console.log('[CALL-MCP-TOOL] Returning result directly (no content[0].text)');
       return result;
     } catch (error) {
       this.logger.logError(error as Error, `mcp_tool_${toolName}`, { args });
