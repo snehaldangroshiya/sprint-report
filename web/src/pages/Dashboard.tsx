@@ -509,7 +509,7 @@ export function Dashboard() {
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">Show:</span>
                 <Select value={sprintCount.toString()} onValueChange={(value) => setSprintCount(Number(value))}>
-                  <SelectTrigger className="w-[100px]">
+                  <SelectTrigger className="w-[120px]">
                     <SelectValue placeholder="5 sprints" />
                   </SelectTrigger>
                   <SelectContent>
