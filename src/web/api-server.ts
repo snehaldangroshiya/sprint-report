@@ -279,7 +279,7 @@ export class WebAPIServer {
         const { sprintId } = req.params;
         const { fields, max_results = 100 } = req.query;
 
-        // Check cache first (10 minute TTL for sprint issues)
+        // Check cache first with dynamic TTL based on sprint state
         const cacheKey = `sprint:${sprintId}:issues:${fields || 'all'}:${max_results}`;
         const cacheManager = this.mcpServer.getContext().cacheManager;
 
@@ -295,10 +295,13 @@ export class WebAPIServer {
           max_results: parseInt(max_results as string)
         });
 
-        // Cache for 10 minutes
-        await cacheManager.set(cacheKey, result, { ttl: 600000 });
+        // Determine TTL based on sprint state
+        const ttl = await this.getSprintCacheTTL(sprintId, cacheManager);
 
-        this.logger.info('Sprint issues calculated and cached', { sprintId });
+        // Cache with dynamic TTL
+        await cacheManager.set(cacheKey, result, { ttl });
+
+        this.logger.info('Sprint issues calculated and cached', { sprintId, ttl });
         return res.json(result);
       } catch (error) {
         return this.handleAPIError(error, res, 'Failed to get sprint issues');
@@ -311,7 +314,7 @@ export class WebAPIServer {
         const { sprintId } = req.params;
         const { include_velocity = false, include_burndown = false } = req.query;
 
-        // Check cache first (10 minute TTL for sprint metrics)
+        // Check cache first with dynamic TTL
         const cacheKey = `sprint:${sprintId}:metrics:${include_velocity}:${include_burndown}`;
         const cacheManager = this.mcpServer.getContext().cacheManager;
 
@@ -327,10 +330,13 @@ export class WebAPIServer {
           include_burndown: include_burndown === 'true'
         });
 
-        // Cache for 10 minutes
-        await cacheManager.set(cacheKey, result, { ttl: 600000 });
+        // Determine TTL based on sprint state
+        const ttl = await this.getSprintCacheTTL(sprintId, cacheManager);
 
-        this.logger.info('Sprint metrics calculated and cached', { sprintId });
+        // Cache with dynamic TTL
+        await cacheManager.set(cacheKey, result, { ttl });
+
+        this.logger.info('Sprint metrics calculated and cached', { sprintId, ttl });
         return res.json(result);
       } catch (error) {
         return this.handleAPIError(error, res, 'Failed to get sprint metrics');
@@ -400,16 +406,6 @@ export class WebAPIServer {
           include_enhanced_github = 'true'
         } = req.query;
 
-        // Check cache first (20 minute TTL for comprehensive reports)
-        const cacheKey = `comprehensive:${sprintId}:${github_owner}:${github_repo}:${include_tier1}:${include_tier2}:${include_tier3}:${include_forward_looking}:${include_enhanced_github}`;
-        const cacheManager = this.mcpServer.getContext().cacheManager;
-
-        const cachedData = await cacheManager.get(cacheKey);
-        if (cachedData) {
-          this.logger.info('Comprehensive sprint report served from cache', { sprintId, github_owner, github_repo });
-          return res.json(cachedData);
-        }
-
         const toolParams = {
           sprint_id: sprintId,
           github_owner: github_owner as string,
@@ -426,6 +422,22 @@ export class WebAPIServer {
           include_forward_looking: include_forward_looking === 'true',
           include_enhanced_github: include_enhanced_github === 'true',
         };
+
+        // Check cache first with dynamic TTL based on sprint state
+        const cacheKey = `comprehensive:${sprintId}:${github_owner}:${github_repo}:${include_tier1}:${include_tier2}:${include_tier3}:${include_forward_looking}:${include_enhanced_github}`;
+        const cacheManager = this.mcpServer.getContext().cacheManager;
+
+        const cachedData = await cacheManager.get(cacheKey);
+        if (cachedData) {
+          this.logger.info('Comprehensive sprint report served from cache', { sprintId, github_owner, github_repo });
+          // Background refresh for popular sprints (if cache is more than 50% expired)
+          this.scheduleBackgroundRefresh(cacheKey, async () => {
+            return await this.generateComprehensiveReport(sprintId, toolParams, cacheManager);
+          }, await this.getSprintCacheTTL(sprintId, cacheManager)).catch((err: Error) => 
+            this.logger.warn('Background refresh failed', { error: err.message })
+          );
+          return res.json(cachedData);
+        }
 
         console.log('[COMPREHENSIVE] Calling MCP tool with params:', {
           include_tier1: toolParams.include_tier1,
@@ -497,10 +509,11 @@ export class WebAPIServer {
           }
         });
 
-        // Cache the response (20 minutes TTL - sprint data doesn't change frequently)
-        await cacheManager.set(cacheKey, response, { ttl: 1200000 });
+        // Cache the response with dynamic TTL based on sprint state
+        const ttl = await this.getSprintCacheTTL(sprintId, cacheManager);
+        await cacheManager.set(cacheKey, response, { ttl });
 
-        this.logger.info('Comprehensive sprint report calculated and cached', { sprintId, github_owner, github_repo });
+        this.logger.info('Comprehensive sprint report calculated and cached', { sprintId, github_owner, github_repo, ttl });
         return res.json(response);
       } catch (error) {
         return this.handleAPIError(error, res, 'Failed to get comprehensive sprint report');
@@ -631,6 +644,86 @@ export class WebAPIServer {
         res.json({ message: 'Cache warming completed successfully' });
       } catch (error) {
         this.handleAPIError(error, res, 'Failed to warm cache');
+      }
+    });
+
+    // Cache warming on sprint completion (manually trigger)
+    this.app.post('/api/cache/warm-sprint/:sprintId', async (req, res) => {
+      try {
+        const { sprintId } = req.params;
+        const { github_owner = 'Sage', github_repo = 'sage-connect' } = req.body;
+
+        this.logger.info('Warming cache for sprint', { sprintId });
+
+        // Warm cache for all sprint-related data
+        await this.warmSprintCache(sprintId, github_owner, github_repo);
+
+        res.json({ 
+          message: 'Sprint cache warming completed successfully',
+          sprintId,
+          github_owner,
+          github_repo
+        });
+      } catch (error) {
+        this.handleAPIError(error, res, 'Failed to warm sprint cache');
+      }
+    });
+
+    // Webhook endpoint for cache invalidation (Jira webhooks)
+    this.app.post('/api/webhooks/jira/issue-updated', async (req, res) => {
+      try {
+        const { issue, changelog } = req.body;
+
+        if (!issue || !issue.key) {
+          return res.status(400).json({ error: 'Invalid webhook payload' });
+        }
+
+        this.logger.info('Jira webhook received', { 
+          issueKey: issue.key,
+          eventType: req.body.webhookEvent 
+        });
+
+        // Invalidate cache for affected sprints
+        await this.invalidateIssueCache(issue, changelog);
+
+        return res.json({ message: 'Cache invalidated successfully' });
+      } catch (error) {
+        this.logger.logError(error as Error, 'webhook_processing');
+        return res.status(500).json({ error: 'Failed to process webhook' });
+      }
+    });
+
+    // Webhook endpoint for sprint state changes
+    this.app.post('/api/webhooks/jira/sprint-updated', async (req, res) => {
+      try {
+        const { sprint } = req.body;
+
+        if (!sprint || !sprint.id) {
+          return res.status(400).json({ error: 'Invalid webhook payload' });
+        }
+
+        this.logger.info('Sprint webhook received', { 
+          sprintId: sprint.id,
+          state: sprint.state,
+          eventType: req.body.webhookEvent 
+        });
+
+        // If sprint completed, warm the cache
+        if (sprint.state === 'closed') {
+          this.logger.info('Sprint completed, warming cache', { sprintId: sprint.id });
+          // Warm cache in background (don't block webhook response)
+          this.warmSprintCache(sprint.id, 'Sage', 'sage-connect').catch((err: Error) =>
+            this.logger.warn('Failed to warm sprint cache', { error: err.message })
+          );
+        }
+
+        // Invalidate sprint-related caches
+        await this.invalidateSprintCache(sprint.id);
+
+        return res.json({ message: 'Sprint cache invalidated successfully' });
+      } catch (error) {
+        this.logger.logError(error as Error, 'webhook_processing');
+        return res.status(500).json({ error: 'Failed to process webhook' });
       }
     });
 
@@ -1329,6 +1422,250 @@ export class WebAPIServer {
     } catch (error) {
       this.logger.logError(error as Error, 'calculate_issue_type_distribution');
       return [];
+    }
+  }
+
+  /**
+   * Get dynamic cache TTL based on sprint state
+   * Active sprints: 5 minutes (frequently changing)
+   * Closed sprints: 2 hours (rarely changes)
+   * Future sprints: 15 minutes (may change during planning)
+   */
+  private async getSprintCacheTTL(sprintId: string, cacheManager: any): Promise<number> {
+    try {
+      // Check if we have sprint state in cache
+      const sprintStateKey = `sprint:${sprintId}:state`;
+      let sprintState = await cacheManager.get(sprintStateKey);
+
+      if (!sprintState) {
+        // Fetch sprint details to determine state
+        const sprint = await this.callMCPTool('jira_get_sprint', { sprint_id: sprintId }).catch(() => null);
+        
+        if (sprint) {
+          sprintState = sprint.state;
+          // Cache sprint state for 1 hour
+          await cacheManager.set(sprintStateKey, sprintState, { ttl: 3600000 });
+        }
+      }
+
+      // Return TTL based on state
+      switch (sprintState) {
+        case 'active':
+          return 300000; // 5 minutes - active sprints change frequently
+        case 'closed':
+          return 7200000; // 2 hours - closed sprints rarely change
+        case 'future':
+          return 900000; // 15 minutes - future sprints may change during planning
+        default:
+          return 600000; // 10 minutes - default fallback
+      }
+    } catch (error) {
+      this.logger.warn('Failed to get sprint state for TTL, using default', { sprintId });
+      return 600000; // 10 minutes default
+    }
+  }
+
+  /**
+   * Generate comprehensive report (extracted for reuse)
+   */
+  private async generateComprehensiveReport(_sprintId: string, toolParams: any, _cacheManager: any): Promise<any> {
+    const result = await this.callMCPTool('generate_sprint_report', toolParams);
+
+    // Extract content from MCP tool result
+    let reportData;
+    if (typeof result === 'object' && result !== null && 'content' in result) {
+      const content = (result as any).content;
+      reportData = typeof content === 'string' ? JSON.parse(content) : content;
+    } else if (typeof result === 'string') {
+      reportData = JSON.parse(result);
+    } else {
+      reportData = result;
+    }
+
+    // Reorganize data to match frontend expectations
+    const response: any = {
+      ...reportData,
+      tier1: reportData.sprintGoal || reportData.scopeChanges || reportData.spilloverAnalysis ? {
+        sprint_goal: reportData.sprintGoal,
+        scope_changes: reportData.scopeChanges,
+        spillover_analysis: reportData.spilloverAnalysis,
+      } : undefined,
+      tier2: reportData.blockers || reportData.bugMetrics || reportData.cycleTimeMetrics || reportData.teamCapacity ? {
+        blockers: reportData.blockers,
+        bug_metrics: reportData.bugMetrics,
+        cycle_time_metrics: reportData.cycleTimeMetrics,
+        team_capacity: reportData.teamCapacity,
+      } : undefined,
+      tier3: reportData.epicProgress || reportData.technicalDebt || reportData.risks ? {
+        epic_progress: reportData.epicProgress,
+        technical_debt: reportData.technicalDebt,
+        risks: reportData.risks,
+      } : undefined,
+      forward_looking: reportData.nextSprintForecast || reportData.carryoverItems ? {
+        next_sprint_forecast: reportData.nextSprintForecast,
+        carryover_items: reportData.carryoverItems,
+      } : undefined,
+      enhanced_github: reportData.enhancedGitHubMetrics ? {
+        commit_activity: reportData.enhancedGitHubMetrics.commitActivity,
+        pull_request_stats: reportData.enhancedGitHubMetrics.pullRequestStats,
+        code_change_stats: reportData.enhancedGitHubMetrics.codeChanges,
+        pr_to_issue_traceability: reportData.enhancedGitHubMetrics.prToIssueTraceability,
+        code_review_stats: reportData.enhancedGitHubMetrics.codeReviewStats,
+      } : undefined,
+    };
+
+    // Remove undefined fields
+    Object.keys(response).forEach(key => {
+      if (response[key] === undefined) {
+        delete response[key];
+      }
+    });
+
+    return response;
+  }
+
+  /**
+   * Schedule background refresh for popular cached items
+   * Refreshes cache when it's 50% through its TTL
+   */
+  private async scheduleBackgroundRefresh(
+    cacheKey: string,
+    refreshFunction: () => Promise<any>,
+    ttl: number
+  ): Promise<void> {
+    // Only refresh if cache is more than 50% expired
+    const cacheManager = this.mcpServer.getContext().cacheManager;
+    const cacheMetadata = await cacheManager.get(`${cacheKey}:metadata`) as any;
+
+    if (cacheMetadata && typeof cacheMetadata === 'object' && 'createdAt' in cacheMetadata) {
+      const age = Date.now() - cacheMetadata.createdAt;
+      const halfLife = ttl / 2;
+
+      if (age > halfLife) {
+        // Schedule refresh in background (don't await)
+        setImmediate(async () => {
+          try {
+            this.logger.info('Background refresh started', { cacheKey });
+            const freshData = await refreshFunction();
+            await cacheManager.set(cacheKey, freshData, { ttl });
+            this.logger.info('Background refresh completed', { cacheKey });
+          } catch (error) {
+            this.logger.warn('Background refresh failed', { 
+              cacheKey, 
+              error: (error as Error).message 
+            });
+          }
+        });
+      }
+    }
+  }
+
+  /**
+   * Warm cache for all sprint-related data after sprint completion
+   */
+  private async warmSprintCache(sprintId: string, githubOwner: string, githubRepo: string): Promise<void> {
+    const cacheManager = this.mcpServer.getContext().cacheManager;
+
+    this.logger.info('Warming sprint cache', { sprintId, githubOwner, githubRepo });
+
+    try {
+      // Warm issues cache
+      const issues = await this.callMCPTool('jira_get_sprint_issues', { sprint_id: sprintId });
+      await cacheManager.set(`sprint:${sprintId}:issues:all:100`, issues, { ttl: 7200000 }); // 2 hours for closed
+
+      // Warm comprehensive report cache
+      const comprehensiveParams = {
+        sprint_id: sprintId,
+        github_owner: githubOwner,
+        github_repo: githubRepo,
+        format: 'json',
+        include_commits: true,
+        include_prs: true,
+        include_velocity: true,
+        include_burndown: true,
+        theme: 'default',
+        include_tier1: true,
+        include_tier2: true,
+        include_tier3: true,
+        include_forward_looking: true,
+        include_enhanced_github: true,
+      };
+
+      const comprehensiveReport = await this.generateComprehensiveReport(sprintId, comprehensiveParams, cacheManager);
+      const cacheKey = `comprehensive:${sprintId}:${githubOwner}:${githubRepo}:true:true:true:true:true`;
+      await cacheManager.set(cacheKey, comprehensiveReport, { ttl: 7200000 }); // 2 hours
+
+      this.logger.info('Sprint cache warmed successfully', { sprintId });
+    } catch (error) {
+      this.logger.logError(error as Error, 'warm_sprint_cache', { sprintId });
+      throw error;
+    }
+  }
+
+  /**
+   * Invalidate cache for specific issue and related sprints
+   */
+  private async invalidateIssueCache(issue: any, changelog: any): Promise<void> {
+    try {
+      // Find all sprints this issue belongs to
+      const sprintIds: string[] = [];
+
+      if (issue.fields?.sprint) {
+        sprintIds.push(issue.fields.sprint.id);
+      }
+
+      // Check changelog for sprint changes
+      if (changelog && changelog.items) {
+        for (const item of changelog.items) {
+          if (item.field === 'Sprint' && item.to) {
+            sprintIds.push(item.to);
+          }
+          if (item.field === 'Sprint' && item.from) {
+            sprintIds.push(item.from);
+          }
+        }
+      }
+
+      // Invalidate cache for all affected sprints
+      for (const sprintId of [...new Set(sprintIds)]) {
+        await this.invalidateSprintCache(sprintId);
+      }
+
+      this.logger.info('Issue cache invalidated', { issueKey: issue.key, sprintIds });
+    } catch (error) {
+      this.logger.logError(error as Error, 'invalidate_issue_cache', { issueKey: issue.key });
+    }
+  }
+
+  /**
+   * Invalidate all cache entries for a specific sprint
+   */
+  private async invalidateSprintCache(sprintId: string): Promise<void> {
+    const cacheManager = this.mcpServer.getContext().cacheManager;
+
+    try {
+      // Invalidate all sprint-related cache keys
+      const patterns = [
+        `sprint:${sprintId}:issues:*`,
+        `sprint:${sprintId}:metrics:*`,
+        `comprehensive:${sprintId}:*`,
+        `sprint:${sprintId}:state`
+      ];
+
+      // Delete each pattern (cache manager should support pattern deletion)
+      for (const pattern of patterns) {
+        // Try to delete - some cache managers support pattern matching
+        try {
+          await cacheManager.delete(pattern);
+        } catch (err) {
+          // If pattern deletion not supported, log and continue
+          this.logger.debug('Pattern deletion not supported or failed', { pattern });
+        }
+      }
+
+      this.logger.info('Sprint cache invalidated', { sprintId, patterns });
+    } catch (error) {
+      this.logger.logError(error as Error, 'invalidate_sprint_cache', { sprintId });
     }
   }
 
