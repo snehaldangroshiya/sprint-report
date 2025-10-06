@@ -674,15 +674,28 @@ export class WebAPIServer {
             break;
         }
 
-        const commits = await this.callMCPTool('github_get_commits', {
-          owner,
-          repo,
-          since: startDate.toISOString(),
-          until: endDate.toISOString()
-        });
+        // Fetch both commits and pull requests
+        const [commits, pullRequests] = await Promise.all([
+          this.callMCPTool('github_get_commits', {
+            owner,
+            repo,
+            since: startDate.toISOString(),
+            until: endDate.toISOString()
+          }),
+          this.callMCPTool('github_get_pull_requests', {
+            owner,
+            repo,
+            state: 'all',
+            since: startDate.toISOString(),
+            until: endDate.toISOString()
+          }).catch(err => {
+            this.logger.warn('Failed to fetch pull requests', { error: err.message });
+            return []; // Fallback to empty array if PR fetch fails
+          })
+        ]);
 
-        // Aggregate commits by month
-        const trends = this.aggregateCommitsByMonth(commits);
+        // Aggregate commits and PRs by month
+        const trends = this.aggregateCommitsByMonth(commits, pullRequests);
 
         // Cache for 10 minutes
         await cacheManager.set(cacheKey, trends, { ttl: 600000 });
@@ -800,13 +813,13 @@ export class WebAPIServer {
     });
   }
 
-  private aggregateCommitsByMonth(commits: any[]): any[] {
+  private aggregateCommitsByMonth(commits: any[], pullRequests: any[] = []): any[] {
     const monthlyData: { [key: string]: { commits: number; prs: number } } = {};
 
+    // Aggregate commits
     commits.forEach(commit => {
       // Handle both raw GitHub API response and our transformed response
       const commitDate = commit.date || commit.commit?.committer?.date;
-      const commitMessage = commit.message || commit.commit?.message || '';
 
       if (!commitDate) {
         return; // Skip commits without dates
@@ -820,11 +833,26 @@ export class WebAPIServer {
       }
 
       monthlyData[monthKey].commits++;
-      // Simple heuristic: count merge commits as PRs
-      if (commitMessage.toLowerCase().includes('merge') ||
-          commitMessage.toLowerCase().includes('pull request')) {
-        monthlyData[monthKey].prs++;
+    });
+
+    // Aggregate pull requests
+    pullRequests.forEach(pr => {
+      // Use created_at for PR date (or closed_at/merged_at if available)
+      // Handle both snake_case (API response) and camelCase (transformed data)
+      const prDate = pr.mergedAt || pr.merged_at || pr.closedAt || pr.closed_at || pr.createdAt || pr.created_at;
+
+      if (!prDate) {
+        return; // Skip PRs without dates
       }
+
+      const date = new Date(prDate);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = { commits: 0, prs: 0 };
+      }
+
+      monthlyData[monthKey].prs++;
     });
 
     return Object.entries(monthlyData)
