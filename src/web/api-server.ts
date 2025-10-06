@@ -433,7 +433,7 @@ export class WebAPIServer {
           // Background refresh for popular sprints (if cache is more than 50% expired)
           this.scheduleBackgroundRefresh(cacheKey, async () => {
             return await this.generateComprehensiveReport(sprintId, toolParams, cacheManager);
-          }, await this.getSprintCacheTTL(sprintId, cacheManager)).catch((err: Error) => 
+          }, await this.getSprintCacheTTL(sprintId, cacheManager)).catch((err: Error) =>
             this.logger.warn('Background refresh failed', { error: err.message })
           );
           return res.json(cachedData);
@@ -658,7 +658,7 @@ export class WebAPIServer {
         // Warm cache for all sprint-related data
         await this.warmSprintCache(sprintId, github_owner, github_repo);
 
-        res.json({ 
+        res.json({
           message: 'Sprint cache warming completed successfully',
           sprintId,
           github_owner,
@@ -678,9 +678,9 @@ export class WebAPIServer {
           return res.status(400).json({ error: 'Invalid webhook payload' });
         }
 
-        this.logger.info('Jira webhook received', { 
+        this.logger.info('Jira webhook received', {
           issueKey: issue.key,
-          eventType: req.body.webhookEvent 
+          eventType: req.body.webhookEvent
         });
 
         // Invalidate cache for affected sprints
@@ -702,10 +702,10 @@ export class WebAPIServer {
           return res.status(400).json({ error: 'Invalid webhook payload' });
         }
 
-        this.logger.info('Sprint webhook received', { 
+        this.logger.info('Sprint webhook received', {
           sprintId: sprint.id,
           state: sprint.state,
-          eventType: req.body.webhookEvent 
+          eventType: req.body.webhookEvent
         });
 
         // If sprint completed, warm the cache
@@ -1440,7 +1440,7 @@ export class WebAPIServer {
       if (!sprintState) {
         // Fetch sprint details to determine state
         const sprint = await this.callMCPTool('jira_get_sprint', { sprint_id: sprintId }).catch(() => null);
-        
+
         if (sprint) {
           sprintState = sprint.state;
           // Cache sprint state for 1 hour
@@ -1550,9 +1550,9 @@ export class WebAPIServer {
             await cacheManager.set(cacheKey, freshData, { ttl });
             this.logger.info('Background refresh completed', { cacheKey });
           } catch (error) {
-            this.logger.warn('Background refresh failed', { 
-              cacheKey, 
-              error: (error as Error).message 
+            this.logger.warn('Background refresh failed', {
+              cacheKey,
+              error: (error as Error).message
             });
           }
         });
