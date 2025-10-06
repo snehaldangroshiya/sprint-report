@@ -170,7 +170,7 @@ export function SprintDetails() {
   ) || [];
 
   // Get GitHub data from comprehensive report
-  const commitActivity = comprehensiveReport?.enhanced_github?.commit_activity || [];
+  const commitActivity = comprehensiveReport?.commits || [];
   const prStats = comprehensiveReport?.enhanced_github?.pull_request_stats;
 
   return (
@@ -521,7 +521,7 @@ export function SprintDetails() {
                             {commit.message}
                           </p>
                           <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
-                            <span>{commit.author}</span>
+                            <span>{commit.author?.name || commit.author}</span>
                             <span>•</span>
                             <span>{new Date(commit.date).toLocaleDateString()}</span>
                             <span>•</span>
