@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { BarChart3, Activity, CheckCircle, TrendingUp, Target, Calendar, Database, Github } from 'lucide-react';
 import { api } from '../lib/api';
 import { combineAndSortSprints } from '../lib/sprint-utils';
@@ -7,8 +8,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import { Separator } from '../components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
 
 export function Dashboard() {
+  // State for number of sprints to show
+  const [sprintCount, setSprintCount] = useState(5);
+
   const { data: metrics } = useQuery({
     queryKey: ['metrics'],
     queryFn: api.getMetrics,
@@ -43,7 +54,7 @@ export function Dashboard() {
   });
 
   // Combine active and closed sprints, sorted by start date descending (newest first)
-  const recentSprints = combineAndSortSprints(activeSprints, closedSprints, 5);
+  const recentSprints = combineAndSortSprints(activeSprints, closedSprints, sprintCount);
 
   const sprintsLoading = !boards || boards.length === 0;
 
@@ -490,14 +501,30 @@ export function Dashboard() {
       ) : recentSprints && recentSprints.length > 0 ? (
         <div className="bg-white overflow-hidden shadow rounded-lg border-l-4 border-green-500">
           <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4 flex items-center">
-              <Calendar className="h-5 w-5 mr-2 text-green-600" />
-              Recent Sprint Activity
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
+                <Calendar className="h-5 w-5 mr-2 text-green-600" />
+                Recent Sprint Activity
+              </h3>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Show:</span>
+                <Select value={sprintCount.toString()} onValueChange={(value) => setSprintCount(Number(value))}>
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue placeholder="5 sprints" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="2">2 sprints</SelectItem>
+                    <SelectItem value="5">5 sprints</SelectItem>
+                    <SelectItem value="10">10 sprints</SelectItem>
+                    <SelectItem value="15">15 sprints</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
             <div className="flow-root">
               <ul className="-mb-8">
-                {recentSprints.slice(0, 5).map((sprint, idx) => {
+                {recentSprints.slice(0, sprintCount).map((sprint, idx) => {
                   const isActive = sprint.state === 'active';
                   const sprintEndDate = sprint.endDate ? new Date(sprint.endDate) : null;
                   const sprintStartDate = sprint.startDate ? new Date(sprint.startDate) : null;
@@ -521,7 +548,7 @@ export function Dashboard() {
                   return (
                     <li key={sprint.id}>
                       <div className="relative pb-8">
-                        {idx !== Math.min(4, recentSprints.length - 1) && (
+                        {idx !== Math.min(sprintCount - 1, recentSprints.length - 1) && (
                           <span
                             className={`absolute top-4 left-4 -ml-px h-full w-0.5 ${
                               isActive ? 'bg-blue-200' : 'bg-gray-200'
