@@ -646,8 +646,8 @@ export class WebAPIServer {
         const { period = '6months' } = req.query;
 
         // Check cache first (10 minute TTL for commit trends)
-        // Cache version v2: includes all months in range with zeros
-        const cacheKey = `commit-trends:v2:${owner}:${repo}:${period}`;
+        // Cache version v4: fetches all pages (up to 1000 commits/PRs)
+        const cacheKey = `commit-trends:v4:${owner}:${repo}:${period}`;
         const cacheManager = this.mcpServer.getContext().cacheManager;
 
         const cachedData = await cacheManager.get(cacheKey);
@@ -676,23 +676,70 @@ export class WebAPIServer {
         }
 
         // Fetch both commits and pull requests
+        // For active repos, we need to fetch all pages to cover the entire time period
+        const fetchAllCommits = async () => {
+          const allCommits = [];
+          let page = 1;
+          let hasMore = true;
+          
+          while (hasMore && page <= 10) { // Limit to 10 pages (1000 commits max)
+            const commits = await this.callMCPTool('github_get_commits', {
+              owner,
+              repo,
+              since: startDate.toISOString(),
+              until: endDate.toISOString(),
+              per_page: 100,
+              page
+            });
+            
+            if (commits && commits.length > 0) {
+              allCommits.push(...commits);
+              hasMore = commits.length === 100; // If we got 100, there might be more
+              page++;
+            } else {
+              hasMore = false;
+            }
+          }
+          
+          return allCommits;
+        };
+
+        const fetchAllPRs = async () => {
+          const allPRs = [];
+          let page = 1;
+          let hasMore = true;
+          
+          while (hasMore && page <= 10) { // Limit to 10 pages (1000 PRs max)
+            try {
+              const prs = await this.callMCPTool('github_get_pull_requests', {
+                owner,
+                repo,
+                state: 'all',
+                since: startDate.toISOString(),
+                until: endDate.toISOString(),
+                per_page: 100,
+                page
+              });
+              
+              if (prs && prs.length > 0) {
+                allPRs.push(...prs);
+                hasMore = prs.length === 100;
+                page++;
+              } else {
+                hasMore = false;
+              }
+            } catch (err) {
+              this.logger.warn('Failed to fetch pull requests page', { page, error: (err as Error).message });
+              hasMore = false;
+            }
+          }
+          
+          return allPRs;
+        };
+
         const [commits, pullRequests] = await Promise.all([
-          this.callMCPTool('github_get_commits', {
-            owner,
-            repo,
-            since: startDate.toISOString(),
-            until: endDate.toISOString()
-          }),
-          this.callMCPTool('github_get_pull_requests', {
-            owner,
-            repo,
-            state: 'all',
-            since: startDate.toISOString(),
-            until: endDate.toISOString()
-          }).catch(err => {
-            this.logger.warn('Failed to fetch pull requests', { error: err.message });
-            return []; // Fallback to empty array if PR fetch fails
-          })
+          fetchAllCommits(),
+          fetchAllPRs()
         ]);
 
         // Aggregate commits and PRs by month, filling in missing months with zeros
