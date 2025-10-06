@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, FileText, Activity, CheckCircle, TrendingUp, Target, Calendar, Database, Github } from 'lucide-react';
+import { BarChart3, Activity, CheckCircle, TrendingUp, Target, Calendar, Database, Github } from 'lucide-react';
 import { api } from '../lib/api';
 import { combineAndSortSprints } from '../lib/sprint-utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -174,24 +174,42 @@ export function Dashboard() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Link
-          to="/generate"
-          className="relative rounded-lg border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white px-6 py-5 shadow-sm hover:border-blue-400 hover:shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          <div className="flex items-center">
-            <div className="flex-shrink-0 p-3 bg-blue-100 rounded-lg">
-              <FileText className="h-8 w-8 text-blue-600" />
+        {activeSprints && activeSprints.length > 0 ? (
+          <Link
+            to={`/sprint/${activeSprints[0].id}`}
+            className="relative rounded-lg border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white px-6 py-5 shadow-sm hover:border-blue-400 hover:shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            <div className="flex items-center">
+              <div className="flex-shrink-0 p-3 bg-blue-100 rounded-lg">
+                <Target className="h-8 w-8 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  View Active Sprint
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {activeSprints[0].name}
+                </p>
+              </div>
             </div>
-            <div className="ml-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Generate Report
-              </h3>
-              <p className="text-sm text-gray-600">
-                Create sprint reports (HTML/MD/JSON)
-              </p>
+          </Link>
+        ) : (
+          <div className="relative rounded-lg border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-white px-6 py-5 shadow-sm opacity-60">
+            <div className="flex items-center">
+              <div className="flex-shrink-0 p-3 bg-gray-100 rounded-lg">
+                <Target className="h-8 w-8 text-gray-400" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  No Active Sprint
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Start a sprint to view details
+                </p>
+              </div>
             </div>
           </div>
-        </Link>
+        )}
 
         <Link
           to="/velocity"
