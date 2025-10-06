@@ -65,6 +65,7 @@ export function Analytics() {
     enabled: !!githubOwner && !!githubRepo,
     // Optional query - don't fail if GitHub not configured
     retry: false,
+    staleTime: 0, // Always refetch when dateRange changes
   });
 
   // Calculate real completion rate from velocity data
