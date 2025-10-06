@@ -93,6 +93,9 @@ function formatCommitBody(body: string) {
 export function SprintDetails() {
   const { sprintId } = useParams<{ sprintId: string }>();
 
+  // Jira base URL for linking to issues
+  const JIRA_BASE_URL = 'https://jira.sage.com';
+
   // Pagination state for commits
   const [commitsPage, setCommitsPage] = useState(1);
   const commitsPerPage = 10;
@@ -448,9 +451,17 @@ export function SprintDetails() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="outline" className="text-xs">
-                            {issue.key}
-                          </Badge>
+                          <a
+                            href={`${JIRA_BASE_URL}/browse/${issue.key}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 hover:underline"
+                          >
+                            <Badge variant="outline" className="text-xs">
+                              {issue.key}
+                            </Badge>
+                            <ExternalLink className="h-3 w-3 text-gray-500" />
+                          </a>
                           <Badge variant="secondary" className="text-xs">
                             {issue.issueType}
                           </Badge>
