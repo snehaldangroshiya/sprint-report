@@ -1,5 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { 
   ArrowLeft, 
   Target, 
@@ -19,7 +20,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  getSprintMetrics, 
   getSprintIssues, 
   getSprints, 
   getVelocityData,
@@ -37,13 +37,6 @@ export function SprintDetails() {
 
   const sprint = allSprints?.find(s => s.id === sprintId);
 
-  // Fetch sprint metrics
-  const { data: metrics, isLoading: metricsLoading } = useQuery({
-    queryKey: ['sprint-metrics', sprintId],
-    queryFn: () => getSprintMetrics(sprintId!),
-    enabled: !!sprintId
-  });
-
   // Fetch sprint issues
   const { data: issues, isLoading: issuesLoading } = useQuery({
     queryKey: ['sprint-issues', sprintId],
@@ -53,8 +46,8 @@ export function SprintDetails() {
 
   // Fetch velocity data for comparison
   const { data: velocityData, isLoading: velocityLoading } = useQuery({
-    queryKey: ['velocity', '6306', 5],
-    queryFn: () => getVelocityData('6306', 5)
+    queryKey: ['velocity', '6306', 10],
+    queryFn: () => getVelocityData('6306', 10)
   });
 
   // Fetch comprehensive report with GitHub data
@@ -72,7 +65,59 @@ export function SprintDetails() {
     enabled: !!sprintId
   });
 
-  const isLoading = sprintsLoading || metricsLoading || issuesLoading || velocityLoading || reportLoading;
+  const isLoading = sprintsLoading || issuesLoading || velocityLoading || reportLoading;
+
+  // Calculate metrics from issues data
+  const metrics = useMemo(() => {
+    if (!issues || issues.length === 0) {
+      return {
+        total_issues: 0,
+        completed_issues: 0,
+        in_progress_issues: 0,
+        total_story_points: 0,
+        completed_story_points: 0,
+        completion_rate: 0,
+        velocity: 0
+      };
+    }
+
+    const total_issues = issues.length;
+    const completed_issues = issues.filter(i => i.status === 'Done' || i.status === 'Closed').length;
+    const in_progress_issues = issues.filter(i => i.status === 'In Progress' || i.status === 'In Development').length;
+    
+    const total_story_points = issues.reduce((sum, i) => sum + (Number(i.storyPoints) || 0), 0);
+    const completed_story_points = issues
+      .filter(i => i.status === 'Done' || i.status === 'Closed')
+      .reduce((sum, i) => sum + (Number(i.storyPoints) || 0), 0);
+    
+    const completion_rate = total_issues > 0 ? completed_issues / total_issues : 0;
+    const velocity = completed_story_points;
+
+    return {
+      total_issues,
+      completed_issues,
+      in_progress_issues,
+      total_story_points,
+      completed_story_points,
+      completion_rate,
+      velocity
+    };
+  }, [issues]);
+
+  // Find current and previous sprint data for comparison
+  const currentSprintData = useMemo(() => {
+    if (!velocityData?.sprints || !sprintId) return null;
+    return velocityData.sprints.find(s => s.id === sprintId);
+  }, [velocityData, sprintId]);
+
+  const previousSprintData = useMemo(() => {
+    if (!velocityData?.sprints || !sprintId) return null;
+    const currentIndex = velocityData.sprints.findIndex(s => s.id === sprintId);
+    if (currentIndex > 0) {
+      return velocityData.sprints[currentIndex - 1];
+    }
+    return null;
+  }, [velocityData, sprintId]);
 
   if (isLoading) {
     return (
@@ -105,10 +150,6 @@ export function SprintDetails() {
   const sprintStartDate = sprint.startDate ? new Date(sprint.startDate) : null;
   const sprintEndDate = sprint.endDate ? new Date(sprint.endDate) : null;
   const isActive = sprint.state === 'active';
-
-  // Calculate sprint comparison
-  const currentSprintData = velocityData?.sprints?.find(s => s.id === sprintId);
-  const previousSprintData = velocityData?.sprints?.[1]; // Assuming sorted by date
 
   // Group issues by status
   const completedIssues = issues?.filter(i => 
@@ -231,38 +272,74 @@ export function SprintDetails() {
       {currentSprintData && previousSprintData && (
         <Card>
           <CardHeader>
-            <CardTitle>Sprint Comparison</CardTitle>
+            <CardTitle>Sprint vs Previous</CardTitle>
             <CardDescription>
-              Comparing current sprint with previous sprint
+              How this sprint compares to {previousSprintData.name}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-2">Velocity</h4>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold">{currentSprintData.velocity}</span>
-                  <span className="text-sm text-gray-500">vs {previousSprintData.velocity}</span>
-                  {currentSprintData.velocity > previousSprintData.velocity ? (
-                    <TrendingUp className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <span className="text-gray-400">→</span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Velocity Comparison */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">Velocity</span>
+                  {currentSprintData.velocity !== undefined && previousSprintData.velocity !== undefined && (
+                    <Badge 
+                      variant={currentSprintData.velocity >= previousSprintData.velocity ? "default" : "secondary"}
+                      className={currentSprintData.velocity >= previousSprintData.velocity ? "bg-green-500" : ""}
+                    >
+                      {currentSprintData.velocity >= previousSprintData.velocity ? "+" : ""}
+                      {((currentSprintData.velocity - previousSprintData.velocity) / (previousSprintData.velocity || 1) * 100).toFixed(0)}%
+                    </Badge>
                   )}
                 </div>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-2">Commitment</h4>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold">{currentSprintData.commitment}</span>
-                  <span className="text-sm text-gray-500">vs {previousSprintData.commitment}</span>
+                  <span className="text-3xl font-bold">{currentSprintData.velocity || 0}</span>
+                  <span className="text-sm text-muted-foreground">pts</span>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Previous: {previousSprintData.velocity || 0} pts
+                </p>
               </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-2">Completion</h4>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold">{currentSprintData.completed}</span>
-                  <span className="text-sm text-gray-500">vs {previousSprintData.completed}</span>
+
+              {/* Commitment Comparison */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">Commitment</span>
+                  {currentSprintData.commitment !== undefined && previousSprintData.commitment !== undefined && currentSprintData.commitment !== previousSprintData.commitment && (
+                    <Badge variant="secondary">
+                      {currentSprintData.commitment >= previousSprintData.commitment ? "+" : ""}
+                      {currentSprintData.commitment - previousSprintData.commitment}
+                    </Badge>
+                  )}
                 </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold">{currentSprintData.commitment || 0}</span>
+                  <span className="text-sm text-muted-foreground">pts</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Previous: {previousSprintData.commitment || 0} pts
+                </p>
+              </div>
+
+              {/* Completion Comparison */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">Completed</span>
+                  {currentSprintData.completed !== undefined && previousSprintData.completed !== undefined && currentSprintData.completed !== previousSprintData.completed && (
+                    <Badge variant="secondary">
+                      {currentSprintData.completed >= previousSprintData.completed ? "+" : ""}
+                      {currentSprintData.completed - previousSprintData.completed}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold">{currentSprintData.completed || 0}</span>
+                  <span className="text-sm text-muted-foreground">pts</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Previous: {previousSprintData.completed || 0} pts
+                </p>
               </div>
             </div>
           </CardContent>
