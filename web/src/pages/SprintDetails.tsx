@@ -783,21 +783,59 @@ export function SprintDetails() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <p className="text-sm text-gray-500">Total PRs</p>
-                    <p className="text-2xl font-bold">{prStats.total || 0}</p>
+                    <p className="text-2xl font-bold">{prStats.totalPRs || prStats.total || 0}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Merged</p>
-                    <p className="text-2xl font-bold text-green-600">{prStats.merged || 0}</p>
+                    <p className="text-2xl font-bold text-green-600">{prStats.mergedPRs || prStats.merged || 0}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Open</p>
-                    <p className="text-2xl font-bold text-blue-600">{prStats.open || 0}</p>
+                    <p className="text-2xl font-bold text-blue-600">{prStats.openPRs || prStats.open || 0}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Closed</p>
-                    <p className="text-2xl font-bold text-gray-600">{prStats.closed || 0}</p>
+                    <p className="text-sm text-gray-500">Closed (No Merge)</p>
+                    <p className="text-2xl font-bold text-gray-600">{prStats.closedWithoutMerge || prStats.closed || 0}</p>
                   </div>
                 </div>
+
+                {/* Additional PR Metrics */}
+                <div className="mt-6 pt-4 border-t">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Merge Rate</p>
+                      <p className="text-lg font-semibold text-green-600">
+                        {prStats.mergeRate ? `${prStats.mergeRate.toFixed(1)}%` : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Avg Time to Merge</p>
+                      <p className="text-lg font-semibold">
+                        {prStats.averageTimeToMerge ? `${prStats.averageTimeToMerge.toFixed(1)}h` : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Avg Review Comments</p>
+                      <p className="text-lg font-semibold">
+                        {prStats.averageReviewComments || 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* PRs by Author */}
+                {prStats.prsByAuthor && Object.keys(prStats.prsByAuthor).length > 0 && (
+                  <div className="mt-6 pt-4 border-t">
+                    <p className="text-sm font-medium text-muted-foreground mb-3">PRs by Author</p>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(prStats.prsByAuthor).map(([author, count]) => (
+                        <Badge key={author} variant="secondary" className="text-xs">
+                          {author}: {count as number}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
