@@ -694,8 +694,8 @@ export class WebAPIServer {
           })
         ]);
 
-        // Aggregate commits and PRs by month
-        const trends = this.aggregateCommitsByMonth(commits, pullRequests);
+        // Aggregate commits and PRs by month, filling in missing months with zeros
+        const trends = this.aggregateCommitsByMonth(commits, pullRequests, startDate, endDate);
 
         // Cache for 10 minutes
         await cacheManager.set(cacheKey, trends, { ttl: 600000 });
@@ -813,8 +813,21 @@ export class WebAPIServer {
     });
   }
 
-  private aggregateCommitsByMonth(commits: any[], pullRequests: any[] = []): any[] {
+  private aggregateCommitsByMonth(commits: any[], pullRequests: any[] = [], startDate?: Date, endDate?: Date): any[] {
     const monthlyData: { [key: string]: { commits: number; prs: number } } = {};
+
+    // Initialize all months in the range with zeros if dates provided
+    if (startDate && endDate) {
+      const current = new Date(startDate);
+      current.setDate(1); // Start from first day of month
+      const end = new Date(endDate);
+      
+      while (current <= end) {
+        const monthKey = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
+        monthlyData[monthKey] = { commits: 0, prs: 0 };
+        current.setMonth(current.getMonth() + 1);
+      }
+    }
 
     // Aggregate commits
     commits.forEach(commit => {
