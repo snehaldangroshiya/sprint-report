@@ -97,6 +97,10 @@ export function SprintDetails() {
   const [commitsPage, setCommitsPage] = useState(1);
   const commitsPerPage = 10;
 
+  // Pagination state for completed issues
+  const [completedIssuesPage, setCompletedIssuesPage] = useState(1);
+  const completedIssuesPerPage = 20;
+
   // Fetch sprint information
   const { data: allSprints, isLoading: sprintsLoading } = useQuery({
     queryKey: ['sprints', '6306'],
@@ -431,10 +435,15 @@ export function SprintDetails() {
                 <CheckCircle className="h-5 w-5 text-green-600" />
                 Completed Issues ({completedIssues.length})
               </CardTitle>
+              <CardDescription>
+                Showing {Math.min(completedIssuesPerPage, completedIssues.length)} of {completedIssues.length} completed issues
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {completedIssues.map(issue => (
+                {completedIssues
+                  .slice((completedIssuesPage - 1) * completedIssuesPerPage, completedIssuesPage * completedIssuesPerPage)
+                  .map(issue => (
                   <div key={issue.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -470,6 +479,55 @@ export function SprintDetails() {
                   <p className="text-center text-gray-500 py-8">No completed issues yet</p>
                 )}
               </div>
+
+              {/* Pagination for Completed Issues */}
+              {completedIssues.length > completedIssuesPerPage && (
+                <div className="mt-6 pt-4 border-t">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCompletedIssuesPage(p => Math.max(1, p - 1))}
+                          className={completedIssuesPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                      
+                      {Array.from({ length: Math.ceil(completedIssues.length / completedIssuesPerPage) }).map((_, i) => {
+                        const pageNum = i + 1;
+                        // Show first page, last page, current page, and pages around current
+                        const totalPages = Math.ceil(completedIssues.length / completedIssuesPerPage);
+                        if (
+                          pageNum === 1 || 
+                          pageNum === totalPages || 
+                          (pageNum >= completedIssuesPage - 1 && pageNum <= completedIssuesPage + 1)
+                        ) {
+                          return (
+                            <PaginationItem key={i}>
+                              <PaginationLink
+                                onClick={() => setCompletedIssuesPage(pageNum)}
+                                isActive={completedIssuesPage === pageNum}
+                                className="cursor-pointer"
+                              >
+                                {pageNum}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        } else if (pageNum === completedIssuesPage - 2 || pageNum === completedIssuesPage + 2) {
+                          return <PaginationItem key={i}><span className="px-2">...</span></PaginationItem>;
+                        }
+                        return null;
+                      })}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCompletedIssuesPage(p => Math.min(Math.ceil(completedIssues.length / completedIssuesPerPage), p + 1))}
+                          className={completedIssuesPage >= Math.ceil(completedIssues.length / completedIssuesPerPage) ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
             </CardContent>
           </Card>
 
