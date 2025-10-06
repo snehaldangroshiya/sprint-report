@@ -234,6 +234,34 @@ export class WebAPIServer {
           return res.status(400).json({ error: 'board_id is required' });
         }
 
+        // Handle 'all' state by fetching all sprint types
+        if (state === 'all') {
+          const [active, closed, future] = await Promise.all([
+            this.callMCPTool('jira_get_sprints', {
+              board_id: board_id as string,
+              state: 'active'
+            }).catch(() => []),
+            this.callMCPTool('jira_get_sprints', {
+              board_id: board_id as string,
+              state: 'closed'
+            }).catch(() => []),
+            this.callMCPTool('jira_get_sprints', {
+              board_id: board_id as string,
+              state: 'future'
+            }).catch(() => [])
+          ]);
+
+          // Combine and sort by start date (newest first)
+          const allSprints = [...active, ...closed, ...future].sort((a: any, b: any) => {
+            if (!a.startDate) return 1;
+            if (!b.startDate) return -1;
+            return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+          });
+
+          return res.json(allSprints);
+        }
+
+        // Single state request
         const result = await this.callMCPTool('jira_get_sprints', {
           board_id: board_id as string,
           state: state as string
