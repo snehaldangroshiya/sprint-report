@@ -15,8 +15,8 @@ export function Analytics() {
   const [selectedBoard, setSelectedBoard] = useState('6306');
   const [dateRange, setDateRange] = useState('3months');
   // GitHub integration - editable inputs with better defaults
-  const [githubOwner, setGithubOwner] = useState(import.meta.env.VITE_GITHUB_OWNER || 'facebook');
-  const [githubRepo, setGithubRepo] = useState(import.meta.env.VITE_GITHUB_REPO || 'react');
+  const [githubOwner, setGithubOwner] = useState(import.meta.env.VITE_GITHUB_OWNER || 'Sage');
+  const [githubRepo, setGithubRepo] = useState(import.meta.env.VITE_GITHUB_REPO || 'sage-connect');
 
   // Calculate sprint count based on time period
   const getSprintCount = (period: string): number => {
@@ -450,7 +450,7 @@ export function Analytics() {
                     {commitTrendError ? 'Failed to Load GitHub Data' : 'No GitHub Data Available'}
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {commitTrendError 
+                    {commitTrendError
                       ? `Error: ${commitTrendError instanceof Error ? commitTrendError.message : 'Repository not found or access denied'}`
                       : 'Configure GitHub Owner and Repo above, then select a time period'
                     }

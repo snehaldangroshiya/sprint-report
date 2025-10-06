@@ -144,44 +144,6 @@ export const getSprintMetrics = (sprintId: string) =>
     velocity: number;
   }>(`/sprints/${sprintId}/metrics`);
 
-// Report generation
-export const generateSprintReport = (options: {
-  sprint_id: string;
-  github_owner?: string;
-  github_repo?: string;
-  format: 'html' | 'markdown' | 'json';
-  include_github: boolean;
-  template_type?: 'executive' | 'detailed' | 'technical';
-}) =>
-  apiRequest<{ report: string; metadata: any }>('/reports/sprint', {
-    method: 'POST',
-    body: JSON.stringify(options),
-  });
-
-// Report management
-export const getReports = () =>
-  apiRequest<Array<{
-    id: string;
-    sprint_id: string;
-    format: string;
-    created_at: string;
-    size: number;
-  }>>('/reports');
-
-export const getReport = (reportId: string) =>
-  apiRequest<{
-    id: string;
-    sprint_id: string;
-    format: string;
-    created_at: string;
-    content: string;
-  }>(`/report/${reportId}`);
-
-export const deleteReport = (reportId: string) =>
-  apiRequest<{ success: boolean }>(`/report/${reportId}`, {
-    method: 'DELETE',
-  });
-
 // GitHub integration
 export const getCommits = (owner: string, repo: string, since?: string, until?: string, maxResults?: number) =>
   apiRequest<Array<{
@@ -299,28 +261,6 @@ export const getIssueTypeDistribution = (boardId: string, sprintCount: number = 
     color: string;
   }>>(`/analytics/issue-types/${boardId}?sprints=${sprintCount}`);
 
-// Comprehensive sprint report with all tiers
-export const getComprehensiveSprintReport = (sprintId: string, options?: {
-  github_owner?: string;
-  github_repo?: string;
-  include_tier1?: boolean;
-  include_tier2?: boolean;
-  include_tier3?: boolean;
-  include_forward_looking?: boolean;
-  include_enhanced_github?: boolean;
-}) => {
-  const params = new URLSearchParams();
-  if (options?.github_owner) params.append('github_owner', options.github_owner);
-  if (options?.github_repo) params.append('github_repo', options.github_repo);
-  if (options?.include_tier1 !== undefined) params.append('include_tier1', options.include_tier1.toString());
-  if (options?.include_tier2 !== undefined) params.append('include_tier2', options.include_tier2.toString());
-  if (options?.include_tier3 !== undefined) params.append('include_tier3', options.include_tier3.toString());
-  if (options?.include_forward_looking !== undefined) params.append('include_forward_looking', options.include_forward_looking.toString());
-  if (options?.include_enhanced_github !== undefined) params.append('include_enhanced_github', options.include_enhanced_github.toString());
-
-  return apiRequest<any>(`/sprints/${sprintId}/comprehensive?${params.toString()}`);
-};
-
 // Utility functions
 export const api = {
   getHealth,
@@ -330,10 +270,6 @@ export const api = {
   getSprints,
   getSprintIssues,
   getSprintMetrics,
-  generateSprintReport,
-  getReports,
-  getReport,
-  deleteReport,
   getCommits,
   getCommitsPaginated,
   getPullRequests,
@@ -343,7 +279,6 @@ export const api = {
   getCommitTrends,
   getTeamPerformance,
   getIssueTypeDistribution,
-  getComprehensiveSprintReport,
 };
 
 export default api;

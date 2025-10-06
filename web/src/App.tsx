@@ -2,8 +2,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
-import { ReportGenerator } from './pages/ReportGenerator';
-import { ReportViewer } from './pages/ReportViewer';
 import { Analytics } from './pages/Analytics';
 import { ToolsStatus } from './pages/ToolsStatus';
 import { GitHub } from './pages/GitHub';
@@ -29,13 +27,11 @@ function App() {
           <Layout>
             <Routes>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/generate" element={<ReportGenerator />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/tools" element={<ToolsStatus />} />
               <Route path="/github" element={<GitHub />} />
               <Route path="/velocity" element={<Velocity />} />
               <Route path="/components" element={<Components />} />
-              <Route path="/report/:reportId" element={<ReportViewer />} />
             </Routes>
           </Layout>
         </Router>

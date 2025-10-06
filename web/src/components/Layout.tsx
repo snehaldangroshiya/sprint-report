@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { BarChart3, FileText, Activity, Wrench, GitBranch, TrendingUp } from 'lucide-react';
+import { BarChart3, Activity, Wrench, GitBranch, TrendingUp } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,7 +10,6 @@ export function Layout({ children }: LayoutProps) {
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: BarChart3 },
-    { name: 'Generate Report', href: '/generate', icon: FileText },
     { name: 'Analytics', href: '/analytics', icon: Activity },
     { name: 'MCP Tools', href: '/tools', icon: Wrench },
     { name: 'GitHub', href: '/github', icon: GitBranch },
