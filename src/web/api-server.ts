@@ -446,11 +446,20 @@ export class WebAPIServer {
         // Support both max_results (from web UI) and per_page (standard pagination)
         const perPage = max_results ? parseInt(max_results as string) : parseInt(per_page as string);
 
+        // Convert date strings to ISO format if they're not already
+        const formatDate = (dateStr: string | undefined): string | undefined => {
+          if (!dateStr) return undefined;
+          // If it's already in ISO format (contains 'T'), return as is
+          if (dateStr.includes('T')) return dateStr;
+          // Otherwise, add time and timezone
+          return `${dateStr}T00:00:00Z`;
+        };
+
         const result = await this.callMCPTool('github_get_commits', {
           owner,
           repo,
-          since: since as string,
-          until: until as string,
+          since: formatDate(since as string),
+          until: formatDate(until as string),
           author: author as string,
           per_page: perPage,
           page: parseInt(page as string)
