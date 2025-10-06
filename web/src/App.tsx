@@ -7,6 +7,7 @@ import { ToolsStatus } from './pages/ToolsStatus';
 import { GitHub } from './pages/GitHub';
 import { Velocity } from './pages/Velocity';
 import { Components } from './pages/Components';
+import { SprintDetails } from './pages/SprintDetails';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const queryClient = new QueryClient({
@@ -31,6 +32,7 @@ function App() {
               <Route path="/tools" element={<ToolsStatus />} />
               <Route path="/github" element={<GitHub />} />
               <Route path="/velocity" element={<Velocity />} />
+              <Route path="/sprint/:sprintId" element={<SprintDetails />} />
               <Route path="/components" element={<Components />} />
             </Routes>
           </Layout>

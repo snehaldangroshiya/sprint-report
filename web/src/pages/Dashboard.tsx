@@ -552,7 +552,7 @@ export function Dashboard() {
                               </p>
                             </div>
                             <div className="whitespace-nowrap text-right text-sm">
-                              <Link to="/velocity" className="text-blue-600 hover:text-blue-800 font-medium hover:underline">
+                              <Link to={`/sprint/${sprint.id}`} className="text-blue-600 hover:text-blue-800 font-medium hover:underline">
                                 View Details →
                               </Link>
                             </div>
