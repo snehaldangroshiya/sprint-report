@@ -1,10 +1,10 @@
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { 
-  ArrowLeft, 
-  Target, 
-  TrendingUp, 
+import {
+  ArrowLeft,
+  Target,
+  TrendingUp,
   CheckCircle,
   Clock,
   AlertCircle,
@@ -19,7 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
+import {
   Pagination,
   PaginationContent,
   PaginationItem,
@@ -27,31 +27,31 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { 
-  getSprintIssues, 
-  getSprints, 
+import {
+  getSprintIssues,
+  getSprints,
   getVelocityData,
-  getComprehensiveSprintReport 
+  getComprehensiveSprintReport
 } from '@/lib/api';
 
 // Helper function to parse commit message into title and body
 function parseCommitMessage(message: string) {
   if (!message) return { title: '', body: '' };
-  
+
   const lines = message.split('\n');
   const title = lines[0] || '';
   const body = lines.slice(1).join('\n').trim();
-  
+
   return { title, body };
 }
 
 // Helper function to format commit body (handle markdown and HTML)
 function formatCommitBody(body: string) {
   if (!body) return null;
-  
+
   // Split into paragraphs
   const paragraphs = body.split('\n\n').filter(p => p.trim());
-  
+
   return paragraphs.map((paragraph, idx) => {
     // Handle bullet points
     if (paragraph.includes('\n- ') || paragraph.includes('\n* ')) {
@@ -66,7 +66,7 @@ function formatCommitBody(body: string) {
         </ul>
       );
     }
-    
+
     // Handle numbered lists
     if (/^\d+\./.test(paragraph)) {
       const items = paragraph.split('\n').filter(line => line.trim());
@@ -80,7 +80,7 @@ function formatCommitBody(body: string) {
         </ol>
       );
     }
-    
+
     // Regular paragraph
     return (
       <p key={idx} className="text-sm text-muted-foreground leading-relaxed">
@@ -92,7 +92,7 @@ function formatCommitBody(body: string) {
 
 export function SprintDetails() {
   const { sprintId } = useParams<{ sprintId: string }>();
-  
+
   // Pagination state for commits
   const [commitsPage, setCommitsPage] = useState(1);
   const commitsPerPage = 10;
@@ -156,12 +156,12 @@ export function SprintDetails() {
     const total_issues = issues.length;
     const completed_issues = issues.filter(i => i.status === 'Done' || i.status === 'Closed').length;
     const in_progress_issues = issues.filter(i => i.status === 'In Progress' || i.status === 'In Development').length;
-    
+
     const total_story_points = issues.reduce((sum, i) => sum + (Number(i.storyPoints) || 0), 0);
     const completed_story_points = issues
       .filter(i => i.status === 'Done' || i.status === 'Closed')
       .reduce((sum, i) => sum + (Number(i.storyPoints) || 0), 0);
-    
+
     const completion_rate = total_issues > 0 ? completed_issues / total_issues : 0;
     const velocity = completed_story_points;
 
@@ -224,18 +224,18 @@ export function SprintDetails() {
   const isActive = sprint.state === 'active';
 
   // Group issues by status
-  const completedIssues = issues?.filter(i => 
-    i.status.toLowerCase() === 'done' || 
+  const completedIssues = issues?.filter(i =>
+    i.status.toLowerCase() === 'done' ||
     i.status.toLowerCase() === 'closed' ||
     i.status.toLowerCase() === 'resolved'
   ) || [];
-  
-  const inProgressIssues = issues?.filter(i => 
+
+  const inProgressIssues = issues?.filter(i =>
     i.status.toLowerCase() === 'in progress' ||
     i.status.toLowerCase() === 'in review'
   ) || [];
-  
-  const todoIssues = issues?.filter(i => 
+
+  const todoIssues = issues?.filter(i =>
     i.status.toLowerCase() === 'to do' ||
     i.status.toLowerCase() === 'open' ||
     i.status.toLowerCase() === 'backlog'
@@ -251,8 +251,8 @@ export function SprintDetails() {
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="text-gray-500 hover:text-gray-700 transition-colors"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -267,14 +267,14 @@ export function SprintDetails() {
           </div>
           {sprintStartDate && sprintEndDate && (
             <p className="text-gray-500">
-              {sprintStartDate.toLocaleDateString('en-US', { 
-                month: 'long', 
-                day: 'numeric', 
-                year: 'numeric' 
-              })} - {sprintEndDate.toLocaleDateString('en-US', { 
-                month: 'long', 
-                day: 'numeric', 
-                year: 'numeric' 
+              {sprintStartDate.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+              })} - {sprintEndDate.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
               })}
             </p>
           )}
@@ -356,7 +356,7 @@ export function SprintDetails() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-muted-foreground">Velocity</span>
                   {currentSprintData.velocity !== undefined && previousSprintData.velocity !== undefined && (
-                    <Badge 
+                    <Badge
                       variant={currentSprintData.velocity >= previousSprintData.velocity ? "default" : "secondary"}
                       className={currentSprintData.velocity >= previousSprintData.velocity ? "bg-green-500" : ""}
                     >
@@ -486,19 +486,19 @@ export function SprintDetails() {
                   <Pagination>
                     <PaginationContent>
                       <PaginationItem>
-                        <PaginationPrevious 
+                        <PaginationPrevious
                           onClick={() => setCompletedIssuesPage(p => Math.max(1, p - 1))}
                           className={completedIssuesPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                         />
                       </PaginationItem>
-                      
+
                       {Array.from({ length: Math.ceil(completedIssues.length / completedIssuesPerPage) }).map((_, i) => {
                         const pageNum = i + 1;
                         // Show first page, last page, current page, and pages around current
                         const totalPages = Math.ceil(completedIssues.length / completedIssuesPerPage);
                         if (
-                          pageNum === 1 || 
-                          pageNum === totalPages || 
+                          pageNum === 1 ||
+                          pageNum === totalPages ||
                           (pageNum >= completedIssuesPage - 1 && pageNum <= completedIssuesPage + 1)
                         ) {
                           return (
@@ -517,9 +517,9 @@ export function SprintDetails() {
                         }
                         return null;
                       })}
-                      
+
                       <PaginationItem>
-                        <PaginationNext 
+                        <PaginationNext
                           onClick={() => setCompletedIssuesPage(p => Math.min(Math.ceil(completedIssues.length / completedIssuesPerPage), p + 1))}
                           className={completedIssuesPage >= Math.ceil(completedIssues.length / completedIssuesPerPage) ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                         />
@@ -719,10 +719,10 @@ export function SprintDetails() {
                       .map((commit: any, idx: number) => {
                         const { title, body } = parseCommitMessage(commit.message);
                         const formattedBody = formatCommitBody(body);
-                        
+
                         return (
-                          <div 
-                            key={commit.sha || idx} 
+                          <div
+                            key={commit.sha || idx}
                             className="group relative border rounded-lg p-5 hover:bg-accent/50 transition-all duration-200 hover:shadow-sm"
                           >
                             <div className="flex items-start gap-4">
@@ -776,9 +776,9 @@ export function SprintDetails() {
 
                               {/* GitHub Link */}
                               {commit.url && (
-                                <a 
-                                  href={commit.url} 
-                                  target="_blank" 
+                                <a
+                                  href={commit.url}
+                                  target="_blank"
                                   rel="noopener noreferrer"
                                   className="flex-shrink-0 p-2 rounded-md text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"
                                   title="View on GitHub"
@@ -798,12 +798,12 @@ export function SprintDetails() {
                       <Pagination>
                         <PaginationContent>
                           <PaginationItem>
-                            <PaginationPrevious 
+                            <PaginationPrevious
                               onClick={() => setCommitsPage(p => Math.max(1, p - 1))}
                               className={commitsPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                             />
                           </PaginationItem>
-                          
+
                           {[...Array(Math.ceil(commitActivity.length / commitsPerPage))].map((_, i) => (
                             <PaginationItem key={i}>
                               <PaginationLink
@@ -815,16 +815,16 @@ export function SprintDetails() {
                               </PaginationLink>
                             </PaginationItem>
                           ))}
-                          
+
                           <PaginationItem>
-                            <PaginationNext 
+                            <PaginationNext
                               onClick={() => setCommitsPage(p => Math.min(Math.ceil(commitActivity.length / commitsPerPage), p + 1))}
                               className={commitsPage >= Math.ceil(commitActivity.length / commitsPerPage) ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                             />
                           </PaginationItem>
                         </PaginationContent>
                       </Pagination>
-                      
+
                       <p className="text-center text-sm text-muted-foreground mt-4">
                         Showing {(commitsPage - 1) * commitsPerPage + 1} - {Math.min(commitsPage * commitsPerPage, commitActivity.length)} of {commitActivity.length} commits
                       </p>

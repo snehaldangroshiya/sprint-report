@@ -279,15 +279,29 @@ export class WebAPIServer {
         const { sprintId } = req.params;
         const { fields, max_results = 100 } = req.query;
 
+        // Check cache first (10 minute TTL for sprint issues)
+        const cacheKey = `sprint:${sprintId}:issues:${fields || 'all'}:${max_results}`;
+        const cacheManager = this.mcpServer.getContext().cacheManager;
+
+        const cachedData = await cacheManager.get(cacheKey);
+        if (cachedData) {
+          this.logger.info('Sprint issues served from cache', { sprintId });
+          return res.json(cachedData);
+        }
+
         const result = await this.callMCPTool('jira_get_sprint_issues', {
           sprint_id: sprintId,
           fields: fields ? (fields as string).split(',') : undefined,
           max_results: parseInt(max_results as string)
         });
 
-        res.json(result);
+        // Cache for 10 minutes
+        await cacheManager.set(cacheKey, result, { ttl: 600000 });
+
+        this.logger.info('Sprint issues calculated and cached', { sprintId });
+        return res.json(result);
       } catch (error) {
-        this.handleAPIError(error, res, 'Failed to get sprint issues');
+        return this.handleAPIError(error, res, 'Failed to get sprint issues');
       }
     });
 
@@ -297,15 +311,29 @@ export class WebAPIServer {
         const { sprintId } = req.params;
         const { include_velocity = false, include_burndown = false } = req.query;
 
+        // Check cache first (10 minute TTL for sprint metrics)
+        const cacheKey = `sprint:${sprintId}:metrics:${include_velocity}:${include_burndown}`;
+        const cacheManager = this.mcpServer.getContext().cacheManager;
+
+        const cachedData = await cacheManager.get(cacheKey);
+        if (cachedData) {
+          this.logger.info('Sprint metrics served from cache', { sprintId });
+          return res.json(cachedData);
+        }
+
         const result = await this.callMCPTool('get_sprint_metrics', {
           sprint_id: sprintId,
           include_velocity: include_velocity === 'true',
           include_burndown: include_burndown === 'true'
         });
 
-        res.json(result);
+        // Cache for 10 minutes
+        await cacheManager.set(cacheKey, result, { ttl: 600000 });
+
+        this.logger.info('Sprint metrics calculated and cached', { sprintId });
+        return res.json(result);
       } catch (error) {
-        this.handleAPIError(error, res, 'Failed to get sprint metrics');
+        return this.handleAPIError(error, res, 'Failed to get sprint metrics');
       }
     });
 
@@ -371,6 +399,16 @@ export class WebAPIServer {
           include_forward_looking = 'true',
           include_enhanced_github = 'true'
         } = req.query;
+
+        // Check cache first (20 minute TTL for comprehensive reports)
+        const cacheKey = `comprehensive:${sprintId}:${github_owner}:${github_repo}:${include_tier1}:${include_tier2}:${include_tier3}:${include_forward_looking}:${include_enhanced_github}`;
+        const cacheManager = this.mcpServer.getContext().cacheManager;
+
+        const cachedData = await cacheManager.get(cacheKey);
+        if (cachedData) {
+          this.logger.info('Comprehensive sprint report served from cache', { sprintId, github_owner, github_repo });
+          return res.json(cachedData);
+        }
 
         const toolParams = {
           sprint_id: sprintId,
@@ -459,9 +497,13 @@ export class WebAPIServer {
           }
         });
 
-        res.json(response);
+        // Cache the response (20 minutes TTL - sprint data doesn't change frequently)
+        await cacheManager.set(cacheKey, response, { ttl: 1200000 });
+
+        this.logger.info('Comprehensive sprint report calculated and cached', { sprintId, github_owner, github_repo });
+        return res.json(response);
       } catch (error) {
-        this.handleAPIError(error, res, 'Failed to get comprehensive sprint report');
+        return this.handleAPIError(error, res, 'Failed to get comprehensive sprint report');
       }
     });
 
@@ -718,7 +760,7 @@ export class WebAPIServer {
           const allCommits = [];
           let page = 1;
           let hasMore = true;
-          
+
           while (hasMore && page <= 10) { // Limit to 10 pages (1000 commits max)
             const commits = await this.callMCPTool('github_get_commits', {
               owner,
@@ -728,7 +770,7 @@ export class WebAPIServer {
               per_page: 100,
               page
             });
-            
+
             if (commits && commits.length > 0) {
               allCommits.push(...commits);
               hasMore = commits.length === 100; // If we got 100, there might be more
@@ -737,7 +779,7 @@ export class WebAPIServer {
               hasMore = false;
             }
           }
-          
+
           return allCommits;
         };
 
@@ -745,7 +787,7 @@ export class WebAPIServer {
           const allPRs = [];
           let page = 1;
           let hasMore = true;
-          
+
           while (hasMore && page <= 10) { // Limit to 10 pages (1000 PRs max)
             try {
               const prs = await this.callMCPTool('github_get_pull_requests', {
@@ -757,7 +799,7 @@ export class WebAPIServer {
                 per_page: 100,
                 page
               });
-              
+
               if (prs && prs.length > 0) {
                 allPRs.push(...prs);
                 hasMore = prs.length === 100;
@@ -770,7 +812,7 @@ export class WebAPIServer {
               hasMore = false;
             }
           }
-          
+
           return allPRs;
         };
 
@@ -906,7 +948,7 @@ export class WebAPIServer {
       const current = new Date(startDate);
       current.setDate(1); // Start from first day of month
       const end = new Date(endDate);
-      
+
       while (current <= end) {
         const monthKey = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
         monthlyData[monthKey] = { commits: 0, prs: 0 };
