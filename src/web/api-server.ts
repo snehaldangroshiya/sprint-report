@@ -646,7 +646,8 @@ export class WebAPIServer {
         const { period = '6months' } = req.query;
 
         // Check cache first (10 minute TTL for commit trends)
-        const cacheKey = `commit-trends:${owner}:${repo}:${period}`;
+        // Cache version v2: includes all months in range with zeros
+        const cacheKey = `commit-trends:v2:${owner}:${repo}:${period}`;
         const cacheManager = this.mcpServer.getContext().cacheManager;
 
         const cachedData = await cacheManager.get(cacheKey);
