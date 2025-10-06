@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { 
   ArrowLeft, 
   Target, 
@@ -20,14 +20,82 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+import { 
   getSprintIssues, 
   getSprints, 
   getVelocityData,
   getComprehensiveSprintReport 
 } from '@/lib/api';
 
+// Helper function to parse commit message into title and body
+function parseCommitMessage(message: string) {
+  if (!message) return { title: '', body: '' };
+  
+  const lines = message.split('\n');
+  const title = lines[0] || '';
+  const body = lines.slice(1).join('\n').trim();
+  
+  return { title, body };
+}
+
+// Helper function to format commit body (handle markdown and HTML)
+function formatCommitBody(body: string) {
+  if (!body) return null;
+  
+  // Split into paragraphs
+  const paragraphs = body.split('\n\n').filter(p => p.trim());
+  
+  return paragraphs.map((paragraph, idx) => {
+    // Handle bullet points
+    if (paragraph.includes('\n- ') || paragraph.includes('\n* ')) {
+      const items = paragraph.split('\n').filter(line => line.trim());
+      return (
+        <ul key={idx} className="list-disc list-inside space-y-1 ml-2">
+          {items.map((item, i) => (
+            <li key={i} className="text-sm text-muted-foreground">
+              {item.replace(/^[-*]\s*/, '')}
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    
+    // Handle numbered lists
+    if (/^\d+\./.test(paragraph)) {
+      const items = paragraph.split('\n').filter(line => line.trim());
+      return (
+        <ol key={idx} className="list-decimal list-inside space-y-1 ml-2">
+          {items.map((item, i) => (
+            <li key={i} className="text-sm text-muted-foreground">
+              {item.replace(/^\d+\.\s*/, '')}
+            </li>
+          ))}
+        </ol>
+      );
+    }
+    
+    // Regular paragraph
+    return (
+      <p key={idx} className="text-sm text-muted-foreground leading-relaxed">
+        {paragraph}
+      </p>
+    );
+  });
+}
+
 export function SprintDetails() {
   const { sprintId } = useParams<{ sprintId: string }>();
+  
+  // Pagination state for commits
+  const [commitsPage, setCommitsPage] = useState(1);
+  const commitsPerPage = 10;
 
   // Fetch sprint information
   const { data: allSprints, isLoading: sprintsLoading } = useQuery({
@@ -55,7 +123,7 @@ export function SprintDetails() {
     queryKey: ['comprehensive-report', sprintId],
     queryFn: () => getComprehensiveSprintReport(sprintId!, {
       github_owner: 'Sage',
-      github_repo: 'network-directory-service',
+      github_repo: 'sage-connect',
       include_tier1: true,
       include_tier2: true,
       include_tier3: false,
@@ -502,55 +570,144 @@ export function SprintDetails() {
         <TabsContent value="commits" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <GitCommit className="h-5 w-5" />
-                Commit Activity
-              </CardTitle>
-              <CardDescription>
-                All commits during this sprint period
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <GitCommit className="h-5 w-5" />
+                    Commit Activity
+                  </CardTitle>
+                  <CardDescription>
+                    {commitActivity.length} commits during this sprint period
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {commitActivity.length > 0 ? (
-                <div className="space-y-3">
-                  {commitActivity.slice(0, 50).map((commit: any, idx: number) => (
-                    <div key={idx} className="border-l-2 border-blue-500 pl-4 py-2">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="font-medium text-sm text-gray-900">
-                            {commit.message}
-                          </p>
-                          <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
-                            <span>{commit.author?.name || commit.author}</span>
-                            <span>•</span>
-                            <span>{new Date(commit.date).toLocaleDateString()}</span>
-                            <span>•</span>
-                            <span className="font-mono text-xs">{commit.sha?.slice(0, 7)}</span>
-                          </div>
-                        </div>
-                        {commit.url && (
-                          <a 
-                            href={commit.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 ml-2"
+                <>
+                  <div className="space-y-4">
+                    {commitActivity
+                      .slice((commitsPage - 1) * commitsPerPage, commitsPage * commitsPerPage)
+                      .map((commit: any, idx: number) => {
+                        const { title, body } = parseCommitMessage(commit.message);
+                        const formattedBody = formatCommitBody(body);
+                        
+                        return (
+                          <div 
+                            key={commit.sha || idx} 
+                            className="group relative border rounded-lg p-5 hover:bg-accent/50 transition-all duration-200 hover:shadow-sm"
                           >
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        )}
-                      </div>
+                            <div className="flex items-start gap-4">
+                              {/* Commit Icon */}
+                              <div className="mt-1 p-2 rounded-full bg-blue-100 text-blue-600 group-hover:bg-blue-200 transition-colors flex-shrink-0">
+                                <GitCommit className="h-4 w-4" />
+                              </div>
+
+                              {/* Commit Details */}
+                              <div className="flex-1 min-w-0 space-y-3">
+                                {/* Commit Title */}
+                                <h4 className="font-semibold text-base leading-snug text-foreground pr-8">
+                                  {title}
+                                </h4>
+
+                                {/* Commit Body */}
+                                {formattedBody && (
+                                  <div className="space-y-2 pl-1 border-l-2 border-muted pl-3">
+                                    {formattedBody}
+                                  </div>
+                                )}
+
+                                {/* Metadata */}
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground pt-1">
+                                  {/* Author */}
+                                  <div className="flex items-center gap-1.5">
+                                    <Users className="h-3.5 w-3.5" />
+                                    <span className="font-medium">
+                                      {commit.author?.name || commit.author || 'Unknown'}
+                                    </span>
+                                  </div>
+
+                                  {/* Date */}
+                                  <div className="flex items-center gap-1.5">
+                                    <Clock className="h-3.5 w-3.5" />
+                                    <span>
+                                      {new Date(commit.date).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        year: 'numeric'
+                                      })}
+                                    </span>
+                                  </div>
+
+                                  {/* SHA */}
+                                  <Badge variant="secondary" className="font-mono text-xs">
+                                    {commit.sha?.slice(0, 7)}
+                                  </Badge>
+                                </div>
+                              </div>
+
+                              {/* GitHub Link */}
+                              {commit.url && (
+                                <a 
+                                  href={commit.url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="flex-shrink-0 p-2 rounded-md text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                  title="View on GitHub"
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  {/* Pagination */}
+                  {commitActivity.length > commitsPerPage && (
+                    <div className="mt-6 pt-4 border-t">
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious 
+                              onClick={() => setCommitsPage(p => Math.max(1, p - 1))}
+                              className={commitsPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                            />
+                          </PaginationItem>
+                          
+                          {[...Array(Math.ceil(commitActivity.length / commitsPerPage))].map((_, i) => (
+                            <PaginationItem key={i}>
+                              <PaginationLink
+                                onClick={() => setCommitsPage(i + 1)}
+                                isActive={commitsPage === i + 1}
+                                className="cursor-pointer"
+                              >
+                                {i + 1}
+                              </PaginationLink>
+                            </PaginationItem>
+                          ))}
+                          
+                          <PaginationItem>
+                            <PaginationNext 
+                              onClick={() => setCommitsPage(p => Math.min(Math.ceil(commitActivity.length / commitsPerPage), p + 1))}
+                              className={commitsPage >= Math.ceil(commitActivity.length / commitsPerPage) ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                      
+                      <p className="text-center text-sm text-muted-foreground mt-4">
+                        Showing {(commitsPage - 1) * commitsPerPage + 1} - {Math.min(commitsPage * commitsPerPage, commitActivity.length)} of {commitActivity.length} commits
+                      </p>
                     </div>
-                  ))}
-                  {commitActivity.length > 50 && (
-                    <p className="text-center text-sm text-gray-500 py-4">
-                      Showing first 50 of {commitActivity.length} commits
-                    </p>
                   )}
-                </div>
+                </>
               ) : (
-                <p className="text-center text-gray-500 py-8">
-                  No commits found for this sprint period
-                </p>
+                <div className="text-center py-12">
+                  <GitCommit className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">No commits found for this sprint period</p>
+                </div>
               )}
             </CardContent>
           </Card>
