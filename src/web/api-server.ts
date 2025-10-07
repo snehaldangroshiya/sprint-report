@@ -187,16 +187,33 @@ export class WebAPIServer {
           status.github.error = 'GitHub token not configured';
         }
 
-        // Get cache metrics
+        // Get cache metrics from cache manager
         try {
-          const metrics = this.mcpServer.getPerformanceMetrics();
-          if (metrics.summary?.cacheHitRate !== undefined) {
-            status.cache.hitRate = metrics.summary.cacheHitRate;
-            status.cache.status = metrics.summary.cacheHitRate > 0.5 ? 'healthy' : 'degraded';
+          const cacheManager = this.mcpServer.getContext().cacheManager;
+          if (cacheManager && typeof cacheManager.getStats === 'function') {
+            const cacheStats = cacheManager.getStats();
+            status.cache.hitRate = cacheStats.hitRate / 100; // Convert percentage to decimal (0-1)
+            status.cache.size = cacheStats.keys || 0;
+            status.cache.status = cacheStats.hitRate > 50 ? 'healthy' : cacheStats.hitRate > 20 ? 'degraded' : 'unhealthy';
+            
+            this.logger.debug('Cache stats retrieved', {
+              hitRate: cacheStats.hitRate,
+              hits: cacheStats.hits,
+              misses: cacheStats.misses,
+              keys: cacheStats.keys
+            });
+          } else {
+            // Fallback to performance metrics if getStats not available
+            const metrics = this.mcpServer.getPerformanceMetrics();
+            if (metrics.summary?.cacheHitRate !== undefined) {
+              status.cache.hitRate = metrics.summary.cacheHitRate;
+              status.cache.status = metrics.summary.cacheHitRate > 0.5 ? 'healthy' : 'degraded';
+            }
           }
         } catch (error) {
           status.cache.status = 'degraded';
           status.cache.error = 'Unable to retrieve cache metrics';
+          this.logger.warn('Failed to get cache stats', { error: (error as Error).message });
         }
 
         res.json(status);
