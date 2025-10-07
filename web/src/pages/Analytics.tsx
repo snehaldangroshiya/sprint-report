@@ -45,10 +45,20 @@ export function Analytics() {
   });
 
   // Fetch team performance data - now based on sprint count from time period
-  const { data: teamPerformanceData, isLoading: teamPerformanceLoading } = useQuery({
+  const { data: teamPerformanceData, isLoading: teamPerformanceLoading, error: teamPerformanceError } = useQuery({
     queryKey: ['team-performance', selectedBoard, sprintCount],
     queryFn: () => api.getTeamPerformance(selectedBoard, sprintCount),
     enabled: !!selectedBoard,
+  });
+
+  // Log team performance data for debugging
+  console.log('[Analytics] Team Performance:', {
+    dateRange,
+    sprintCount,
+    loading: teamPerformanceLoading,
+    error: teamPerformanceError,
+    data: teamPerformanceData,
+    dataLength: teamPerformanceData?.length
   });
 
   // Fetch issue type distribution - now from real API
@@ -354,6 +364,18 @@ export function Analytics() {
               <div className="h-72">
                 <Skeleton className="h-full w-full" />
               </div>
+            ) : teamPerformanceError ? (
+              <div className="h-72 flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-2 text-red-400" />
+                  <p className="text-sm text-red-600">
+                    Error loading team performance data
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {teamPerformanceError instanceof Error ? teamPerformanceError.message : 'Unknown error'}
+                  </p>
+                </div>
+              </div>
             ) : teamPerformanceData && Array.isArray(teamPerformanceData) && teamPerformanceData.length > 0 ? (
               <ResponsiveContainer width="100%" height={288}>
                 <BarChart data={teamPerformanceData}>
@@ -383,7 +405,10 @@ export function Analytics() {
                 <div className="text-center">
                   <BarChart3 className="h-12 w-12 mx-auto mb-2 text-muted" />
                   <p className="text-sm">
-                    {selectedBoard ? 'No team performance data available' : 'Select a board to view team performance'}
+                    {selectedBoard ? `No team performance data for ${sprintCount} sprints` : 'Select a board to view team performance'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Try selecting a different time period
                   </p>
                 </div>
               </div>

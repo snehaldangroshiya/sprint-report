@@ -944,10 +944,14 @@ export class WebAPIServer {
 
         const performance = await this.calculateTeamPerformance(boardId, sprintCount);
 
-        // Cache for 5 minutes
-        await cacheManager.set(cacheKey, performance, { ttl: 300000 });
+        // Only cache non-empty results
+        if (performance && performance.length > 0) {
+          await cacheManager.set(cacheKey, performance, { ttl: 300000 });
+          this.logger.info('Team performance calculated and cached', { boardId, sprintCount, count: performance.length });
+        } else {
+          this.logger.warn('Team performance returned empty, not caching', { boardId, sprintCount });
+        }
 
-        this.logger.info('Team performance calculated and cached', { boardId, sprintCount });
         return res.json(performance);
       } catch (error) {
         return this.handleAPIError(error, res, 'Failed to get team performance data');
@@ -1250,6 +1254,20 @@ export class WebAPIServer {
 
       const recentSprints = sortedSprints.slice(0, sprintCount);
 
+      this.logger.info('Team Performance - Sprint data', {
+        boardId,
+        requestedCount: sprintCount,
+        availableSprints: sortedSprints.length,
+        recentSprintsCount: recentSprints.length,
+        sprintNames: recentSprints.map((s: any) => s.name)
+      });
+
+      // If no sprints available, return empty array early
+      if (recentSprints.length === 0) {
+        this.logger.warn('Team Performance - No sprints available', { boardId, sprintCount });
+        return [];
+      }
+
       // Reuse cached sprint issues (batch operation)
       const sprintIssueKeys = recentSprints.map((sprint: any) => `sprint:${sprint.id}:issues`);
       const cachedIssues = await cacheManager.getMany(sprintIssueKeys);
@@ -1321,6 +1339,13 @@ export class WebAPIServer {
           completed: completedPoints,
           velocity: completedPoints
         };
+      });
+
+      this.logger.info('Team Performance - Calculated', {
+        boardId,
+        sprintCount,
+        performanceCount: performance.length,
+        sprints: performance.map(p => `${p.name}: ${p.completed}/${p.planned}`)
       });
 
       return performance; // Return reverse chronological order (newest first)

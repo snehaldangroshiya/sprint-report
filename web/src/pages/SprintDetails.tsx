@@ -447,21 +447,16 @@ export function SprintDetails() {
                 {completedIssues
                   .slice((completedIssuesPage - 1) * completedIssuesPerPage, completedIssuesPage * completedIssuesPerPage)
                   .map(issue => (
-                  <div key={issue.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                  <div
+                    key={issue.id}
+                    className="group relative border rounded-lg p-4 hover:bg-accent/50 transition-all duration-200 hover:shadow-sm"
+                  >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <a
-                            href={`${JIRA_BASE_URL}/browse/${issue.key}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 hover:underline"
-                          >
-                            <Badge variant="outline" className="text-xs">
-                              {issue.key}
-                            </Badge>
-                            <ExternalLink className="h-3 w-3 text-gray-500" />
-                          </a>
+                          <Badge variant="outline" className="text-xs">
+                            {issue.key}
+                          </Badge>
                           <Badge variant="secondary" className="text-xs">
                             {issue.issueType}
                           </Badge>
@@ -483,6 +478,17 @@ export function SprintDetails() {
                           </span>
                         </div>
                       </div>
+
+                      {/* Jira Link */}
+                      <a
+                        href={`${JIRA_BASE_URL}/browse/${issue.key}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-shrink-0 p-2 rounded-md text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                        title="View in Jira"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
                     </div>
                   </div>
                 ))}
