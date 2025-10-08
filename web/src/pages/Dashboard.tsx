@@ -98,7 +98,7 @@ export function Dashboard() {
                     </p>
                     {activeSprints && activeSprints.length > 0 && (
                       <p className="text-xs text-blue-600 font-medium mt-1">
-                        {activeSprints[0].state === 'active' ? 'In Progress' : 'Upcoming'}
+                        {activeSprints[0].state.toLowerCase() === 'active' ? 'In Progress' : 'Upcoming'}
                       </p>
                     )}
                   </div>
@@ -525,7 +525,7 @@ export function Dashboard() {
             <div className="flow-root">
               <ul className="-mb-8">
                 {recentSprints.slice(0, sprintCount).map((sprint, idx) => {
-                  const isActive = sprint.state === 'active';
+                  const isActive = sprint.state.toLowerCase() === 'active';
                   const sprintEndDate = sprint.endDate ? new Date(sprint.endDate) : null;
                   const sprintStartDate = sprint.startDate ? new Date(sprint.startDate) : null;
 
