@@ -343,32 +343,70 @@ export class WebAPIServer {
     this.app.get('/api/sprints/:sprintId/issues', async (req, res) => {
       try {
         const { sprintId } = req.params;
-        const { fields, max_results = 100 } = req.query;
+        const { 
+          fields, 
+          max_results = 50, 
+          page = 1,
+          per_page = 20 
+        } = req.query;
 
-        // Check cache first with dynamic TTL based on sprint state
-        const cacheKey = `sprint:${sprintId}:issues:${fields || 'all'}:${max_results}`;
+        const pageNum = parseInt(page as string);
+        const perPage = Math.min(parseInt(per_page as string), 100); // Max 100 per page
+        const maxResults = parseInt(max_results as string);
+
+        // Check cache for full issue list first
+        const fullCacheKey = `sprint:${sprintId}:issues:full:${fields || 'all'}`;
         const cacheManager = this.mcpServer.getContext().cacheManager;
 
-        const cachedData = await cacheManager.get(cacheKey);
-        if (cachedData) {
-          this.logger.info('Sprint issues served from cache', { sprintId });
-          return res.json(cachedData);
+        let allIssues: any[] = (await cacheManager.get(fullCacheKey)) || null;
+        
+        if (!allIssues) {
+          // Fetch all issues if not cached
+          const result = await this.callMCPTool('jira_get_sprint_issues', {
+            sprint_id: sprintId,
+            fields: fields ? (fields as string).split(',') : undefined,
+            max_results: maxResults
+          });
+
+          allIssues = Array.isArray(result) ? result : [];
+
+          // Determine TTL based on sprint state
+          const ttl = await this.getSprintCacheTTL(sprintId, cacheManager);
+
+          // Cache the full list with dynamic TTL
+          await cacheManager.set(fullCacheKey, allIssues, { ttl });
+
+          this.logger.info('Sprint issues fetched and cached', { 
+            sprintId, 
+            totalIssues: allIssues.length, 
+            ttl 
+          });
+        } else {
+          this.logger.info('Sprint issues served from cache', { 
+            sprintId, 
+            totalIssues: allIssues.length 
+          });
         }
 
-        const result = await this.callMCPTool('jira_get_sprint_issues', {
-          sprint_id: sprintId,
-          fields: fields ? (fields as string).split(',') : undefined,
-          max_results: parseInt(max_results as string)
+        // Calculate pagination
+        const totalIssues = allIssues.length;
+        const totalPages = Math.ceil(totalIssues / perPage);
+        const startIndex = (pageNum - 1) * perPage;
+        const endIndex = startIndex + perPage;
+        const paginatedIssues = allIssues.slice(startIndex, endIndex);
+
+        // Return paginated response
+        return res.json({
+          issues: paginatedIssues,
+          pagination: {
+            page: pageNum,
+            per_page: perPage,
+            total_issues: totalIssues,
+            total_pages: totalPages,
+            has_next: pageNum < totalPages,
+            has_prev: pageNum > 1
+          }
         });
-
-        // Determine TTL based on sprint state
-        const ttl = await this.getSprintCacheTTL(sprintId, cacheManager);
-
-        // Cache with dynamic TTL
-        await cacheManager.set(cacheKey, result, { ttl });
-
-        this.logger.info('Sprint issues calculated and cached', { sprintId, ttl });
-        return res.json(result);
       } catch (error) {
         return this.handleAPIError(error, res, 'Failed to get sprint issues');
       }

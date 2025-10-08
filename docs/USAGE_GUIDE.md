@@ -183,16 +183,18 @@ GET http://localhost:3000/api/sprints?board_id=123&state=active
 
 ### Get Sprint Issues
 
-Retrieve all issues in a specific sprint.
+Retrieve issues from a specific sprint with pagination support.
 
 ```bash
-GET http://localhost:3000/api/sprints/456/issues?max_results=100
+GET http://localhost:3000/api/sprints/456/issues?page=1&per_page=20
 ```
 
 **Parameters:**
 - `sprintId` (required): Sprint ID from URL path
+- `page` (optional): Page number (default: 1)
+- `per_page` (optional): Items per page (default: 20, max: 100)
 - `fields` (optional): Comma-separated list of fields to include
-- `max_results` (optional): Maximum number of issues to return (default: 100)
+- `max_results` (optional): Maximum total issues to fetch from Jira (default: 50)
 
 **Response:**
 ```json
@@ -206,9 +208,23 @@ GET http://localhost:3000/api/sprints/456/issues?max_results=100
       "storyPoints": 5,
       "priority": "High"
     }
-  ]
+  ],
+  "pagination": {
+    "page": 1,
+    "per_page": 20,
+    "total_issues": 113,
+    "total_pages": 6,
+    "has_next": true,
+    "has_prev": false
+  }
 }
 ```
+
+**Benefits:**
+- 🚀 **Improved Performance**: Load only the issues you need
+- 💾 **Reduced Load Time**: Faster initial page load
+- 🎯 **Better UX**: Smoother scrolling and interaction
+- 📦 **Smart Caching**: Full issue list cached, pagination in-memory
 
 ### Get Sprint Metrics
 
