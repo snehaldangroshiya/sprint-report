@@ -15,8 +15,11 @@ export function Analytics() {
   const [selectedBoard, setSelectedBoard] = useState('6306');
   const [dateRange, setDateRange] = useState('3months');
   // GitHub integration - editable inputs with better defaults
-  const [githubOwner, setGithubOwner] = useState(import.meta.env.VITE_GITHUB_OWNER || 'Sage');
-  const [githubRepo, setGithubRepo] = useState(import.meta.env.VITE_GITHUB_REPO || 'sage-connect');
+  // Use useMemo to prevent re-initialization on every render
+  const defaultGithubOwner = import.meta.env.VITE_GITHUB_OWNER || 'Sage';
+  const defaultGithubRepo = import.meta.env.VITE_GITHUB_REPO || 'sage-connect';
+  const [githubOwner, setGithubOwner] = useState(defaultGithubOwner);
+  const [githubRepo, setGithubRepo] = useState(defaultGithubRepo);
 
   // Calculate sprint count based on time period
   const getSprintCount = (period: string): number => {
@@ -40,7 +43,10 @@ export function Analytics() {
   // Fetch velocity data - now based on sprint count from time period
   const { data: velocityData, isLoading: velocityLoading } = useQuery({
     queryKey: ['velocity', selectedBoard, sprintCount],
-    queryFn: () => api.getVelocityData(selectedBoard, sprintCount),
+    queryFn: () => {
+      console.log('[Analytics] Fetching velocity data:', { selectedBoard, sprintCount });
+      return api.getVelocityData(selectedBoard, sprintCount);
+    },
     enabled: !!selectedBoard,
   });
 
