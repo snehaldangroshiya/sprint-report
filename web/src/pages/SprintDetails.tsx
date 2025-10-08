@@ -101,9 +101,9 @@ export function SprintDetails() {
   const [commitsPage, setCommitsPage] = useState(1);
   const commitsPerPage = 10;
 
-  // Pagination state for completed issues (client-side pagination)
-  const [completedIssuesPage, setCompletedIssuesPage] = useState(1);
-  const completedIssuesPerPage = 20;
+  // API pagination state for fetching issues
+  const [apiPage, setApiPage] = useState(1);
+  const apiPerPage = 20;
 
   // Fetch sprint information
   const { data: allSprints, isLoading: sprintsLoading } = useQuery({
@@ -122,8 +122,8 @@ export function SprintDetails() {
 
   // Fetch sprint issues with pagination (default 20 per page)
   const { data: issuesResponse, isLoading: issuesLoading } = useQuery({
-    queryKey: ['sprint-issues-paginated', sprintId],
-    queryFn: () => getSprintIssuesPaginated(sprintId!, 1, 20),
+    queryKey: ['sprint-issues-paginated', sprintId, apiPage, apiPerPage],
+    queryFn: () => getSprintIssuesPaginated(sprintId!, apiPage, apiPerPage),
     enabled: !!sprintId
   });
 
@@ -505,14 +505,13 @@ export function SprintDetails() {
                 Completed Issues ({completedIssues.length})
               </CardTitle>
               <CardDescription>
-                Showing {Math.min(completedIssuesPerPage, completedIssues.length)} of {completedIssues.length} completed issues
+                Showing {completedIssues.length} completed issues from page {apiPage} of {issuesPagination?.total_pages || 1}
+                {issuesPagination && ` (${issuesPagination.total_issues} total issues in sprint)`}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {completedIssues
-                  .slice((completedIssuesPage - 1) * completedIssuesPerPage, completedIssuesPage * completedIssuesPerPage)
-                  .map(issue => (
+                {completedIssues.map(issue => (
                   <div
                     key={issue.id}
                     className="group relative border rounded-lg p-4 hover:bg-accent/50 transition-all duration-200 hover:shadow-sm"
@@ -563,39 +562,38 @@ export function SprintDetails() {
                 )}
               </div>
 
-              {/* Pagination for Completed Issues */}
-              {completedIssues.length > completedIssuesPerPage && (
+              {/* API Pagination for Issues */}
+              {issuesPagination && issuesPagination.total_pages > 1 && (
                 <div className="mt-6 pt-4 border-t">
                   <Pagination>
                     <PaginationContent>
                       <PaginationItem>
                         <PaginationPrevious
-                          onClick={() => setCompletedIssuesPage(p => Math.max(1, p - 1))}
-                          className={completedIssuesPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                          onClick={() => setApiPage(p => Math.max(1, p - 1))}
+                          className={!issuesPagination.has_prev ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                         />
                       </PaginationItem>
 
-                      {Array.from({ length: Math.ceil(completedIssues.length / completedIssuesPerPage) }).map((_, i) => {
+                      {Array.from({ length: issuesPagination.total_pages }).map((_, i) => {
                         const pageNum = i + 1;
                         // Show first page, last page, current page, and pages around current
-                        const totalPages = Math.ceil(completedIssues.length / completedIssuesPerPage);
                         if (
                           pageNum === 1 ||
-                          pageNum === totalPages ||
-                          (pageNum >= completedIssuesPage - 1 && pageNum <= completedIssuesPage + 1)
+                          pageNum === issuesPagination.total_pages ||
+                          (pageNum >= apiPage - 1 && pageNum <= apiPage + 1)
                         ) {
                           return (
                             <PaginationItem key={i}>
                               <PaginationLink
-                                onClick={() => setCompletedIssuesPage(pageNum)}
-                                isActive={completedIssuesPage === pageNum}
+                                onClick={() => setApiPage(pageNum)}
+                                isActive={apiPage === pageNum}
                                 className="cursor-pointer"
                               >
                                 {pageNum}
                               </PaginationLink>
                             </PaginationItem>
                           );
-                        } else if (pageNum === completedIssuesPage - 2 || pageNum === completedIssuesPage + 2) {
+                        } else if (pageNum === apiPage - 2 || pageNum === apiPage + 2) {
                           return <PaginationItem key={i}><span className="px-2">...</span></PaginationItem>;
                         }
                         return null;
@@ -603,12 +601,15 @@ export function SprintDetails() {
 
                       <PaginationItem>
                         <PaginationNext
-                          onClick={() => setCompletedIssuesPage(p => Math.min(Math.ceil(completedIssues.length / completedIssuesPerPage), p + 1))}
-                          className={completedIssuesPage >= Math.ceil(completedIssues.length / completedIssuesPerPage) ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                          onClick={() => setApiPage(p => Math.min(issuesPagination.total_pages, p + 1))}
+                          className={!issuesPagination.has_next ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                         />
                       </PaginationItem>
                     </PaginationContent>
                   </Pagination>
+                  <p className="text-center text-sm text-muted-foreground mt-4">
+                    Page {apiPage} of {issuesPagination.total_pages} • {issuesPagination.total_issues} total issues
+                  </p>
                 </div>
               )}
             </CardContent>
