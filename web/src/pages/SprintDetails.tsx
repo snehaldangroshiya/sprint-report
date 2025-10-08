@@ -119,10 +119,10 @@ export function SprintDetails() {
     enabled: !!sprintId
   });
 
-  // Fetch velocity data for comparison
+  // Fetch velocity data for comparison (use 15 sprints max for better performance)
   const { data: velocityData, isLoading: velocityLoading } = useQuery({
-    queryKey: ['velocity', '6306', 10],
-    queryFn: () => getVelocityData('6306', 10)
+    queryKey: ['velocity', '6306', 15],
+    queryFn: () => getVelocityData('6306', 15)
   });
 
   // Fetch comprehensive report with GitHub data
@@ -138,6 +138,31 @@ export function SprintDetails() {
       include_enhanced_github: true
     }),
     enabled: !!sprintId
+  });
+
+  // Find previous sprint ID for comparison
+  const previousSprintId = useMemo(() => {
+    if (!allSprints || !sprintId) return null;
+    const currentIndex = allSprints.findIndex(s => s.id === sprintId);
+    if (currentIndex > 0 && currentIndex < allSprints.length) {
+      return allSprints[currentIndex + 1]?.id; // Next in array is previous chronologically
+    }
+    return null;
+  }, [allSprints, sprintId]);
+
+  // Fetch previous sprint's comprehensive report for PR comparison
+  const { data: previousComprehensiveReport } = useQuery({
+    queryKey: ['comprehensive-report', previousSprintId],
+    queryFn: () => getComprehensiveSprintReport(previousSprintId!, {
+      github_owner: 'Sage',
+      github_repo: 'sage-connect',
+      include_tier1: false,
+      include_tier2: false,
+      include_tier3: false,
+      include_forward_looking: false,
+      include_enhanced_github: true
+    }),
+    enabled: !!previousSprintId
   });
 
   const isLoading = sprintsLoading || issuesLoading || velocityLoading || reportLoading;
@@ -353,7 +378,7 @@ export function SprintDetails() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {/* Velocity Comparison */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -414,6 +439,35 @@ export function SprintDetails() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Previous: {previousSprintData.completed || 0} pts
+                </p>
+              </div>
+
+              {/* Pull Requests Comparison */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">Merged PRs</span>
+                  {(() => {
+                    const currentPRs = comprehensiveReport?.enhanced_github?.pull_request_stats?.mergedPRs || 0;
+                    const previousPRs = previousComprehensiveReport?.enhanced_github?.pull_request_stats?.mergedPRs || 0;
+                    const diff = currentPRs - previousPRs;
+                    return diff !== 0 ? (
+                      <Badge
+                        variant={diff >= 0 ? "default" : "secondary"}
+                        className={diff >= 0 ? "bg-green-500" : ""}
+                      >
+                        {diff >= 0 ? "+" : ""}{diff}
+                      </Badge>
+                    ) : null;
+                  })()}
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold">
+                    {comprehensiveReport?.enhanced_github?.pull_request_stats?.mergedPRs || 0}
+                  </span>
+                  <span className="text-sm text-muted-foreground">PRs</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Previous: {previousComprehensiveReport?.enhanced_github?.pull_request_stats?.mergedPRs || 0} PRs
                 </p>
               </div>
             </div>
