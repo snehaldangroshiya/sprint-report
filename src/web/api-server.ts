@@ -177,7 +177,7 @@ export class WebAPIServer {
           timestamp: new Date().toISOString(),
         };
 
-        res.json(response);
+        return res.json(response);
       } catch (error) {
         this.logger.error('Failed to get cache stats', { error: (error as Error).message });
         return res.status(500).json({ error: 'Failed to get cache statistics' });
