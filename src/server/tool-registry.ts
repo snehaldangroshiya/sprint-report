@@ -55,6 +55,15 @@ export class ToolRegistry {
 
     this.registerTool({
       definition: {
+        name: 'jira_get_sprint',
+        description: 'Get detailed information about a specific sprint',
+        inputSchema: ToolSchemas.jiraGetSprintDetails,
+      },
+      handler: this.handleJiraGetSprint.bind(this),
+    });
+
+    this.registerTool({
+      definition: {
         name: 'jira_get_issue_details',
         description: 'Get detailed information about a specific issue',
         inputSchema: ToolSchemas.jiraGetIssueDetails,
@@ -97,6 +106,15 @@ export class ToolRegistry {
         inputSchema: ToolSchemas.githubSearchCommitsByMessage,
       },
       handler: this.handleGitHubSearchCommitsByMessage.bind(this),
+    });
+
+    this.registerTool({
+      definition: {
+        name: 'github_search_pull_requests_by_date',
+        description: 'Search pull requests by date range using GitHub Search API. Useful for historical sprints where standard pagination is inefficient.',
+        inputSchema: ToolSchemas.githubSearchPullRequestsByDate,
+      },
+      handler: this.handleGitHubSearchPullRequestsByDate.bind(this),
     });
 
     this.registerTool({
@@ -175,11 +193,13 @@ export class ToolRegistry {
       const zodSchemaMap: Record<string, any> = {
         'jira_get_sprints': MCPToolSchemas.jiraGetSprints,
         'jira_get_sprint_issues': MCPToolSchemas.jiraGetSprintIssues,
+        'jira_get_sprint': MCPToolSchemas.jiraGetSprintDetails,
         'jira_get_issue_details': MCPToolSchemas.jiraGetIssueDetails,
         'jira_search_issues': MCPToolSchemas.jiraSearchIssues,
         'github_get_commits': MCPToolSchemas.githubGetCommits,
         'github_get_pull_requests': MCPToolSchemas.githubGetPullRequests,
         'github_search_commits_by_message': MCPToolSchemas.githubSearchCommitsByMessage,
+        'github_search_pull_requests_by_date': MCPToolSchemas.githubSearchPullRequestsByDate,
         'github_find_commits_with_jira_references': MCPToolSchemas.githubFindCommitsWithJiraReferences,
         'generate_sprint_report': MCPToolSchemas.generateSprintReport,
         'get_sprint_metrics': MCPToolSchemas.getSprintMetrics,
@@ -227,6 +247,14 @@ export class ToolRegistry {
   ): Promise<any> {
     const { sprint_id, fields, max_results } = args;
     return await context.jiraClient.getSprintIssues(sprint_id, fields, max_results);
+  }
+
+  private async handleJiraGetSprint(
+    args: Record<string, any>,
+    context: ServerContext
+  ): Promise<any> {
+    const { sprint_id } = args;
+    return await context.sprintService.getSprintDetails(sprint_id);
   }
 
   private async handleJiraGetIssueDetails(
@@ -280,6 +308,20 @@ export class ToolRegistry {
   ): Promise<any> {
     const { owner, repo, query, since, until } = args;
     return await context.githubClient.searchCommitsByMessage(owner, repo, query, since, until);
+  }
+
+  private async handleGitHubSearchPullRequestsByDate(
+    args: Record<string, any>,
+    context: ServerContext
+  ): Promise<any> {
+    const { owner, repo, since, until, state } = args;
+    return await context.githubClient.searchPullRequestsByDateRange(
+      owner,
+      repo,
+      since,
+      until,
+      state
+    );
   }
 
   private async handleGitHubFindCommitsWithJiraReferences(

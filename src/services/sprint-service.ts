@@ -219,13 +219,15 @@ export class SprintService {
       }
 
       // Calculate Enhanced GitHub metrics
-      if (request.include_enhanced_github && pullRequests && Array.isArray(pullRequests) && pullRequests.length > 0) {
-        const prs = pullRequests as PullRequest[];
+      if (request.include_enhanced_github) {
+        const prs = (pullRequests && Array.isArray(pullRequests) ? pullRequests : []) as PullRequest[];
         const commitsList = (commits as Commit[]) || [];
 
         // Calculate PR stats
-        const mergedPRs = prs.filter(pr => pr.state === 'merged');
-        const closedPRs = prs.filter(pr => pr.state === 'closed');
+        // Note: GitHub API returns state as 'open' or 'closed', not 'merged'
+        // A merged PR is closed with mergedAt !== null
+        const mergedPRs = prs.filter(pr => pr.mergedAt !== null && pr.mergedAt !== undefined);
+        const closedWithoutMergePRs = prs.filter(pr => pr.state === 'closed' && (!pr.mergedAt || pr.mergedAt === null));
         const openPRs = prs.filter(pr => pr.state === 'open');
 
         // Calculate average review comments
@@ -268,7 +270,7 @@ export class SprintService {
           pullRequestStats: {
             totalPRs: prs.length,
             mergedPRs: mergedPRs.length,
-            closedWithoutMerge: closedPRs.length - mergedPRs.length,
+            closedWithoutMerge: closedWithoutMergePRs.length,
             openPRs: openPRs.length,
             mergeRate: prs.length > 0
               ? (mergedPRs.length / prs.length) * 100
@@ -412,19 +414,58 @@ export class SprintService {
 
     if (!pullRequests) {
       try {
-        const allPRs = await this.githubClient.getPullRequests(
-          owner,
-          repo,
-          { state: 'all' }
-        );
-
-        // Filter by date range
         const start = new Date(startDate);
         const end = new Date(endDate);
+        const now = new Date();
+        const threeMonthsAgo = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
 
+        // For historical sprints (older than 3 months), use GitHub Search API
+        // which allows direct date-range queries instead of paginating through all PRs
+        const isHistoricalSprint = end < threeMonthsAgo;
+
+        let allPRs: any[];
+
+        if (isHistoricalSprint) {
+          this.logger.info('Using GitHub Search API for historical sprint', {
+            owner,
+            repo,
+            startDate,
+            endDate,
+            sprintEndDate: end.toISOString(),
+            threeMonthsAgo: threeMonthsAgo.toISOString()
+          });
+
+          // Use Search API with date range filters
+          allPRs = await this.githubClient.searchPullRequestsByDateRange(
+            owner,
+            repo,
+            startDate,
+            endDate,
+            'all'
+          );
+        } else {
+          // For recent sprints, use standard REST API
+          allPRs = await this.githubClient.getPullRequests(
+            owner,
+            repo,
+            { state: 'all' }
+          );
+        }
+
+        // Filter by date range (Search API filters by created date, but we also check updated/merged dates)
         pullRequests = allPRs.filter((pr: any) => {
           const createdAt = new Date(pr.created_at);
-          return createdAt >= start && createdAt <= end;
+          const updatedAt = new Date(pr.updated_at);
+          const mergedAt = pr.merged_at ? new Date(pr.merged_at) : null;
+          const closedAt = pr.closed_at ? new Date(pr.closed_at) : null;
+
+          // Include PR if any of its activity dates fall within the sprint
+          return (
+            (createdAt >= start && createdAt <= end) ||
+            (updatedAt >= start && updatedAt <= end) ||
+            (mergedAt && mergedAt >= start && mergedAt <= end) ||
+            (closedAt && closedAt >= start && closedAt <= end)
+          );
         });
 
         await this.cache.set(cacheKey, pullRequests, { ttl: 600 }); // 10 minutes

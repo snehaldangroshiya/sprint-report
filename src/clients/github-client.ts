@@ -329,6 +329,82 @@ export class GitHubClient extends BaseAPIClient {
     return response.items.map(commit => this.transformCommitData(commit));
   }
 
+  // Search pull requests by date range using GitHub Search API
+  // This is more efficient for historical data than paginating through the REST API
+  async searchPullRequestsByDateRange(
+    owner: string,
+    repo: string,
+    since?: string,
+    until?: string,
+    state?: 'open' | 'closed' | 'merged' | 'all'
+  ): Promise<PullRequest[]> {
+    // Build search query
+    let searchQuery = `repo:${owner}/${repo} is:pr`;
+
+    // Add date filters using GitHub's date range syntax
+    if (since && until) {
+      // Format: created:YYYY-MM-DD..YYYY-MM-DD
+      const sinceDate = since.split('T')[0]; // Extract just the date part
+      const untilDate = until.split('T')[0];
+      searchQuery += ` created:${sinceDate}..${untilDate}`;
+    } else if (since) {
+      const sinceDate = since.split('T')[0];
+      searchQuery += ` created:>=${sinceDate}`;
+    } else if (until) {
+      const untilDate = until.split('T')[0];
+      searchQuery += ` created:<=${untilDate}`;
+    }
+
+    // Add state filter
+    if (state === 'open') {
+      searchQuery += ` is:open`;
+    } else if (state === 'closed') {
+      searchQuery += ` is:closed is:unmerged`;
+    } else if (state === 'merged') {
+      searchQuery += ` is:merged`;
+    }
+    // 'all' means no state filter
+
+    let allPRs: PullRequest[] = [];
+    let page = 1;
+    const perPage = 100; // Maximum per page for search API
+
+    while (true) {
+      const response = await this.makeRequest<GitHubSearchResponse<GitHubPullRequestResponse>>(
+        '/search/issues', // GitHub uses issues endpoint for PR search
+        {
+          method: 'GET',
+          params: {
+            q: searchQuery,
+            sort: 'created',
+            order: 'desc',
+            per_page: perPage,
+            page,
+          },
+        },
+        { ttl: 300000 } // 5 minutes cache
+      );
+
+      if (!response.items || response.items.length === 0) break;
+
+      const prs = response.items.map(pr => this.transformPullRequestData(pr));
+      allPRs = allPRs.concat(prs);
+
+      // If we got fewer than the requested amount, we've reached the end
+      if (response.items.length < perPage) break;
+
+      page++;
+
+      // GitHub Search API has a limit of 1000 results (10 pages of 100)
+      if (page > 10) {
+        console.warn(`GitHub Search API limit reached (1000 results) for ${owner}/${repo}`);
+        break;
+      }
+    }
+
+    return allPRs;
+  }
+
   // Get commit details with stats
   async getCommitDetails(owner: string, repo: string, sha: string): Promise<Commit> {
     const response = await this.makeRequest<GitHubCommitResponse>(
@@ -669,16 +745,34 @@ export class GitHubClient extends BaseAPIClient {
   ): PullRequest[] {
     return pullRequests.filter(pr => {
       const createdAt = new Date(pr.createdAt);
+      const updatedAt = pr.updatedAt ? new Date(pr.updatedAt) : null;
+      const mergedAt = pr.mergedAt ? new Date(pr.mergedAt) : null;
+      const closedAt = pr.closedAt ? new Date(pr.closedAt) : null;
 
-      if (since && createdAt < new Date(since)) {
-        return false;
+      const sinceDate = since ? new Date(since) : null;
+      const untilDate = until ? new Date(until) : null;
+
+      // Include PR if any of these conditions are met:
+      // 1. It was created during the sprint
+      // 2. It was updated during the sprint
+      // 3. It was merged during the sprint
+      // 4. It was closed during the sprint
+
+      // Check if PR has any activity in the date range
+      const dates = [createdAt, updatedAt, mergedAt, closedAt].filter(d => d !== null) as Date[];
+
+      for (const date of dates) {
+        if (sinceDate && date < sinceDate) {
+          continue; // This date is before the range
+        }
+        if (untilDate && date > untilDate) {
+          continue; // This date is after the range
+        }
+        // If we get here, this date is within the range
+        return true;
       }
 
-      if (until && createdAt > new Date(until)) {
-        return false;
-      }
-
-      return true;
+      return false;
     });
   }
 

@@ -112,6 +112,14 @@ export const MCPToolSchemas = {
     until: BaseSchemas.dateString.optional(),
   }),
 
+  githubSearchPullRequestsByDate: z.object({
+    owner: BaseSchemas.repositoryOwner,
+    repo: BaseSchemas.repositoryName,
+    since: BaseSchemas.dateString.optional(),
+    until: BaseSchemas.dateString.optional(),
+    state: z.enum(['open', 'closed', 'merged', 'all']).default('all'),
+  }),
+
   correlateIssuesWithCommits: z.object({
     sprint_id: BaseSchemas.sprintId,
     github_repos: z.array(BaseSchemas.repository).min(1, 'At least one repository required').max(10, 'Too many repositories'),
@@ -497,12 +505,14 @@ function zodToMCPSchema(zodSchema: z.ZodObject<any>): {
 export const ToolSchemas = {
   jiraGetSprints: zodToMCPSchema(MCPToolSchemas.jiraGetSprints),
   jiraGetSprintIssues: zodToMCPSchema(MCPToolSchemas.jiraGetSprintIssues),
+  jiraGetSprintDetails: zodToMCPSchema(MCPToolSchemas.jiraGetSprintDetails),
   jiraGetIssueDetails: zodToMCPSchema(MCPToolSchemas.jiraGetIssueDetails),
   jiraSearchIssues: zodToMCPSchema(MCPToolSchemas.jiraSearchIssues),
   githubGetCommits: zodToMCPSchema(MCPToolSchemas.githubGetCommits),
   githubGetPullRequests: zodToMCPSchema(MCPToolSchemas.githubGetPullRequests),
   githubSearchCommits: zodToMCPSchema(MCPToolSchemas.githubSearchCommitsByMessage),
   githubSearchCommitsByMessage: zodToMCPSchema(MCPToolSchemas.githubSearchCommitsByMessage), // Alias
+  githubSearchPullRequestsByDate: zodToMCPSchema(MCPToolSchemas.githubSearchPullRequestsByDate),
   githubFindCommitsByIssue: zodToMCPSchema(MCPToolSchemas.githubFindCommitsWithJiraReferences),
   githubFindCommitsWithJiraReferences: zodToMCPSchema(MCPToolSchemas.githubFindCommitsWithJiraReferences), // Alias
   generateSprintReport: zodToMCPSchema(MCPToolSchemas.generateSprintReport),
