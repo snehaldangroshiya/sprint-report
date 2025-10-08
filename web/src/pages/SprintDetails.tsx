@@ -164,6 +164,8 @@ export function SprintDetails() {
   }, [allSprints, sprintId]);
 
   // Fetch previous sprint's comprehensive report for PR comparison
+  // Note: Only fetches GitHub PR stats (tier1/2/3 disabled) for comparison in "Sprint vs Previous" section
+  // Backend caches this for 30 days for closed sprints, so subsequent loads are fast
   const { data: previousComprehensiveReport } = useQuery({
     queryKey: ['comprehensive-report', previousSprintId],
     queryFn: () => getComprehensiveSprintReport(previousSprintId!, {
@@ -173,7 +175,7 @@ export function SprintDetails() {
       include_tier2: false,
       include_tier3: false,
       include_forward_looking: false,
-      include_enhanced_github: true
+      include_enhanced_github: true // Only fetch GitHub PR stats for comparison
     }),
     enabled: !!previousSprintId
   });
