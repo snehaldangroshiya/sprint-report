@@ -377,6 +377,7 @@ export class PerformanceMonitor extends EventEmitter {
     alerts: { total: number; byRule: Record<string, number>; bySeverity: Record<string, number> };
     uptime: number;
     memoryTrend: 'increasing' | 'decreasing' | 'stable';
+    cacheHitRate?: number;
   } {
     const summary: any = {
       metrics: {},
@@ -411,6 +412,14 @@ export class PerformanceMonitor extends EventEmitter {
 
       if (percentChange > 0.05) summary.memoryTrend = 'increasing';
       else if (percentChange < -0.05) summary.memoryTrend = 'decreasing';
+    }
+
+    // Add cache hit rate from most recent snapshot
+    if (this.snapshots.length > 0) {
+      const latestSnapshot = this.snapshots[this.snapshots.length - 1];
+      if (latestSnapshot) {
+        summary.cacheHitRate = latestSnapshot.cache.hitRate; // Already in percentage format
+      }
     }
 
     return summary;

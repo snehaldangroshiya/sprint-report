@@ -381,12 +381,22 @@ export class EnhancedMCPServer {
 
       const allHealthy = checks.every(check => check.status === 'healthy');
 
+      // Transform checks array into services object for frontend compatibility
+      const services: Record<string, { healthy: boolean; latency: number }> = {};
+      checks.forEach(check => {
+        services[check.name] = {
+          healthy: check.status === 'healthy',
+          latency: check.responseTime
+        };
+      });
+
       return {
         status: allHealthy ? 'healthy' : 'degraded',
         timestamp: new Date().toISOString(),
         uptime: Date.now() - this.startTime,
         version: '2.0.0',
-        checks
+        checks,
+        services
       };
 
     } catch (error) {

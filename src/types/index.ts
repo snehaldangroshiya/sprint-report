@@ -283,6 +283,7 @@ export interface HealthStatus {
   uptime: number;
   version: string;
   checks: HealthCheck[];
+  services?: Record<string, { healthy: boolean; latency: number }>;
 }
 
 export interface HealthCheck {
