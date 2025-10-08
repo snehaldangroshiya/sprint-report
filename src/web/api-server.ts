@@ -343,11 +343,11 @@ export class WebAPIServer {
     this.app.get('/api/sprints/:sprintId/issues', async (req, res) => {
       try {
         const { sprintId } = req.params;
-        const { 
-          fields, 
-          max_results = 50, 
+        const {
+          fields,
+          max_results = 50,
           page = 1,
-          per_page = 20 
+          per_page = 20
         } = req.query;
 
         const pageNum = parseInt(page as string);
@@ -358,9 +358,10 @@ export class WebAPIServer {
         const fullCacheKey = `sprint:${sprintId}:issues:full:${fields || 'all'}`;
         const cacheManager = this.mcpServer.getContext().cacheManager;
 
-        let allIssues: any[] = (await cacheManager.get(fullCacheKey)) || null;
-        
-        if (!allIssues) {
+        const cachedIssues = await cacheManager.get(fullCacheKey);
+        let allIssues: any[] = Array.isArray(cachedIssues) ? cachedIssues : [];
+
+        if (allIssues.length === 0) {
           // Fetch all issues if not cached
           const result = await this.callMCPTool('jira_get_sprint_issues', {
             sprint_id: sprintId,
@@ -376,15 +377,15 @@ export class WebAPIServer {
           // Cache the full list with dynamic TTL
           await cacheManager.set(fullCacheKey, allIssues, { ttl });
 
-          this.logger.info('Sprint issues fetched and cached', { 
-            sprintId, 
-            totalIssues: allIssues.length, 
-            ttl 
+          this.logger.info('Sprint issues fetched and cached', {
+            sprintId,
+            totalIssues: allIssues.length,
+            ttl
           });
         } else {
-          this.logger.info('Sprint issues served from cache', { 
-            sprintId, 
-            totalIssues: allIssues.length 
+          this.logger.info('Sprint issues served from cache', {
+            sprintId,
+            totalIssues: allIssues.length
           });
         }
 

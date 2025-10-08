@@ -115,22 +115,78 @@ export const getSprints = (boardId: string, state?: string) =>
     boardId?: number;
   }>>(`/sprints?board_id=${boardId}${state ? `&state=${state}` : ''}`);
 
-export const getSprintIssues = (sprintId: string, maxResults?: number) =>
-  apiRequest<Array<{
-    id: string;
-    key: string;
-    summary: string;
-    status: string;
-    assignee: string;
-    storyPoints?: number;
-    priority: string;
-    issueType: string;
-    created: string;
-    updated: string;
-    resolved?: string;
-    labels: string[];
-    components: string[];
-  }>>(`/sprints/${sprintId}/issues${maxResults ? `?max_results=${maxResults}` : ''}`);
+export const getSprintIssues = async (sprintId: string, maxResults?: number): Promise<Array<{
+  id: string;
+  key: string;
+  summary: string;
+  status: string;
+  assignee: string;
+  storyPoints?: number;
+  priority: string;
+  issueType: string;
+  created: string;
+  updated: string;
+  resolved?: string;
+  labels: string[];
+  components: string[];
+}>> => {
+  const response = await apiRequest<{
+    issues: Array<{
+      id: string;
+      key: string;
+      summary: string;
+      status: string;
+      assignee: string;
+      storyPoints?: number;
+      priority: string;
+      issueType: string;
+      created: string;
+      updated: string;
+      resolved?: string;
+      labels: string[];
+      components: string[];
+    }>;
+    pagination: {
+      page: number;
+      per_page: number;
+      total_issues: number;
+      total_pages: number;
+      has_next: boolean;
+      has_prev: boolean;
+    };
+  }>(`/sprints/${sprintId}/issues${maxResults ? `?max_results=${maxResults}` : '?per_page=100'}`);
+  
+  // Return only the issues array for backward compatibility
+  return response.issues || [];
+};
+
+// Paginated version of getSprintIssues
+export const getSprintIssuesPaginated = (sprintId: string, page = 1, perPage = 20) =>
+  apiRequest<{
+    issues: Array<{
+      id: string;
+      key: string;
+      summary: string;
+      status: string;
+      assignee: string;
+      storyPoints?: number;
+      priority: string;
+      issueType: string;
+      created: string;
+      updated: string;
+      resolved?: string;
+      labels: string[];
+      components: string[];
+    }>;
+    pagination: {
+      page: number;
+      per_page: number;
+      total_issues: number;
+      total_pages: number;
+      has_next: boolean;
+      has_prev: boolean;
+    };
+  }>(`/sprints/${sprintId}/issues?page=${page}&per_page=${perPage}`);
 
 export const getSprintMetrics = (sprintId: string) =>
   apiRequest<{
@@ -358,6 +414,7 @@ export const api = {
   getBoards,
   getSprints,
   getSprintIssues,
+  getSprintIssuesPaginated,
   getSprintMetrics,
   generateSprintReport,
   getReports,
