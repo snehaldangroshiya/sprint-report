@@ -321,6 +321,35 @@ export const getComprehensiveSprintReport = (sprintId: string, options?: {
   return apiRequest<any>(`/sprints/${sprintId}/comprehensive?${params.toString()}`);
 };
 
+export const getCacheStats = () =>
+  apiRequest<{
+    stats: {
+      hits: number;
+      misses: number;
+      totalRequests: number;
+      hitRate: number;
+      sets: number;
+      deletes: number;
+      errors: number;
+    };
+    memory: {
+      keys: number;
+      sizeBytes: number;
+      sizeMB: string;
+      maxKeys: number;
+      utilizationPercent: string;
+    };
+    redis: {
+      connected: boolean;
+      keys: number;
+    } | null;
+    performance: {
+      averageHitLatency: string;
+      averageMissLatency: string;
+    };
+    timestamp: string;
+  }>('/cache/stats');
+
 // Utility functions
 export const api = {
   getHealth,
@@ -344,6 +373,7 @@ export const api = {
   getTeamPerformance,
   getIssueTypeDistribution,
   getComprehensiveSprintReport,
+  getCacheStats,
 };
 
 export default api;

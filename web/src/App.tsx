@@ -8,6 +8,7 @@ import { GitHub } from './pages/GitHub';
 import { Velocity } from './pages/Velocity';
 import { Components } from './pages/Components';
 import { SprintDetails } from './pages/SprintDetails';
+import { CacheStats } from './pages/CacheStats';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const queryClient = new QueryClient({
@@ -34,6 +35,7 @@ function App() {
               <Route path="/velocity" element={<Velocity />} />
               <Route path="/sprint/:sprintId" element={<SprintDetails />} />
               <Route path="/components" element={<Components />} />
+              <Route path="/cache-stats" element={<CacheStats />} />
             </Routes>
           </Layout>
         </Router>
