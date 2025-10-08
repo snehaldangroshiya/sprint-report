@@ -28,7 +28,8 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import {
-  getSprintIssues,
+  getSprintMetrics,
+  getSprintIssuesPaginated,
   getSprints,
   getVelocityData,
   getComprehensiveSprintReport
@@ -100,7 +101,7 @@ export function SprintDetails() {
   const [commitsPage, setCommitsPage] = useState(1);
   const commitsPerPage = 10;
 
-  // Pagination state for completed issues
+  // Pagination state for completed issues (client-side pagination)
   const [completedIssuesPage, setCompletedIssuesPage] = useState(1);
   const completedIssuesPerPage = 20;
 
@@ -112,12 +113,24 @@ export function SprintDetails() {
 
   const sprint = allSprints?.find(s => s.id === sprintId);
 
-  // Fetch sprint issues
-  const { data: issues, isLoading: issuesLoading } = useQuery({
-    queryKey: ['sprint-issues', sprintId],
-    queryFn: () => getSprintIssues(sprintId!),
+  // Fetch sprint metrics (lightweight - just numbers, no full issue data)
+  const { data: metricsData, isLoading: metricsLoading } = useQuery({
+    queryKey: ['sprint-metrics', sprintId],
+    queryFn: () => getSprintMetrics(sprintId!),
     enabled: !!sprintId
   });
+
+  // Fetch sprint issues with pagination (default 20 per page)
+  const { data: issuesResponse, isLoading: issuesLoading } = useQuery({
+    queryKey: ['sprint-issues-paginated', sprintId],
+    queryFn: () => getSprintIssuesPaginated(sprintId!, 1, 20),
+    enabled: !!sprintId
+  });
+
+  // Extract issues array and pagination metadata from response
+  const issues = issuesResponse?.issues || [];
+  const issuesPagination = issuesResponse?.pagination;
+  // Note: Fetching first page (20 issues). Use pagination.has_next to load more if needed.
 
   // Fetch velocity data for comparison (use 15 sprints max for better performance)
   const { data: velocityData, isLoading: velocityLoading } = useQuery({
@@ -165,11 +178,11 @@ export function SprintDetails() {
     enabled: !!previousSprintId
   });
 
-  const isLoading = sprintsLoading || issuesLoading || velocityLoading || reportLoading;
+  const isLoading = sprintsLoading || metricsLoading || issuesLoading || velocityLoading || reportLoading;
 
-  // Calculate metrics from issues data
+  // Use metrics from API (calculated on backend from all issues)
   const metrics = useMemo(() => {
-    if (!issues || issues.length === 0) {
+    if (!metricsData || !metricsData.metrics) {
       return {
         total_issues: 0,
         completed_issues: 0,
@@ -181,28 +194,17 @@ export function SprintDetails() {
       };
     }
 
-    const total_issues = issues.length;
-    const completed_issues = issues.filter(i => i.status === 'Done' || i.status === 'Closed').length;
-    const in_progress_issues = issues.filter(i => i.status === 'In Progress' || i.status === 'In Development').length;
-
-    const total_story_points = issues.reduce((sum, i) => sum + (Number(i.storyPoints) || 0), 0);
-    const completed_story_points = issues
-      .filter(i => i.status === 'Done' || i.status === 'Closed')
-      .reduce((sum, i) => sum + (Number(i.storyPoints) || 0), 0);
-
-    const completion_rate = total_issues > 0 ? completed_issues / total_issues : 0;
-    const velocity = completed_story_points;
-
+    const m = metricsData.metrics;
     return {
-      total_issues,
-      completed_issues,
-      in_progress_issues,
-      total_story_points,
-      completed_story_points,
-      completion_rate,
-      velocity
+      total_issues: m.totalIssues || 0,
+      completed_issues: m.completedIssues || 0,
+      in_progress_issues: m.inProgressIssues || 0,
+      total_story_points: m.totalStoryPoints || 0,
+      completed_story_points: m.completedStoryPoints || 0,
+      completion_rate: (m.completionRate || 0) / 100, // Backend returns percentage (0-100), convert to decimal (0-1)
+      velocity: m.completedStoryPoints || 0
     };
-  }, [issues]);
+  }, [metricsData]);
 
   // Find current and previous sprint data for comparison
   const currentSprintData = useMemo(() => {
@@ -260,13 +262,23 @@ export function SprintDetails() {
 
   const inProgressIssues = issues?.filter(i =>
     i.status.toLowerCase() === 'in progress' ||
-    i.status.toLowerCase() === 'in review'
+    i.status.toLowerCase() === 'in review' ||
+    i.status.toLowerCase() === 'code review' ||
+    i.status.toLowerCase() === 'in development'
   ) || [];
 
   const todoIssues = issues?.filter(i =>
     i.status.toLowerCase() === 'to do' ||
     i.status.toLowerCase() === 'open' ||
-    i.status.toLowerCase() === 'backlog'
+    i.status.toLowerCase() === 'backlog' ||
+    i.status.toLowerCase() === 'new' ||
+    i.status.toLowerCase() === 'blocked'
+  ) || [];
+
+  const discardedIssues = issues?.filter(i =>
+    i.status.toLowerCase() === 'discarded' ||
+    i.status.toLowerCase() === 'cancelled' ||
+    i.status.toLowerCase() === 'rejected'
   ) || [];
 
   // Get GitHub data from comprehensive report
@@ -679,6 +691,60 @@ export function SprintDetails() {
                             )}
                           </div>
                           <h4 className="font-medium text-gray-900 mb-1">{issue.summary}</h4>
+                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {issue.assignee || 'Unassigned'}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              {issue.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Discarded/Cancelled Issues */}
+          {discardedIssues.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                  Discarded ({discardedIssues.length})
+                </CardTitle>
+                <CardDescription>
+                  Issues that were cancelled or removed from the sprint
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {discardedIssues.map(issue => (
+                    <div key={issue.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors opacity-60">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="text-xs">
+                              {issue.key}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              {issue.issueType}
+                            </Badge>
+                            {issue.storyPoints && (
+                              <Badge variant="default" className="text-xs bg-gray-500">
+                                {issue.storyPoints} SP
+                              </Badge>
+                            )}
+                            <Badge variant="destructive" className="text-xs">
+                              {issue.status}
+                            </Badge>
+                          </div>
+                          <h4 className="font-medium text-gray-700 mb-1 line-through">{issue.summary}</h4>
                           <div className="flex items-center gap-4 text-sm text-gray-500">
                             <span className="flex items-center gap-1">
                               <Users className="h-3 w-3" />
