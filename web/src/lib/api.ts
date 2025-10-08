@@ -154,7 +154,7 @@ export const getSprintIssues = async (sprintId: string, maxResults?: number): Pr
       has_next: boolean;
       has_prev: boolean;
     };
-  }>(`/sprints/${sprintId}/issues${maxResults ? `?max_results=${maxResults}` : '?per_page=100'}`);
+  }>(`/sprints/${sprintId}/issues${maxResults ? `?per_page=${maxResults}` : ''}`);
   
   // Return only the issues array for backward compatibility
   return response.issues || [];
