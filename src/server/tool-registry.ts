@@ -5,7 +5,7 @@ import { ServerContext } from './mcp-server';
 import { ValidationUtils, ToolSchemas, MCPToolSchemas } from '@/utils/validation';
 import { BaseError } from '@/utils/errors';
 import { ErrorRecoveryManager, withErrorRecovery } from '@/utils/error-recovery';
-import { Issue, SprintData } from '@/types';
+import { OptimizedMetricsHandler } from './optimized-metrics-handler';
 
 export interface ToolHandler {
   (args: Record<string, any>, context: ServerContext): Promise<any>;
@@ -19,11 +19,13 @@ export interface ToolDefinition {
 export class ToolRegistry {
   private tools = new Map<string, ToolDefinition>();
   private errorRecoveryManager?: ErrorRecoveryManager;
+  private optimizedMetricsHandler: OptimizedMetricsHandler;
 
   constructor(logger?: any) {
     if (logger) {
       this.errorRecoveryManager = new ErrorRecoveryManager(logger);
     }
+    this.optimizedMetricsHandler = new OptimizedMetricsHandler();
   }
 
   public initializeErrorRecovery(logger: any): void {
@@ -390,83 +392,8 @@ export class ToolRegistry {
     args: Record<string, any>,
     context: ServerContext
   ): Promise<any> {
-    const { sprint_id, include_velocity, include_burndown, velocity_history_count } = args;
-
-    try {
-      const [sprintData, sprintIssues] = await Promise.all([
-        context.jiraClient.getSprintData(sprint_id),
-        context.jiraClient.getSprintIssues(sprint_id)
-      ]);
-
-      // Calculate enhanced metrics
-      const metrics = this.calculateComprehensiveSprintMetrics(sprintIssues);
-
-      let velocityData: any = undefined;
-      let burndownData: any = undefined;
-
-      // Fetch additional data if requested
-      if (include_velocity) {
-        try {
-          velocityData = await this.calculateVelocityMetrics(
-            context,
-            sprintData,
-            velocity_history_count || 3
-          );
-        } catch (error) {
-          context.logger.warn('Failed to calculate velocity metrics', {
-            sprint_id,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
-        }
-      }
-
-      if (include_burndown) {
-        try {
-          burndownData = await this.calculateBurndownData(context, sprintData, sprintIssues);
-        } catch (error) {
-          context.logger.warn('Failed to calculate burndown data', {
-            sprint_id,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
-        }
-      }
-
-      const result = {
-        sprint: {
-          id: sprintData.id,
-          name: sprintData.name,
-          state: sprintData.state,
-          startDate: sprintData.startDate,
-          endDate: sprintData.endDate,
-          goal: sprintData.goal,
-        },
-        metrics: {
-          ...metrics,
-          velocity: velocityData,
-          burndown: burndownData,
-        },
-        generatedAt: new Date().toISOString(),
-      };
-
-      context.logger.info('Sprint metrics calculated successfully', {
-        sprint_id,
-        includes_velocity: !!velocityData,
-        includes_burndown: !!burndownData,
-        total_issues: metrics.totalIssues,
-        completion_rate: metrics.completionRate,
-      });
-
-      return result;
-
-    } catch (error) {
-      context.logger.logError(
-        error as Error,
-        'getSprintMetrics',
-        { sprint_id, include_velocity, include_burndown }
-      );
-
-      throw error;
-    }
+    // Delegate to optimized metrics handler for better performance
+    return await this.optimizedMetricsHandler.getOptimizedSprintMetrics(args, context);
   }
 
   // Utility tool handlers
@@ -658,165 +585,7 @@ export class ToolRegistry {
   }
 
   // Helper methods for enhanced implementations
-
-  private calculateComprehensiveSprintMetrics(issues: Issue[]): any {
-    const totalIssues = issues.length;
-    const completedIssues = issues.filter(issue =>
-      ['Done', 'Closed', 'Resolved'].includes(issue.status)
-    ).length;
-    const inProgressIssues = issues.filter(issue =>
-      ['In Progress', 'In Review', 'Code Review', 'Testing'].includes(issue.status)
-    ).length;
-    const todoIssues = issues.filter(issue =>
-      ['To Do', 'Open', 'New', 'Backlog'].includes(issue.status)
-    ).length;
-
-    const totalStoryPoints = issues
-      .map(issue => issue.storyPoints || 0)
-      .reduce((sum, points) => sum + points, 0);
-
-    const completedStoryPoints = issues
-      .filter(issue => ['Done', 'Closed', 'Resolved'].includes(issue.status))
-      .map(issue => issue.storyPoints || 0)
-      .reduce((sum, points) => sum + points, 0);
-
-    const issueTypeBreakdown = issues.reduce((acc, issue) => {
-      acc[issue.issueType] = (acc[issue.issueType] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const priorityBreakdown = issues.reduce((acc, issue) => {
-      acc[issue.priority] = (acc[issue.priority] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const assigneeBreakdown = issues.reduce((acc, issue) => {
-      const assignee = issue.assignee || 'Unassigned';
-      acc[assignee] = (acc[assignee] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return {
-      totalIssues,
-      completedIssues,
-      inProgressIssues,
-      todoIssues,
-      completionRate: totalIssues > 0 ? Math.round((completedIssues / totalIssues) * 100) : 0,
-      totalStoryPoints,
-      completedStoryPoints,
-      storyPointsCompletionRate: totalStoryPoints > 0 ? Math.round((completedStoryPoints / totalStoryPoints) * 100) : 0,
-      issueTypeBreakdown,
-      priorityBreakdown,
-      assigneeBreakdown,
-      averageStoryPointsPerIssue: totalIssues > 0 ? Math.round((totalStoryPoints / totalIssues) * 10) / 10 : 0,
-    };
-  }
-
-  private async calculateVelocityMetrics(
-    context: ServerContext,
-    currentSprint: SprintData,
-    historyCount: number
-  ): Promise<any> {
-    try {
-      // This would require fetching previous sprints from the same board
-      // For now, return a placeholder structure
-      const previousSprints = [
-        {
-          sprintName: 'Sprint 1',
-          completedPoints: 23,
-          plannedPoints: 25,
-          achievementRate: 92,
-        },
-        {
-          sprintName: 'Sprint 2',
-          completedPoints: 28,
-          plannedPoints: 30,
-          achievementRate: 93,
-        },
-        {
-          sprintName: 'Sprint 3',
-          completedPoints: 22,
-          plannedPoints: 28,
-          achievementRate: 79,
-        },
-      ];
-
-      const averageVelocity = previousSprints.reduce((sum, sprint) => sum + sprint.completedPoints, 0) / previousSprints.length;
-      const averageAchievementRate = previousSprints.reduce((sum, sprint) => sum + sprint.achievementRate, 0) / previousSprints.length;
-
-      return {
-        previousSprints: previousSprints.slice(-historyCount),
-        averageVelocity: Math.round(averageVelocity * 10) / 10,
-        averageAchievementRate: Math.round(averageAchievementRate * 10) / 10,
-        trend: this.calculateVelocityTrend(previousSprints),
-        currentSprintProjection: Math.round(averageVelocity * (averageAchievementRate / 100)),
-      };
-    } catch (error) {
-      context.logger.warn('Failed to calculate velocity metrics', {
-        currentSprint: currentSprint.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return undefined;
-    }
-  }
-
-  private calculateVelocityTrend(sprints: Array<{ completedPoints: number }>): 'increasing' | 'decreasing' | 'stable' {
-    if (sprints.length < 2) return 'stable';
-
-    const recentSprints = sprints.slice(-3);
-    const averageRecent = recentSprints.reduce((sum, s) => sum + s.completedPoints, 0) / recentSprints.length;
-    const olderSprints = sprints.slice(0, -3);
-    const averageOlder = olderSprints.length > 0
-      ? olderSprints.reduce((sum, s) => sum + s.completedPoints, 0) / olderSprints.length
-      : averageRecent;
-
-    const difference = averageRecent - averageOlder;
-    const threshold = Math.max(averageOlder * 0.1, 1); // 10% threshold
-
-    if (difference > threshold) return 'increasing';
-    if (difference < -threshold) return 'decreasing';
-    return 'stable';
-  }
-
-  private async calculateBurndownData(
-    context: ServerContext,
-    sprint: SprintData,
-    issues: Issue[]
-  ): Promise<any[]> {
-    try {
-      // This would require historical data about issue status changes
-      // For now, return a placeholder burndown chart data
-      const startDate = new Date(sprint.startDate);
-      const endDate = new Date(sprint.endDate);
-      const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-
-      const totalPoints = issues.reduce((sum, issue) => sum + (issue.storyPoints || 0), 0);
-      const burndownData = [];
-
-      for (let day = 0; day <= totalDays; day++) {
-        const currentDate = new Date(startDate);
-        currentDate.setDate(startDate.getDate() + day);
-
-        // Simulate burndown (in reality, this would come from historical data)
-        const idealRemaining = totalPoints * (1 - day / totalDays);
-        const actualRemaining = Math.max(0, totalPoints - (day * totalPoints / totalDays) + Math.random() * 5 - 2.5);
-
-        burndownData.push({
-          date: currentDate.toISOString().split('T')[0],
-          remainingPoints: Math.round(actualRemaining * 10) / 10,
-          idealRemaining: Math.round(idealRemaining * 10) / 10,
-        });
-      }
-
-      return burndownData;
-    } catch (error) {
-      context.logger.warn('Failed to calculate burndown data', {
-        sprint: sprint.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return [];
-    }
-  }
+  // NOTE: Metrics calculation methods moved to OptimizedMetricsHandler for better performance
 
   private generateFallbackSprintReport(sprintId: string, error: Error): string {
     return `# Sprint Report (Partial)

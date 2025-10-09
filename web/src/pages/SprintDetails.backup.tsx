@@ -1,16 +1,6 @@
-/**
- * SprintDetails - Optimized version
- * Performance improvements:
- * - 7 API calls → 4 parallel calls (60% faster)
- * - Eliminated ~200 lines of code duplication (80% reduction)
- * - Memoized filtering (75% faster rendering)
- * - Centralized constants (better maintainability)
- *
- * File size: 1050 lines → ~400 lines (62% reduction)
- */
-
 import { useParams, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
 import {
   ArrowLeft,
   Target,
@@ -37,43 +27,201 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { IssueCard } from '@/components/sprint/IssueCard';
-import { useSprintDetails } from '@/hooks/useSprintDetails';
-import { useIssueGroups } from '@/hooks/useIssueGroups';
-import { parseCommitMessage, formatCommitBody } from '@/utils/commit-utils.tsx';
-import { SPRINT_CONSTANTS } from '@/constants/sprint';
+import {
+  getSprintMetrics,
+  getSprintIssuesPaginated,
+  getSprints,
+  getVelocityData,
+  getComprehensiveSprintReport
+} from '@/lib/api';
+
+// Helper function to parse commit message into title and body
+function parseCommitMessage(message: string) {
+  if (!message) return { title: '', body: '' };
+
+  const lines = message.split('\n');
+  const title = lines[0] || '';
+  const body = lines.slice(1).join('\n').trim();
+
+  return { title, body };
+}
+
+// Helper function to format commit body (handle markdown and HTML)
+function formatCommitBody(body: string) {
+  if (!body) return null;
+
+  // Split into paragraphs
+  const paragraphs = body.split('\n\n').filter(p => p.trim());
+
+  return paragraphs.map((paragraph, idx) => {
+    // Handle bullet points
+    if (paragraph.includes('\n- ') || paragraph.includes('\n* ')) {
+      const items = paragraph.split('\n').filter(line => line.trim());
+      return (
+        <ul key={idx} className="list-disc list-inside space-y-1 ml-2">
+          {items.map((item, i) => (
+            <li key={i} className="text-sm text-muted-foreground">
+              {item.replace(/^[-*]\s*/, '')}
+            </li>
+          ))}
+        </ul>
+      );
+    }
+
+    // Handle numbered lists
+    if (/^\d+\./.test(paragraph)) {
+      const items = paragraph.split('\n').filter(line => line.trim());
+      return (
+        <ol key={idx} className="list-decimal list-inside space-y-1 ml-2">
+          {items.map((item, i) => (
+            <li key={i} className="text-sm text-muted-foreground">
+              {item.replace(/^\d+\.\s*/, '')}
+            </li>
+          ))}
+        </ol>
+      );
+    }
+
+    // Regular paragraph
+    return (
+      <p key={idx} className="text-sm text-muted-foreground leading-relaxed">
+        {paragraph}
+      </p>
+    );
+  });
+}
 
 export function SprintDetails() {
   const { sprintId } = useParams<{ sprintId: string }>();
-  const [apiPage, setApiPage] = useState(1);
-  const [commitsPage, setCommitsPage] = useState(1);
 
-  // Single aggregated hook for all data (replaces 7 separate queries)
-  const {
-    sprint,
-    metrics,
-    issues,
-    issuesPagination,
-    currentSprintData,
-    previousSprintData,
-    comprehensiveReport,
-    previousComprehensiveReport,
-    commitActivity,
-    prStats,
-    isLoading,
-    error,
-  } = useSprintDetails({
-    sprintId: sprintId!,
-    boardId: SPRINT_CONSTANTS.DEFAULT_BOARD_ID,
-    apiPage,
-    apiPerPage: SPRINT_CONSTANTS.PAGINATION.API_PAGE_SIZE,
-    githubOwner: SPRINT_CONSTANTS.DEFAULT_GITHUB.owner,
-    githubRepo: SPRINT_CONSTANTS.DEFAULT_GITHUB.repo,
-    ...SPRINT_CONSTANTS.REPORT_DEFAULTS,
+  // Jira base URL for linking to issues
+  const JIRA_BASE_URL = 'https://jira.sage.com';
+
+  // Pagination state for commits
+  const [commitsPage, setCommitsPage] = useState(1);
+  const commitsPerPage = 10;
+
+  // API pagination state for fetching issues
+  const [apiPage, setApiPage] = useState(1);
+  const apiPerPage = 20;
+
+  // Fetch sprint information
+  const { data: allSprints, isLoading: sprintsLoading } = useQuery({
+    queryKey: ['sprints', '6306'],
+    queryFn: () => getSprints('6306', 'all')
   });
 
-  // Memoized issue grouping (prevents re-filtering on every render)
-  const issueGroups = useIssueGroups(issues);
+  const sprint = allSprints?.find(s => s.id === sprintId);
+
+  // Fetch sprint metrics (lightweight - just numbers, no full issue data)
+  const { data: metricsData, isLoading: metricsLoading } = useQuery({
+    queryKey: ['sprint-metrics', sprintId],
+    queryFn: () => getSprintMetrics(sprintId!),
+    enabled: !!sprintId
+  });
+
+  // Fetch sprint issues with pagination (default 20 per page)
+  const { data: issuesResponse, isLoading: issuesLoading } = useQuery({
+    queryKey: ['sprint-issues-paginated', sprintId, apiPage, apiPerPage],
+    queryFn: () => getSprintIssuesPaginated(sprintId!, apiPage, apiPerPage),
+    enabled: !!sprintId
+  });
+
+  // Extract issues array and pagination metadata from response
+  const issues = issuesResponse?.issues || [];
+  const issuesPagination = issuesResponse?.pagination;
+  // Note: Fetching first page (20 issues). Use pagination.has_next to load more if needed.
+
+  // Fetch velocity data for comparison (use 15 sprints max for better performance)
+  const { data: velocityData, isLoading: velocityLoading } = useQuery({
+    queryKey: ['velocity', '6306', 15],
+    queryFn: () => getVelocityData('6306', 15)
+  });
+
+  // Fetch comprehensive report with GitHub data
+  const { data: comprehensiveReport, isLoading: reportLoading } = useQuery({
+    queryKey: ['comprehensive-report', sprintId],
+    queryFn: () => getComprehensiveSprintReport(sprintId!, {
+      github_owner: 'Sage',
+      github_repo: 'sage-connect',
+      include_tier1: true,
+      include_tier2: true,
+      include_tier3: false,
+      include_forward_looking: false,
+      include_enhanced_github: true
+    }),
+    enabled: !!sprintId
+  });
+
+  // Find previous sprint ID for comparison
+  const previousSprintId = useMemo(() => {
+    if (!allSprints || !sprintId) return null;
+    const currentIndex = allSprints.findIndex(s => s.id === sprintId);
+    if (currentIndex > 0 && currentIndex < allSprints.length) {
+      return allSprints[currentIndex + 1]?.id; // Next in array is previous chronologically
+    }
+    return null;
+  }, [allSprints, sprintId]);
+
+  // Fetch previous sprint's comprehensive report for PR comparison
+  // Note: Only fetches GitHub PR stats (tier1/2/3 disabled) for comparison in "Sprint vs Previous" section
+  // Backend caches this for 30 days for closed sprints, so subsequent loads are fast
+  const { data: previousComprehensiveReport } = useQuery({
+    queryKey: ['comprehensive-report', previousSprintId],
+    queryFn: () => getComprehensiveSprintReport(previousSprintId!, {
+      github_owner: 'Sage',
+      github_repo: 'sage-connect',
+      include_tier1: false,
+      include_tier2: false,
+      include_tier3: false,
+      include_forward_looking: false,
+      include_enhanced_github: true // Only fetch GitHub PR stats for comparison
+    }),
+    enabled: !!previousSprintId
+  });
+
+  const isLoading = sprintsLoading || metricsLoading || issuesLoading || velocityLoading || reportLoading;
+
+  // Use metrics from API (calculated on backend from all issues)
+  const metrics = useMemo(() => {
+    if (!metricsData || !metricsData.metrics) {
+      return {
+        total_issues: 0,
+        completed_issues: 0,
+        in_progress_issues: 0,
+        total_story_points: 0,
+        completed_story_points: 0,
+        completion_rate: 0,
+        velocity: 0
+      };
+    }
+
+    const m = metricsData.metrics;
+    return {
+      total_issues: m.totalIssues || 0,
+      completed_issues: m.completedIssues || 0,
+      in_progress_issues: m.inProgressIssues || 0,
+      total_story_points: m.totalStoryPoints || 0,
+      completed_story_points: m.completedStoryPoints || 0,
+      completion_rate: (m.completionRate || 0) / 100, // Backend returns percentage (0-100), convert to decimal (0-1)
+      velocity: m.completedStoryPoints || 0
+    };
+  }, [metricsData]);
+
+  // Find current and previous sprint data for comparison
+  const currentSprintData = useMemo(() => {
+    if (!velocityData?.sprints || !sprintId) return null;
+    return velocityData.sprints.find(s => s.id === sprintId);
+  }, [velocityData, sprintId]);
+
+  const previousSprintData = useMemo(() => {
+    if (!velocityData?.sprints || !sprintId) return null;
+    const currentIndex = velocityData.sprints.findIndex(s => s.id === sprintId);
+    if (currentIndex > 0) {
+      return velocityData.sprints[currentIndex - 1];
+    }
+    return null;
+  }, [velocityData, sprintId]);
 
   if (isLoading) {
     return (
@@ -90,13 +238,13 @@ export function SprintDetails() {
     );
   }
 
-  if (error || !sprint) {
+  if (!sprint) {
     return (
       <div className="p-6">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {error ? `Error loading sprint: ${error}` : 'Sprint not found. Please go back to the dashboard.'}
+            Sprint not found. Please go back to the dashboard.
           </AlertDescription>
         </Alert>
       </div>
@@ -107,6 +255,38 @@ export function SprintDetails() {
   const sprintEndDate = sprint.endDate ? new Date(sprint.endDate) : null;
   const isActive = sprint.state === 'active';
 
+  // Group issues by status
+  const completedIssues = issues?.filter(i =>
+    i.status.toLowerCase() === 'done' ||
+    i.status.toLowerCase() === 'closed' ||
+    i.status.toLowerCase() === 'resolved'
+  ) || [];
+
+  const inProgressIssues = issues?.filter(i =>
+    i.status.toLowerCase() === 'in progress' ||
+    i.status.toLowerCase() === 'in review' ||
+    i.status.toLowerCase() === 'code review' ||
+    i.status.toLowerCase() === 'in development'
+  ) || [];
+
+  const todoIssues = issues?.filter(i =>
+    i.status.toLowerCase() === 'to do' ||
+    i.status.toLowerCase() === 'open' ||
+    i.status.toLowerCase() === 'backlog' ||
+    i.status.toLowerCase() === 'new' ||
+    i.status.toLowerCase() === 'blocked'
+  ) || [];
+
+  const discardedIssues = issues?.filter(i =>
+    i.status.toLowerCase() === 'discarded' ||
+    i.status.toLowerCase() === 'cancelled' ||
+    i.status.toLowerCase() === 'rejected'
+  ) || [];
+
+  // Get GitHub data from comprehensive report
+  const commitActivity = comprehensiveReport?.commits || [];
+  const prStats = comprehensiveReport?.enhanced_github?.pull_request_stats;
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -116,7 +296,6 @@ export function SprintDetails() {
             <Link
               to="/"
               className="text-gray-500 hover:text-gray-700 transition-colors"
-              aria-label="Back to dashboard"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
@@ -325,24 +504,62 @@ export function SprintDetails() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-green-600" />
-                Completed Issues ({issueGroups.completed.length})
+                Completed Issues ({completedIssues.length})
               </CardTitle>
               <CardDescription>
-                Showing {issueGroups.completed.length} completed issues from page {apiPage} of {issuesPagination?.total_pages || 1}
+                Showing {completedIssues.length} completed issues from page {apiPage} of {issuesPagination?.total_pages || 1}
                 {issuesPagination && ` (${issuesPagination.total_issues} total issues in sprint)`}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {issueGroups.completed.map(issue => (
-                  <IssueCard
+                {completedIssues.map(issue => (
+                  <div
                     key={issue.id}
-                    issue={issue}
-                    variant="completed"
-                    jiraBaseUrl={SPRINT_CONSTANTS.JIRA_BASE_URL}
-                  />
+                    className="group relative border rounded-lg p-4 hover:bg-accent/50 transition-all duration-200 hover:shadow-sm"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline" className="text-xs">
+                            {issue.key}
+                          </Badge>
+                          <Badge variant="secondary" className="text-xs">
+                            {issue.issueType}
+                          </Badge>
+                          {issue.storyPoints && (
+                            <Badge variant="default" className="text-xs bg-blue-500">
+                              {issue.storyPoints} SP
+                            </Badge>
+                          )}
+                        </div>
+                        <h4 className="font-medium text-gray-900 mb-1">{issue.summary}</h4>
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {issue.assignee || 'Unassigned'}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            {issue.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Jira Link */}
+                      <a
+                        href={`${JIRA_BASE_URL}/browse/${issue.key}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-shrink-0 p-2 rounded-md text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                        title="View in Jira"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </div>
+                  </div>
                 ))}
-                {issueGroups.completed.length === 0 && (
+                {completedIssues.length === 0 && (
                   <p className="text-center text-gray-500 py-8">No completed issues yet</p>
                 )}
               </div>
@@ -401,23 +618,47 @@ export function SprintDetails() {
           </Card>
 
           {/* In Progress Issues */}
-          {issueGroups.inProgress.length > 0 && (
+          {inProgressIssues.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5 text-blue-600" />
-                  In Progress ({issueGroups.inProgress.length})
+                  In Progress ({inProgressIssues.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {issueGroups.inProgress.map(issue => (
-                    <IssueCard
-                      key={issue.id}
-                      issue={issue}
-                      variant="in-progress"
-                      jiraBaseUrl={SPRINT_CONSTANTS.JIRA_BASE_URL}
-                    />
+                  {inProgressIssues.map(issue => (
+                    <div key={issue.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="text-xs">
+                              {issue.key}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              {issue.issueType}
+                            </Badge>
+                            {issue.storyPoints && (
+                              <Badge variant="default" className="text-xs bg-blue-500">
+                                {issue.storyPoints} SP
+                              </Badge>
+                            )}
+                          </div>
+                          <h4 className="font-medium text-gray-900 mb-1">{issue.summary}</h4>
+                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {issue.assignee || 'Unassigned'}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {issue.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </CardContent>
@@ -425,23 +666,47 @@ export function SprintDetails() {
           )}
 
           {/* To Do Issues */}
-          {issueGroups.todo.length > 0 && (
+          {todoIssues.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <AlertCircle className="h-5 w-5 text-gray-600" />
-                  To Do ({issueGroups.todo.length})
+                  To Do ({todoIssues.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {issueGroups.todo.map(issue => (
-                    <IssueCard
-                      key={issue.id}
-                      issue={issue}
-                      variant="todo"
-                      jiraBaseUrl={SPRINT_CONSTANTS.JIRA_BASE_URL}
-                    />
+                  {todoIssues.map(issue => (
+                    <div key={issue.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="text-xs">
+                              {issue.key}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              {issue.issueType}
+                            </Badge>
+                            {issue.storyPoints && (
+                              <Badge variant="default" className="text-xs bg-blue-500">
+                                {issue.storyPoints} SP
+                              </Badge>
+                            )}
+                          </div>
+                          <h4 className="font-medium text-gray-900 mb-1">{issue.summary}</h4>
+                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {issue.assignee || 'Unassigned'}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              {issue.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </CardContent>
@@ -449,12 +714,12 @@ export function SprintDetails() {
           )}
 
           {/* Discarded/Cancelled Issues */}
-          {issueGroups.discarded.length > 0 && (
+          {discardedIssues.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <AlertCircle className="h-5 w-5 text-red-600" />
-                  Discarded ({issueGroups.discarded.length})
+                  Discarded ({discardedIssues.length})
                 </CardTitle>
                 <CardDescription>
                   Issues that were cancelled or removed from the sprint
@@ -462,13 +727,36 @@ export function SprintDetails() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {issueGroups.discarded.map(issue => (
-                    <IssueCard
-                      key={issue.id}
-                      issue={issue}
-                      variant="discarded"
-                      jiraBaseUrl={SPRINT_CONSTANTS.JIRA_BASE_URL}
-                    />
+                  {discardedIssues.map(issue => (
+                    <div key={issue.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors opacity-60">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="text-xs">
+                              {issue.key}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              {issue.issueType}
+                            </Badge>
+                            {issue.storyPoints && (
+                              <Badge variant="default" className="text-xs bg-gray-500">
+                                {issue.storyPoints} SP
+                              </Badge>
+                            )}
+                            <Badge variant="destructive" className="text-xs">
+                              {issue.status}
+                            </Badge>
+                          </div>
+                          <h4 className="font-medium text-gray-700 mb-1 line-through">{issue.summary}</h4>
+                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {issue.assignee || 'Unassigned'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </CardContent>
@@ -567,7 +855,7 @@ export function SprintDetails() {
                 <>
                   <div className="space-y-4">
                     {commitActivity
-                      .slice((commitsPage - 1) * SPRINT_CONSTANTS.PAGINATION.COMMITS_PER_PAGE, commitsPage * SPRINT_CONSTANTS.PAGINATION.COMMITS_PER_PAGE)
+                      .slice((commitsPage - 1) * commitsPerPage, commitsPage * commitsPerPage)
                       .map((commit: any, idx: number) => {
                         const { title, body } = parseCommitMessage(commit.message);
                         const formattedBody = formatCommitBody(body);
@@ -634,7 +922,6 @@ export function SprintDetails() {
                                   rel="noopener noreferrer"
                                   className="flex-shrink-0 p-2 rounded-md text-muted-foreground hover:text-blue-600 hover:bg-blue-50 transition-colors"
                                   title="View on GitHub"
-                                  aria-label={`View commit ${commit.sha?.slice(0, 7)} on GitHub`}
                                 >
                                   <ExternalLink className="h-4 w-4" />
                                 </a>
@@ -646,7 +933,7 @@ export function SprintDetails() {
                   </div>
 
                   {/* Pagination */}
-                  {commitActivity.length > SPRINT_CONSTANTS.PAGINATION.COMMITS_PER_PAGE && (
+                  {commitActivity.length > commitsPerPage && (
                     <div className="mt-6 pt-4 border-t">
                       <Pagination>
                         <PaginationContent>
@@ -657,7 +944,7 @@ export function SprintDetails() {
                             />
                           </PaginationItem>
 
-                          {[...Array(Math.ceil(commitActivity.length / SPRINT_CONSTANTS.PAGINATION.COMMITS_PER_PAGE))].map((_, i) => (
+                          {[...Array(Math.ceil(commitActivity.length / commitsPerPage))].map((_, i) => (
                             <PaginationItem key={i}>
                               <PaginationLink
                                 onClick={() => setCommitsPage(i + 1)}
@@ -671,15 +958,15 @@ export function SprintDetails() {
 
                           <PaginationItem>
                             <PaginationNext
-                              onClick={() => setCommitsPage(p => Math.min(Math.ceil(commitActivity.length / SPRINT_CONSTANTS.PAGINATION.COMMITS_PER_PAGE), p + 1))}
-                              className={commitsPage >= Math.ceil(commitActivity.length / SPRINT_CONSTANTS.PAGINATION.COMMITS_PER_PAGE) ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                              onClick={() => setCommitsPage(p => Math.min(Math.ceil(commitActivity.length / commitsPerPage), p + 1))}
+                              className={commitsPage >= Math.ceil(commitActivity.length / commitsPerPage) ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                             />
                           </PaginationItem>
                         </PaginationContent>
                       </Pagination>
 
                       <p className="text-center text-sm text-muted-foreground mt-4">
-                        Showing {(commitsPage - 1) * SPRINT_CONSTANTS.PAGINATION.COMMITS_PER_PAGE + 1} - {Math.min(commitsPage * SPRINT_CONSTANTS.PAGINATION.COMMITS_PER_PAGE, commitActivity.length)} of {commitActivity.length} commits
+                        Showing {(commitsPage - 1) * commitsPerPage + 1} - {Math.min(commitsPage * commitsPerPage, commitActivity.length)} of {commitActivity.length} commits
                       </p>
                     </div>
                   )}
