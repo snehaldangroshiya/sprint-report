@@ -155,7 +155,7 @@ export const getSprintIssues = async (sprintId: string, maxResults?: number): Pr
       has_prev: boolean;
     };
   }>(`/sprints/${sprintId}/issues${maxResults ? `?per_page=${maxResults}` : ''}`);
-  
+
   // Return only the issues array for backward compatibility
   return response.issues || [];
 };
@@ -190,14 +190,29 @@ export const getSprintIssuesPaginated = (sprintId: string, page = 1, perPage = 2
 
 export const getSprintMetrics = (sprintId: string) =>
   apiRequest<{
-    sprint_id: string;
-    total_issues: number;
-    completed_issues: number;
-    in_progress_issues: number;
-    total_story_points: number;
-    completed_story_points: number;
-    completion_rate: number;
-    velocity: number;
+    sprint: {
+      id: string;
+      name: string;
+      state: string;
+      startDate: string;
+      endDate: string;
+      goal?: string;
+    };
+    metrics: {
+      totalIssues: number;
+      completedIssues: number;
+      inProgressIssues: number;
+      todoIssues: number;
+      completionRate: number;
+      totalStoryPoints: number;
+      completedStoryPoints: number;
+      storyPointsCompletionRate: number;
+      issueTypeBreakdown: Record<string, number>;
+      priorityBreakdown: Record<string, number>;
+      assigneeBreakdown: Record<string, number>;
+      averageStoryPointsPerIssue: number;
+    };
+    generatedAt: string;
   }>(`/sprints/${sprintId}/metrics`);
 
 // Report generation
