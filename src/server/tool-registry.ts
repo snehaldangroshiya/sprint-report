@@ -1,14 +1,14 @@
 // Tool registry for MCP server tools
 
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
-import { ServerContext } from './mcp-server';
+import { EnhancedServerContext } from './enhanced-mcp-server';
 import { ValidationUtils, ToolSchemas, MCPToolSchemas } from '@/utils/validation';
 import { BaseError } from '@/utils/errors';
 import { ErrorRecoveryManager, withErrorRecovery } from '@/utils/error-recovery';
 import { OptimizedMetricsHandler } from './optimized-metrics-handler';
 
 export interface ToolHandler {
-  (args: Record<string, any>, context: ServerContext): Promise<any>;
+  (args: Record<string, any>, context: EnhancedServerContext): Promise<any>;
 }
 
 export interface ToolDefinition {
@@ -178,7 +178,7 @@ export class ToolRegistry {
   async executeTool(
     name: string,
     args: Record<string, any>,
-    context: ServerContext
+    context: EnhancedServerContext
   ): Promise<any> {
     const tool = this.tools.get(name);
     if (!tool) {
@@ -237,7 +237,7 @@ export class ToolRegistry {
   // Jira tool handlers
   private async handleJiraGetSprints(
     args: Record<string, any>,
-    context: ServerContext
+    context: EnhancedServerContext
   ): Promise<any> {
     const { board_id, state } = args;
     return await context.jiraClient.getSprints(board_id, state);
@@ -245,7 +245,7 @@ export class ToolRegistry {
 
   private async handleJiraGetSprintIssues(
     args: Record<string, any>,
-    context: ServerContext
+    context: EnhancedServerContext
   ): Promise<any> {
     const { sprint_id, fields, max_results } = args;
     return await context.jiraClient.getSprintIssues(sprint_id, fields, max_results);
@@ -253,7 +253,7 @@ export class ToolRegistry {
 
   private async handleJiraGetSprint(
     args: Record<string, any>,
-    context: ServerContext
+    context: EnhancedServerContext
   ): Promise<any> {
     const { sprint_id } = args;
     return await context.sprintService.getSprintDetails(sprint_id);
@@ -261,7 +261,7 @@ export class ToolRegistry {
 
   private async handleJiraGetIssueDetails(
     args: Record<string, any>,
-    context: ServerContext
+    context: EnhancedServerContext
   ): Promise<any> {
     const { issue_key, expand } = args;
     return await context.jiraClient.getIssueDetails(issue_key, expand);
@@ -269,7 +269,7 @@ export class ToolRegistry {
 
   private async handleJiraSearchIssues(
     args: Record<string, any>,
-    context: ServerContext
+    context: EnhancedServerContext
   ): Promise<any> {
     const { jql, fields, max_results } = args;
     return await context.jiraClient.searchIssues(jql, fields, max_results);
@@ -278,7 +278,7 @@ export class ToolRegistry {
   // GitHub tool handlers
   private async handleGitHubGetCommits(
     args: Record<string, any>,
-    context: ServerContext
+    context: EnhancedServerContext
   ): Promise<any> {
     const { owner, repo, since, until, author, per_page, page } = args;
     return await context.githubClient.getCommits(owner, repo, {
@@ -292,7 +292,7 @@ export class ToolRegistry {
 
   private async handleGitHubGetPullRequests(
     args: Record<string, any>,
-    context: ServerContext
+    context: EnhancedServerContext
   ): Promise<any> {
     const { owner, repo, state, since, until, per_page, page } = args;
     return await context.githubClient.getPullRequests(owner, repo, {
@@ -306,7 +306,7 @@ export class ToolRegistry {
 
   private async handleGitHubSearchCommitsByMessage(
     args: Record<string, any>,
-    context: ServerContext
+    context: EnhancedServerContext
   ): Promise<any> {
     const { owner, repo, query, since, until } = args;
     return await context.githubClient.searchCommitsByMessage(owner, repo, query, since, until);
@@ -314,7 +314,7 @@ export class ToolRegistry {
 
   private async handleGitHubSearchPullRequestsByDate(
     args: Record<string, any>,
-    context: ServerContext
+    context: EnhancedServerContext
   ): Promise<any> {
     const { owner, repo, since, until, state } = args;
     return await context.githubClient.searchPullRequestsByDateRange(
@@ -328,7 +328,7 @@ export class ToolRegistry {
 
   private async handleGitHubFindCommitsWithJiraReferences(
     args: Record<string, any>,
-    context: ServerContext
+    context: EnhancedServerContext
   ): Promise<any> {
     const { owner, repo, issue_keys, since, until } = args;
     return await context.githubClient.findCommitsWithJiraReferences(
@@ -349,7 +349,7 @@ export class ToolRegistry {
   })
   private async handleGenerateSprintReport(
     args: Record<string, any>,
-    context: ServerContext
+    context: EnhancedServerContext
   ): Promise<any> {
     try {
       console.log('[TOOL-REGISTRY] handleGenerateSprintReport called with format:', args.format);
@@ -390,7 +390,7 @@ export class ToolRegistry {
   })
   private async handleGetSprintMetrics(
     args: Record<string, any>,
-    context: ServerContext
+    context: EnhancedServerContext
   ): Promise<any> {
     // Delegate to optimized metrics handler for better performance
     return await this.optimizedMetricsHandler.getOptimizedSprintMetrics(args, context);
@@ -399,7 +399,7 @@ export class ToolRegistry {
   // Utility tool handlers
   private async handleHealthCheck(
     args: Record<string, any>,
-    context: ServerContext
+    context: EnhancedServerContext
   ): Promise<any> {
     const { include_detailed_status, check_external_dependencies } = args;
 
@@ -523,7 +523,7 @@ export class ToolRegistry {
 
   private async handleCacheStats(
     args: Record<string, any>,
-    context: ServerContext
+    context: EnhancedServerContext
   ): Promise<any> {
     const { include_detailed_breakdown, reset_stats } = args;
 

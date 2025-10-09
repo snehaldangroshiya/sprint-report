@@ -52,7 +52,8 @@
       "Bash(kill:*)",
       "Bash(npm run dev:web:*)",
       "Bash(cloc:*)",
-      "Read(//home/sd/**)"
+      "Read(//home/sd/**)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

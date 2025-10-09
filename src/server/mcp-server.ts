@@ -10,17 +10,21 @@ import { AppConfig, ServerInfo, HealthStatus } from '@/types';
 import { JiraClient } from '@/clients/jira-client';
 import { GitHubClient } from '@/clients/github-client';
 import { CacheManager } from '@/cache/cache-manager';
+import { CacheOptimizer } from '@/cache/cache-optimizer';
 import { ServiceRateLimiter } from '@/utils/rate-limiter';
 import { Logger, getLogger } from '@/utils/logger';
 import { createAppConfig } from '@/config/environment';
 import { BaseError } from '@/utils/errors';
 import { ToolRegistry } from './tool-registry';
+import { initializeGlobalPerformanceMonitor } from '@/performance/performance-monitor';
 import { SprintService } from '@/services/sprint-service';
 import { AnalyticsService } from '@/services/analytics-service';
 import { ExportService } from '@/services/export-service';
 import { ReportGenerator } from '@/reporting/report-generator';
 import { ReportTools } from '@/tools/report-tools';
+import { EnhancedServerContext } from './enhanced-mcp-server';
 
+// Legacy ServerContext - kept for backwards compatibility
 export interface ServerContext {
   config: AppConfig;
   jiraClient: JiraClient;
@@ -37,7 +41,7 @@ export interface ServerContext {
 
 export class MCPServer {
   private server: Server;
-  private context: ServerContext | null = null;
+  private context: EnhancedServerContext | null = null;
   private startTime: number = 0;
   private isShuttingDown: boolean = false;
   private toolRegistry: ToolRegistry;
@@ -178,6 +182,10 @@ export class MCPServer {
       const jiraClient = new JiraClient(config);
       const githubClient = new GitHubClient(config);
 
+      // Initialize performance monitoring and optimization
+      const performanceMonitor = initializeGlobalPerformanceMonitor();
+      const cacheOptimizer = new CacheOptimizer(cacheManager, performanceMonitor);
+
       // Initialize reporting services
       const sprintService = new SprintService(jiraClient, githubClient, cacheManager);
       const analyticsService = (sprintService as any).analyticsService;
@@ -191,8 +199,10 @@ export class MCPServer {
         jiraClient,
         githubClient,
         cacheManager,
+        cacheOptimizer,
         rateLimiter,
         logger,
+        performanceMonitor,
         sprintService,
         analyticsService,
         exportService,

@@ -7,7 +7,8 @@
  * - Batch processing
  */
 
-import { ServerContext, Issue, SprintData } from '@/types';
+import { Issue, SprintData } from '@/types';
+import { EnhancedServerContext } from '@/server/enhanced-mcp-server';
 
 interface MetricsPerformanceLog {
   operation: string;
@@ -32,7 +33,7 @@ export class OptimizedMetricsHandler {
    */
   async getOptimizedSprintMetrics(
     args: Record<string, any>,
-    context: ServerContext
+    context: EnhancedServerContext
   ): Promise<any> {
     const { sprint_id, include_velocity, include_burndown, velocity_history_count } = args;
     const startTime = Date.now();
@@ -168,7 +169,7 @@ export class OptimizedMetricsHandler {
    * Optimized issue fetching with aggressive caching
    */
   private async getOptimizedSprintIssues(
-    context: ServerContext,
+    context: EnhancedServerContext,
     sprintId: string
   ): Promise<Issue[]> {
     // Check if we have cached issues (separate cache key for flexibility)
@@ -264,7 +265,7 @@ export class OptimizedMetricsHandler {
    * Calculate velocity metrics (placeholder - should be replaced with actual implementation)
    */
   private async calculateVelocityMetrics(
-    _context: ServerContext,
+    _context: EnhancedServerContext,
     _currentSprint: SprintData,
     _historyCount: number
   ): Promise<any> {
@@ -280,7 +281,7 @@ export class OptimizedMetricsHandler {
    * Calculate burndown data (placeholder)
    */
   private async calculateBurndownData(
-    _context: ServerContext,
+    _context: EnhancedServerContext,
     _sprint: SprintData,
     _issues: Issue[]
   ): Promise<any> {

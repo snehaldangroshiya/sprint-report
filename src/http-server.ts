@@ -15,7 +15,9 @@ import { ServiceRateLimiter } from './utils/rate-limiter';
 import { getLogger } from './utils/logger';
 import { createAppConfig } from './config/environment';
 import { ToolRegistry } from './server/tool-registry';
-import { ServerContext } from './server/mcp-server';
+import { EnhancedServerContext } from './server/enhanced-mcp-server';
+import { CacheOptimizer } from './cache/cache-optimizer';
+import { initializeGlobalPerformanceMonitor } from './performance/performance-monitor';
 import { SprintService } from './services/sprint-service';
 import { ExportService } from './services/export-service';
 import { ReportGenerator } from './reporting/report-generator';
@@ -45,6 +47,10 @@ async function main() {
   const jiraClient = new JiraClient(config);
   const githubClient = new GitHubClient(config);
 
+  // Initialize performance monitoring and optimization
+  const performanceMonitor = initializeGlobalPerformanceMonitor();
+  const cacheOptimizer = new CacheOptimizer(cacheManager, performanceMonitor);
+
   // Initialize reporting services
   const sprintService = new SprintService(jiraClient, githubClient, cacheManager);
   const analyticsService = (sprintService as any).analyticsService;
@@ -52,13 +58,15 @@ async function main() {
   const reportGenerator = new ReportGenerator(sprintService);
   const reportTools = new ReportTools(sprintService, analyticsService, exportService, reportGenerator);
 
-  const context: ServerContext = {
+  const context: EnhancedServerContext = {
     config,
     jiraClient,
     githubClient,
     cacheManager,
+    cacheOptimizer,
     rateLimiter,
     logger,
+    performanceMonitor,
     sprintService,
     analyticsService,
     exportService,
