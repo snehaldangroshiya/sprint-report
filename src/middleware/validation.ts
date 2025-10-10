@@ -12,59 +12,67 @@ export const schemas = {
     include_prs: Joi.boolean().required(),
     include_velocity: Joi.boolean().required(),
     include_burndown: Joi.boolean().required(),
-    theme: Joi.string().valid('default', 'dark', 'corporate').required()
+    theme: Joi.string().valid('default', 'dark', 'corporate').required(),
   }),
 
   boardId: Joi.object({
-    boardId: Joi.string().required().min(1).max(50)
+    boardId: Joi.string().required().min(1).max(50),
   }),
 
   githubParams: Joi.object({
     owner: Joi.string().required().min(1).max(100),
-    repo: Joi.string().required().min(1).max(100)
+    repo: Joi.string().required().min(1).max(100),
   }),
 
   sprintId: Joi.object({
-    sprintId: Joi.string().required().min(1).max(50)
+    sprintId: Joi.string().required().min(1).max(50),
   }),
 
   paginationQuery: Joi.object({
     page: Joi.number().integer().min(1).max(1000).optional(),
     per_page: Joi.number().integer().min(1).max(100).optional(),
     since: Joi.date().iso().optional(),
-    until: Joi.date().iso().optional()
+    until: Joi.date().iso().optional(),
   }),
 
   exportOptions: Joi.object({
     reportData: Joi.object().required(),
     options: Joi.object({
       format: Joi.string().valid('A4', 'A3', 'Letter').optional(),
-      orientation: Joi.string().valid('portrait', 'landscape').optional()
-    }).optional()
-  })
+      orientation: Joi.string().valid('portrait', 'landscape').optional(),
+    }).optional(),
+  }),
 };
 
 // Validation middleware factory
-export function validateRequest(schema: Joi.ObjectSchema, target: 'body' | 'params' | 'query' = 'body'): (req: Request, _res: Response, next: NextFunction) => Response | void {
+export function validateRequest(
+  schema: Joi.ObjectSchema,
+  target: 'body' | 'params' | 'query' = 'body'
+): (req: Request, _res: Response, next: NextFunction) => Response | void {
   return (req: Request, res: Response, next: NextFunction): Response | void => {
-    const data = target === 'body' ? req.body : target === 'params' ? req.params : req.query;
+    const data =
+      target === 'body'
+        ? req.body
+        : target === 'params'
+          ? req.params
+          : req.query;
 
     const { error, value } = schema.validate(data, {
       abortEarly: false,
       stripUnknown: true,
-      convert: true
+      convert: true,
     });
 
     if (error) {
       const errorMessages = error.details.map(detail => ({
         field: detail.path.join('.'),
         message: detail.message,
-        value: detail.context?.value
+        value: detail.context?.value,
       }));
 
       return res.status(400).json({
         error: 'Validation failed',
-        details: errorMessages
+        details: errorMessages,
       });
     }
 
@@ -82,19 +90,24 @@ export function validateRequest(schema: Joi.ObjectSchema, target: 'body' | 'para
 }
 
 // Security headers middleware
-export function securityHeaders(_req: Request, res: Response, next: NextFunction): void {
+export function securityHeaders(
+  _req: Request,
+  res: Response,
+  next: NextFunction
+): void {
   // Remove server information
   res.removeHeader('X-Powered-By');
 
   // Content Security Policy
-  res.setHeader('Content-Security-Policy',
+  res.setHeader(
+    'Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline'; " +
-    "style-src 'self' 'unsafe-inline'; " +
-    "img-src 'self' data: https:; " +
-    "font-src 'self'; " +
-    "connect-src 'self'; " +
-    "frame-src 'self'"
+      "script-src 'self' 'unsafe-inline'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: https:; " +
+      "font-src 'self'; " +
+      "connect-src 'self'; " +
+      "frame-src 'self'"
   );
 
   // Other security headers
@@ -107,9 +120,14 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
 }
 
 // Request sanitization middleware
-export function sanitizeRequest(req: Request, _res: Response, next: NextFunction): void {
+export function sanitizeRequest(
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void {
   // Basic SQL injection prevention
-  const sqlInjectionPattern = /(\b(ALTER|CREATE|DELETE|DROP|EXEC(UTE)?|INSERT( +INTO)?|MERGE|SELECT|UPDATE|UNION( +ALL)?)\b)/gi;
+  const sqlInjectionPattern =
+    /(\b(ALTER|CREATE|DELETE|DROP|EXEC(UTE)?|INSERT( +INTO)?|MERGE|SELECT|UPDATE|UNION( +ALL)?)\b)/gi;
 
   const sanitizeString = (str: any): any => {
     if (typeof str === 'string') {
@@ -117,7 +135,10 @@ export function sanitizeRequest(req: Request, _res: Response, next: NextFunction
       str = str.replace(sqlInjectionPattern, '');
 
       // Remove potential XSS patterns
-      str = str.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      str = str.replace(
+        /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+        ''
+      );
       str = str.replace(/javascript:/gi, '');
       str = str.replace(/on\w+\s*=/gi, '');
 
@@ -163,7 +184,7 @@ export const rateLimitConfig = {
   max: 1000, // Higher limit for development
   message: {
     error: 'Too many requests from this IP, please try again later.',
-    retryAfter: 15 * 60 // 15 minutes in seconds
+    retryAfter: 15 * 60, // 15 minutes in seconds
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -171,19 +192,23 @@ export const rateLimitConfig = {
     res.status(429).json({
       error: 'Too many requests',
       message: 'Rate limit exceeded. Please try again later.',
-      retryAfter: Math.ceil(rateLimitConfig.windowMs / 1000)
+      retryAfter: Math.ceil(rateLimitConfig.windowMs / 1000),
     });
-  }
+  },
 };
 
 // API key validation middleware (if needed for external integrations)
-export function validateApiKey(req: Request, res: Response, next: NextFunction): Response | void {
+export function validateApiKey(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Response | void {
   const apiKey = req.headers['x-api-key'] as string;
 
   if (!apiKey) {
     return res.status(401).json({
       error: 'API key required',
-      message: 'Please provide a valid API key in the X-API-Key header'
+      message: 'Please provide a valid API key in the X-API-Key header',
     });
   }
 
@@ -193,7 +218,7 @@ export function validateApiKey(req: Request, res: Response, next: NextFunction):
   if (!validApiKeys.includes(apiKey)) {
     return res.status(403).json({
       error: 'Invalid API key',
-      message: 'The provided API key is not valid'
+      message: 'The provided API key is not valid',
     });
   }
 
@@ -201,14 +226,17 @@ export function validateApiKey(req: Request, res: Response, next: NextFunction):
 }
 
 // Request size validation
-export function validateRequestSize(maxSize: number = 10 * 1024 * 1024): (req: Request, _res: Response, next: NextFunction) => Response | void { // 10MB default
+export function validateRequestSize(
+  maxSize: number = 10 * 1024 * 1024
+): (req: Request, _res: Response, next: NextFunction) => Response | void {
+  // 10MB default
   return (req: Request, res: Response, next: NextFunction): Response | void => {
     const contentLength = parseInt(req.headers['content-length'] || '0');
 
     if (contentLength > maxSize) {
       return res.status(413).json({
         error: 'Request too large',
-        message: `Request size exceeds maximum allowed size of ${Math.round(maxSize / 1024 / 1024)}MB`
+        message: `Request size exceeds maximum allowed size of ${Math.round(maxSize / 1024 / 1024)}MB`,
       });
     }
 

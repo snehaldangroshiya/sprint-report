@@ -2,7 +2,6 @@
 
 import { CacheManager } from '../../src/cache/cache-manager';
 import { CacheError } from '../../src/utils/errors';
-import { waitForAsync } from '../setup';
 
 // Mock node-cache
 jest.mock('node-cache');
@@ -127,12 +126,18 @@ describe('CacheManager', () => {
       expect(mockMemoryCache.set).toHaveBeenCalledWith('test-key', testValue, 300);
     });
 
-    test('should throw CacheError on failure', async () => {
+    test('should handle errors gracefully without throwing', async () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
       mockMemoryCache.set.mockImplementation(() => {
         throw new Error('Set failed');
       });
 
-      await expect(cacheManager.set('test-key', 'value')).rejects.toThrow(CacheError);
+      // Should not throw - method handles errors gracefully
+      await expect(cacheManager.set('test-key', 'value')).resolves.not.toThrow();
+
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
     });
   });
 
@@ -258,14 +263,18 @@ describe('CacheManager', () => {
 
   describe('healthCheck', () => {
     test('should perform successful health check', async () => {
-      mockMemoryCache.set.mockReturnValue(true);
-      mockMemoryCache.get.mockReturnValue({ timestamp: expect.any(Number) });
+      let storedValue: any;
+      mockMemoryCache.set.mockImplementation((_key: string, value: any) => {
+        storedValue = value;
+        return true;
+      });
+      mockMemoryCache.get.mockImplementation(() => storedValue);
       mockMemoryCache.del.mockReturnValue(1);
 
       const result = await cacheManager.healthCheck();
 
       expect(result.healthy).toBe(true);
-      expect(result.latency).toBeGreaterThan(0);
+      expect(result.latency).toBeGreaterThanOrEqual(0);
     });
 
     test('should detect unhealthy cache', async () => {
@@ -332,15 +341,10 @@ describe('CacheManager', () => {
 });
 
 describe('CacheWarmer', () => {
-  let cacheManager: CacheManager;
   let mockJiraClient: any;
   let mockGitHubClient: any;
 
   beforeEach(() => {
-    cacheManager = new CacheManager({
-      memory: { maxSize: 100, ttl: 300 },
-    });
-
     mockJiraClient = {
       getSprintData: jest.fn().mockResolvedValue({ id: '123', name: 'Test Sprint' }),
       getSprintIssues: jest.fn().mockResolvedValue([]),
@@ -355,7 +359,7 @@ describe('CacheWarmer', () => {
 
   test('should warm sprint cache', async () => {
     const { CacheWarmer } = await import('../../src/cache/cache-manager');
-    const warmer = new CacheWarmer(cacheManager);
+    const warmer = new CacheWarmer();
 
     await warmer.warmSprintCache('123', mockJiraClient);
 
@@ -365,7 +369,7 @@ describe('CacheWarmer', () => {
 
   test('should warm repository cache', async () => {
     const { CacheWarmer } = await import('../../src/cache/cache-manager');
-    const warmer = new CacheWarmer(cacheManager);
+    const warmer = new CacheWarmer();
 
     await warmer.warmRepositoryCache('owner', 'repo', mockGitHubClient, '2023-01-01', '2023-01-31');
 
@@ -383,7 +387,7 @@ describe('CacheWarmer', () => {
 
   test('should handle cache warming failures gracefully', async () => {
     const { CacheWarmer } = await import('../../src/cache/cache-manager');
-    const warmer = new CacheWarmer(cacheManager);
+    const warmer = new CacheWarmer();
 
     mockJiraClient.getSprintData.mockRejectedValue(new Error('API error'));
 

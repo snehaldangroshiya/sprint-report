@@ -1,6 +1,6 @@
-import { PDFGenerator } from '../utils/pdf-generator.js';
-import { Logger } from '../utils/logger.js';
 import { SprintReport, AnalyticsReport } from '../types/index.js';
+import { Logger } from '../utils/logger.js';
+import { PDFGenerator } from '../utils/pdf-generator.js';
 
 export interface ExportOptions {
   format?: 'A4' | 'A3' | 'Letter';
@@ -32,7 +32,7 @@ export class ExportService {
   ): Promise<Buffer> {
     this.logger.info('Exporting sprint report to PDF', {
       sprintId: reportData.sprint.id,
-      format: options.format
+      format: options.format,
     });
 
     try {
@@ -45,18 +45,20 @@ export class ExportService {
           top: '1in',
           right: '0.75in',
           bottom: '1in',
-          left: '0.75in'
-        }
+          left: '0.75in',
+        },
       });
 
       this.logger.info('Sprint report PDF generated successfully', {
         sprintId: reportData.sprint.id,
-        size: pdfBuffer.length
+        size: pdfBuffer.length,
       });
 
       return pdfBuffer;
     } catch (error) {
-      this.logger.logError(error as Error, 'export_sprint_report_pdf', { reportData });
+      this.logger.logError(error as Error, 'export_sprint_report_pdf', {
+        reportData,
+      });
       throw error;
     }
   }
@@ -70,7 +72,7 @@ export class ExportService {
   ): Promise<Buffer> {
     this.logger.info('Exporting analytics to PDF', {
       boardId: analyticsData.boardId,
-      format: options.format
+      format: options.format,
     });
 
     try {
@@ -83,18 +85,20 @@ export class ExportService {
           top: '1in',
           right: '0.75in',
           bottom: '1in',
-          left: '0.75in'
-        }
+          left: '0.75in',
+        },
       });
 
       this.logger.info('Analytics PDF generated successfully', {
         boardId: analyticsData.boardId,
-        size: pdfBuffer.length
+        size: pdfBuffer.length,
       });
 
       return pdfBuffer;
     } catch (error) {
-      this.logger.logError(error as Error, 'export_analytics_pdf', { analyticsData });
+      this.logger.logError(error as Error, 'export_analytics_pdf', {
+        analyticsData,
+      });
       throw error;
     }
   }
@@ -103,7 +107,7 @@ export class ExportService {
    * Generate HTML for sprint report
    */
   private generateSprintReportHTML(report: SprintReport): string {
-    const { sprint, metrics, commits, pullRequests, velocity, burndown: _burndown, teamPerformance: _teamPerformance } = report;
+    const { sprint, metrics, commits, pullRequests, velocity } = report;
 
     return `
 <!DOCTYPE html>
@@ -292,7 +296,10 @@ export class ExportService {
                 </tr>
             </thead>
             <tbody>
-                ${sprint.issues?.map(issue => `
+                ${
+                  sprint.issues
+                    ?.map(
+                      issue => `
                     <tr>
                         <td><strong>${issue.key}</strong></td>
                         <td>${issue.summary}</td>
@@ -304,12 +311,17 @@ export class ExportService {
                         </td>
                         <td>${issue.storyPoints || '-'}</td>
                     </tr>
-                `).join('') || '<tr><td colspan="5">No issues found</td></tr>'}
+                `
+                    )
+                    .join('') || '<tr><td colspan="5">No issues found</td></tr>'
+                }
             </tbody>
         </table>
     </div>
 
-    ${commits && commits.length > 0 ? `
+    ${
+      commits && commits.length > 0
+        ? `
     <div class="section">
         <h2>Development Activity</h2>
         <p><strong>${commits.length}</strong> commits during sprint period</p>
@@ -323,21 +335,30 @@ export class ExportService {
                 </tr>
             </thead>
             <tbody>
-                ${commits.slice(0, 10).map(commit => `
+                ${commits
+                  .slice(0, 10)
+                  .map(
+                    commit => `
                     <tr>
                         <td>${new Date(commit.date).toLocaleDateString()}</td>
                         <td>${commit.author}</td>
                         <td>${commit.message.substring(0, 60)}${commit.message.length > 60 ? '...' : ''}</td>
                         <td><code>${commit.sha.substring(0, 8)}</code></td>
                     </tr>
-                `).join('')}
+                `
+                  )
+                  .join('')}
                 ${commits.length > 10 ? `<tr><td colspan="4"><em>... and ${commits.length - 10} more commits</em></td></tr>` : ''}
             </tbody>
         </table>
     </div>
-    ` : ''}
+    `
+        : ''
+    }
 
-    ${pullRequests && pullRequests.length > 0 ? `
+    ${
+      pullRequests && pullRequests.length > 0
+        ? `
     <div class="section">
         <h2>Pull Requests</h2>
         <p><strong>${pullRequests.length}</strong> pull requests during sprint period</p>
@@ -351,7 +372,10 @@ export class ExportService {
                 </tr>
             </thead>
             <tbody>
-                ${pullRequests.slice(0, 10).map(pr => `
+                ${pullRequests
+                  .slice(0, 10)
+                  .map(
+                    pr => `
                     <tr>
                         <td><strong>#${pr.number}</strong></td>
                         <td>${pr.title}</td>
@@ -362,14 +386,20 @@ export class ExportService {
                             </span>
                         </td>
                     </tr>
-                `).join('')}
+                `
+                  )
+                  .join('')}
                 ${pullRequests.length > 10 ? `<tr><td colspan="4"><em>... and ${pullRequests.length - 10} more pull requests</em></td></tr>` : ''}
             </tbody>
         </table>
     </div>
-    ` : ''}
+    `
+        : ''
+    }
 
-    ${velocity ? `
+    ${
+      velocity
+        ? `
     <div class="section">
         <h2>Velocity Analysis</h2>
         <div class="metrics-grid">
@@ -386,7 +416,9 @@ export class ExportService {
             Velocity Chart: ${velocity.sprints.map(s => s.name + ' (' + s.velocity + ' SP)').join(', ')}
         </div>
     </div>
-    ` : ''}
+    `
+        : ''
+    }
 
     <div class="footer">
         Generated by NextReleaseMCP • ${new Date().toISOString()}
@@ -399,7 +431,7 @@ export class ExportService {
    * Generate HTML for analytics report
    */
   private generateAnalyticsHTML(analytics: AnalyticsReport): string {
-    const { velocity: _velocity, teamPerformance, commitTrends, summary } = analytics;
+    const { teamPerformance, commitTrends, summary } = analytics;
 
     return `
 <!DOCTYPE html>
@@ -557,9 +589,13 @@ export class ExportService {
                 </tr>
             </thead>
             <tbody>
-                ${teamPerformance.map(sprint => {
-                  const completionPercent = sprint.planned > 0 ? Math.round((sprint.completed / sprint.planned) * 100) : 0;
-                  return `
+                ${teamPerformance
+                  .map(sprint => {
+                    const completionPercent =
+                      sprint.planned > 0
+                        ? Math.round((sprint.completed / sprint.planned) * 100)
+                        : 0;
+                    return `
                     <tr>
                         <td><strong>${sprint.name}</strong></td>
                         <td>${sprint.planned}</td>
@@ -568,12 +604,15 @@ export class ExportService {
                         <td>${completionPercent}%</td>
                     </tr>
                   `;
-                }).join('')}
+                  })
+                  .join('')}
             </tbody>
         </table>
     </div>
 
-    ${commitTrends ? `
+    ${
+      commitTrends
+        ? `
     <div class="section">
         <h2>Code Activity Trends</h2>
         <div class="chart-placeholder">
@@ -588,17 +627,23 @@ export class ExportService {
                 </tr>
             </thead>
             <tbody>
-                ${commitTrends.map(trend => `
+                ${commitTrends
+                  .map(
+                    trend => `
                     <tr>
                         <td>${trend.date}</td>
                         <td>${trend.commits}</td>
                         <td>${trend.prs}</td>
                     </tr>
-                `).join('')}
+                `
+                  )
+                  .join('')}
             </tbody>
         </table>
     </div>
-    ` : ''}
+    `
+        : ''
+    }
 
     <div class="footer">
         Generated by NextReleaseMCP Analytics • ${new Date().toISOString()}
@@ -614,7 +659,9 @@ export class ExportService {
     const lowerStatus = status.toLowerCase();
     if (['done', 'closed', 'resolved'].includes(lowerStatus)) {
       return 'status-done';
-    } else if (['in progress', 'in-progress', 'development'].includes(lowerStatus)) {
+    } else if (
+      ['in progress', 'in-progress', 'development'].includes(lowerStatus)
+    ) {
       return 'status-in-progress';
     } else {
       return 'status-todo';

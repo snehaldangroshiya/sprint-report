@@ -1,6 +1,7 @@
 // Jira API client implementation
 
 import { BaseAPIClient, APIClientOptions } from './base-client';
+
 import { AppConfig, SprintData, Issue } from '@/types';
 import { ValidationUtils, MCPToolSchemas } from '@/utils/validation';
 
@@ -107,10 +108,10 @@ export class JiraClient extends BaseAPIClient {
       baseURL: config.jira.baseUrl,
       timeout: config.jira.timeout,
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'Content-Type': 'application/json',
         // Use Bearer token for Jira Server authentication
-        'Authorization': `Bearer ${config.jira.apiToken}`,
+        Authorization: `Bearer ${config.jira.apiToken}`,
       },
       maxRetries: 3,
       retryDelay: 1000,
@@ -123,7 +124,10 @@ export class JiraClient extends BaseAPIClient {
   }
 
   // Get sprints for a board
-  async getSprints(boardId: string, state?: 'active' | 'closed' | 'future'): Promise<SprintData[]> {
+  async getSprints(
+    boardId: string,
+    state?: 'active' | 'closed' | 'future'
+  ): Promise<SprintData[]> {
     const params = ValidationUtils.validateAndParse(
       MCPToolSchemas.jiraGetSprints,
       { board_id: boardId, state }
@@ -183,15 +187,20 @@ export class JiraClient extends BaseAPIClient {
         { ttl: 300000 } // 5 minutes cache
       );
 
-      const issues = response.issues.map(issue => this.transformIssueData(issue));
+      const issues = response.issues.map(issue =>
+        this.transformIssueData(issue)
+      );
       allIssues = allIssues.concat(issues);
 
-      hasMore = !response.issues || response.issues.length === queryParams.maxResults;
+      hasMore =
+        !response.issues || response.issues.length === queryParams.maxResults;
       startAt += queryParams.maxResults;
 
       // Safety check to prevent infinite loops
       if (allIssues.length >= 1000) {
-        console.warn(`Sprint ${sprintId} has too many issues, limiting to first 1000`);
+        console.warn(
+          `Sprint ${sprintId} has too many issues, limiting to first 1000`
+        );
         break;
       }
     }
@@ -264,7 +273,9 @@ export class JiraClient extends BaseAPIClient {
         { useCache: false } // Don't cache search results
       );
 
-      const issues = response.issues.map(issue => this.transformIssueData(issue));
+      const issues = response.issues.map(issue =>
+        this.transformIssueData(issue)
+      );
       allIssues = allIssues.concat(issues);
 
       hasMore = response.issues.length === requestBody.maxResults;
@@ -272,7 +283,9 @@ export class JiraClient extends BaseAPIClient {
 
       // Safety check
       if (allIssues.length >= 1000) {
-        console.warn(`JQL search returned too many results, limiting to first 1000`);
+        console.warn(
+          `JQL search returned too many results, limiting to first 1000`
+        );
         break;
       }
     }
@@ -281,7 +294,9 @@ export class JiraClient extends BaseAPIClient {
   }
 
   // Get boards (for board discovery)
-  async getBoards(): Promise<Array<{ id: number; name: string; type: string }>> {
+  async getBoards(): Promise<
+    Array<{ id: number; name: string; type: string }>
+  > {
     const response = await this.makeRequest<JiraBoardResponse>(
       '/rest/agile/1.0/board',
       {
@@ -427,11 +442,15 @@ export class JiraClient extends BaseAPIClient {
 
   private extractEpicName(fields: any): string | undefined {
     // Epic name from various sources
-    if (fields.parent && fields.parent.fields && fields.parent.fields.summary) {
+    if (fields.parent?.fields?.summary) {
       return fields.parent.fields.summary;
     }
 
-    const epicNameFields = ['customfield_10011', 'customfield_10009', 'epicName'];
+    const epicNameFields = [
+      'customfield_10011',
+      'customfield_10009',
+      'epicName',
+    ];
     for (const fieldName of epicNameFields) {
       const value = fields[fieldName];
       if (typeof value === 'string' && value) {
@@ -454,7 +473,10 @@ export class JiraClient extends BaseAPIClient {
           return value.length > 0;
         }
         if (typeof value === 'string') {
-          return value.toLowerCase() === 'impediment' || value.toLowerCase() === 'blocked';
+          return (
+            value.toLowerCase() === 'impediment' ||
+            value.toLowerCase() === 'blocked'
+          );
         }
         if (typeof value === 'object' && value.value) {
           return true;
@@ -511,9 +533,13 @@ export class JiraClient extends BaseAPIClient {
     const issue = this.transformIssueData(response);
 
     // Process changelog to add enhanced metrics
-    if (response.changelog && response.changelog.histories) {
-      const statusHistory = this.extractStatusHistory(response.changelog.histories);
-      const sprintHistory = this.extractSprintHistory(response.changelog.histories);
+    if (response.changelog?.histories) {
+      const statusHistory = this.extractStatusHistory(
+        response.changelog.histories
+      );
+      const sprintHistory = this.extractSprintHistory(
+        response.changelog.histories
+      );
       const timeInStatus = this.calculateTimeInStatus(statusHistory);
 
       issue.statusHistory = statusHistory;
@@ -527,7 +553,10 @@ export class JiraClient extends BaseAPIClient {
   }
 
   // Get enhanced issues for sprint with changelog data
-  async getEnhancedSprintIssues(sprintId: string, maxResults = 100): Promise<Issue[]> {
+  async getEnhancedSprintIssues(
+    sprintId: string,
+    maxResults = 100
+  ): Promise<Issue[]> {
     const issues = await this.getSprintIssues(sprintId, undefined, maxResults);
 
     // Fetch enhanced data for each issue (with batching to avoid rate limits)
@@ -547,7 +576,10 @@ export class JiraClient extends BaseAPIClient {
         }
       } catch (error) {
         // If enhancement fails, use basic issue data
-        console.warn(`Failed to enhance issue ${issue.key}, using basic data`, error);
+        console.warn(
+          `Failed to enhance issue ${issue.key}, using basic data`,
+          error
+        );
         enhancedIssues.push(issue);
       }
     }
@@ -556,11 +588,15 @@ export class JiraClient extends BaseAPIClient {
   }
 
   // Extract status change history from changelog
-  private extractStatusHistory(histories: any[]): import('@/types').StatusChange[] {
+  private extractStatusHistory(
+    histories: any[]
+  ): import('@/types').StatusChange[] {
     const statusChanges: import('@/types').StatusChange[] = [];
 
     for (const history of histories) {
-      const statusItem = history.items?.find((item: any) => item.field === 'status');
+      const statusItem = history.items?.find(
+        (item: any) => item.field === 'status'
+      );
       if (statusItem) {
         statusChanges.push({
           from: statusItem.fromString || '',
@@ -596,11 +632,15 @@ export class JiraClient extends BaseAPIClient {
   }
 
   // Extract sprint change history from changelog
-  private extractSprintHistory(histories: any[]): import('@/types').SprintChange[] {
+  private extractSprintHistory(
+    histories: any[]
+  ): import('@/types').SprintChange[] {
     const sprintChanges: import('@/types').SprintChange[] = [];
 
     for (const history of histories) {
-      const sprintItem = history.items?.find((item: any) => item.field === 'Sprint');
+      const sprintItem = history.items?.find(
+        (item: any) => item.field === 'Sprint'
+      );
       if (sprintItem) {
         // Added to sprint
         if (sprintItem.toString) {
@@ -619,7 +659,9 @@ export class JiraClient extends BaseAPIClient {
           const sprintMatches = sprintItem.fromString.match(/\[name=(.*?),/);
           sprintChanges.push({
             sprintId: sprintItem.from || '',
-            sprintName: sprintMatches ? sprintMatches[1] : sprintItem.fromString,
+            sprintName: sprintMatches
+              ? sprintMatches[1]
+              : sprintItem.fromString,
             action: 'removed',
             timestamp: history.created,
             author: history.author?.displayName || 'Unknown',
@@ -632,7 +674,9 @@ export class JiraClient extends BaseAPIClient {
   }
 
   // Calculate time spent in each status
-  private calculateTimeInStatus(statusHistory: import('@/types').StatusChange[]): Record<string, number> {
+  private calculateTimeInStatus(
+    statusHistory: import('@/types').StatusChange[]
+  ): Record<string, number> {
     const timeInStatus: Record<string, number> = {};
 
     for (const change of statusHistory) {
@@ -648,7 +692,8 @@ export class JiraClient extends BaseAPIClient {
       if (lastChange) {
         const currentStatus = lastChange.to;
         const currentDuration = lastChange.duration || 0;
-        timeInStatus[currentStatus] = (timeInStatus[currentStatus] || 0) + currentDuration;
+        timeInStatus[currentStatus] =
+          (timeInStatus[currentStatus] || 0) + currentDuration;
       }
     }
 
@@ -656,8 +701,16 @@ export class JiraClient extends BaseAPIClient {
   }
 
   // Calculate cycle time (time from "In Progress" to "Done")
-  private calculateCycleTime(statusHistory: import('@/types').StatusChange[], _createdDate: string): number {
-    const inProgressStatuses = ['In Progress', 'In Development', 'In Review', 'Testing'];
+  private calculateCycleTime(
+    statusHistory: import('@/types').StatusChange[],
+    _createdDate: string
+  ): number {
+    const inProgressStatuses = [
+      'In Progress',
+      'In Development',
+      'In Review',
+      'Testing',
+    ];
     const doneStatuses = ['Done', 'Closed', 'Resolved', 'Complete'];
 
     let startTime: number | null = null;
@@ -665,12 +718,21 @@ export class JiraClient extends BaseAPIClient {
 
     for (const change of statusHistory) {
       // Find first transition to "in progress"
-      if (!startTime && inProgressStatuses.some(s => change.to.toLowerCase().includes(s.toLowerCase()))) {
+      if (
+        !startTime &&
+        inProgressStatuses.some(s =>
+          change.to.toLowerCase().includes(s.toLowerCase())
+        )
+      ) {
         startTime = new Date(change.timestamp).getTime();
       }
 
       // Find transition to "done"
-      if (doneStatuses.some(s => change.to.toLowerCase().includes(s.toLowerCase()))) {
+      if (
+        doneStatuses.some(s =>
+          change.to.toLowerCase().includes(s.toLowerCase())
+        )
+      ) {
         endTime = new Date(change.timestamp).getTime();
       }
     }
@@ -683,7 +745,10 @@ export class JiraClient extends BaseAPIClient {
   }
 
   // Calculate lead time (time from creation to done)
-  private calculateLeadTime(createdDate: string, resolvedDate?: string): number {
+  private calculateLeadTime(
+    createdDate: string,
+    resolvedDate?: string
+  ): number {
     if (!resolvedDate) return 0;
 
     const created = new Date(createdDate).getTime();
@@ -693,7 +758,11 @@ export class JiraClient extends BaseAPIClient {
   }
 
   // Utility methods
-  public async validateConnection(): Promise<{ valid: boolean; user?: string; error?: string }> {
+  public async validateConnection(): Promise<{
+    valid: boolean;
+    user?: string;
+    error?: string;
+  }> {
     try {
       const response = await this.makeRequest<any>(
         '/rest/api/2/myself',
@@ -713,7 +782,11 @@ export class JiraClient extends BaseAPIClient {
     }
   }
 
-  public async getServerInfo(): Promise<{ version: string; buildNumber: string; serverTitle: string }> {
+  public async getServerInfo(): Promise<{
+    version: string;
+    buildNumber: string;
+    serverTitle: string;
+  }> {
     const response = await this.makeRequest<any>(
       '/rest/api/3/serverInfo',
       { method: 'GET' },

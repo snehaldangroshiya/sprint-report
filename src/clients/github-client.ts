@@ -1,6 +1,7 @@
 // GitHub API client implementation
 
 import { BaseAPIClient, APIClientOptions } from './base-client';
+
 import { AppConfig, Commit, PullRequest, GitHubRepository } from '@/types';
 import { ValidationUtils, MCPToolSchemas } from '@/utils/validation';
 
@@ -136,8 +137,8 @@ export class GitHubClient extends BaseAPIClient {
       baseURL: config.github.apiUrl,
       timeout: config.github.timeout,
       headers: {
-        'Accept': 'application/vnd.github.v3+json',
-        'Authorization': `Bearer ${config.github.token}`,
+        Accept: 'application/vnd.github.v3+json',
+        Authorization: `Bearer ${config.github.token}`,
         'User-Agent': config.github.userAgent,
       },
       maxRetries: 3,
@@ -148,7 +149,10 @@ export class GitHubClient extends BaseAPIClient {
   }
 
   // Get repository information
-  async getRepositoryInfo(owner: string, repo: string): Promise<GitHubRepository> {
+  async getRepositoryInfo(
+    owner: string,
+    repo: string
+  ): Promise<GitHubRepository> {
     const response = await this.makeRequest<GitHubRepositoryResponse>(
       `/repos/${owner}/${repo}`,
       { method: 'GET' },
@@ -233,7 +237,9 @@ export class GitHubClient extends BaseAPIClient {
 
       // Safety check to prevent infinite loops
       if (allCommits.length >= 10000) {
-        console.warn(`Repository ${owner}/${repo} has too many commits, limiting to first 10000`);
+        console.warn(
+          `Repository ${owner}/${repo} has too many commits, limiting to first 10000`
+        );
         break;
       }
     }
@@ -279,7 +285,11 @@ export class GitHubClient extends BaseAPIClient {
 
     // Filter by date range if provided
     if (params.since || params.until) {
-      pullRequests = this.filterPullRequestsByDate(pullRequests, params.since, params.until);
+      pullRequests = this.filterPullRequestsByDate(
+        pullRequests,
+        params.since,
+        params.until
+      );
     }
 
     return pullRequests;
@@ -309,7 +319,9 @@ export class GitHubClient extends BaseAPIClient {
       searchQuery += ` committer-date:<=${params.until}`;
     }
 
-    const response = await this.makeRequest<GitHubSearchResponse<GitHubCommitResponse>>(
+    const response = await this.makeRequest<
+      GitHubSearchResponse<GitHubCommitResponse>
+    >(
       '/search/commits',
       {
         method: 'GET',
@@ -320,7 +332,7 @@ export class GitHubClient extends BaseAPIClient {
           per_page: 100,
         },
         headers: {
-          'Accept': 'application/vnd.github.cloak-preview+json', // Required for commit search
+          Accept: 'application/vnd.github.cloak-preview+json', // Required for commit search
         },
       },
       { ttl: 300000 } // 5 minutes cache
@@ -370,7 +382,9 @@ export class GitHubClient extends BaseAPIClient {
     const perPage = 100; // Maximum per page for search API
 
     while (true) {
-      const response = await this.makeRequest<GitHubSearchResponse<GitHubPullRequestResponse>>(
+      const response = await this.makeRequest<
+        GitHubSearchResponse<GitHubPullRequestResponse>
+      >(
         '/search/issues', // GitHub uses issues endpoint for PR search
         {
           method: 'GET',
@@ -397,7 +411,9 @@ export class GitHubClient extends BaseAPIClient {
 
       // GitHub Search API has a limit of 1000 results (10 pages of 100)
       if (page > 10) {
-        console.warn(`GitHub Search API limit reached (1000 results) for ${owner}/${repo}`);
+        console.warn(
+          `GitHub Search API limit reached (1000 results) for ${owner}/${repo}`
+        );
         break;
       }
     }
@@ -406,7 +422,11 @@ export class GitHubClient extends BaseAPIClient {
   }
 
   // Get commit details with stats
-  async getCommitDetails(owner: string, repo: string, sha: string): Promise<Commit> {
+  async getCommitDetails(
+    owner: string,
+    repo: string,
+    sha: string
+  ): Promise<Commit> {
     const response = await this.makeRequest<GitHubCommitResponse>(
       `/repos/${owner}/${repo}/commits/${sha}`,
       { method: 'GET' },
@@ -417,7 +437,11 @@ export class GitHubClient extends BaseAPIClient {
   }
 
   // Get pull request details
-  async getPullRequestDetails(owner: string, repo: string, number: number): Promise<PullRequest> {
+  async getPullRequestDetails(
+    owner: string,
+    repo: string,
+    number: number
+  ): Promise<PullRequest> {
     const response = await this.makeRequest<GitHubPullRequestResponse>(
       `/repos/${owner}/${repo}/pulls/${number}`,
       { method: 'GET' },
@@ -427,9 +451,12 @@ export class GitHubClient extends BaseAPIClient {
     return this.transformPullRequestData(response);
   }
 
-
   // Get PR reviews for enhanced metrics
-  async getPullRequestReviews(owner: string, repo: string, prNumber: number): Promise<import('@/types').PRReview[]> {
+  async getPullRequestReviews(
+    owner: string,
+    repo: string,
+    prNumber: number
+  ): Promise<import('@/types').PRReview[]> {
     const response = await this.makeRequest<any[]>(
       `/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
       { method: 'GET' },
@@ -445,7 +472,11 @@ export class GitHubClient extends BaseAPIClient {
   }
 
   // Get PR review comments count
-  async getPullRequestComments(owner: string, repo: string, prNumber: number): Promise<number> {
+  async getPullRequestComments(
+    owner: string,
+    repo: string,
+    prNumber: number
+  ): Promise<number> {
     const response = await this.makeRequest<any[]>(
       `/repos/${owner}/${repo}/pulls/${prNumber}/comments`,
       { method: 'GET' },
@@ -456,7 +487,11 @@ export class GitHubClient extends BaseAPIClient {
   }
 
   // Get enhanced PR with review metrics
-  async getEnhancedPullRequest(owner: string, repo: string, prNumber: number): Promise<PullRequest> {
+  async getEnhancedPullRequest(
+    owner: string,
+    repo: string,
+    prNumber: number
+  ): Promise<PullRequest> {
     // Get basic PR data
     const pr = await this.getPullRequestDetails(owner, repo, prNumber);
 
@@ -465,12 +500,20 @@ export class GitHubClient extends BaseAPIClient {
       const reviews = await this.getPullRequestReviews(owner, repo, prNumber);
 
       // Get comment count
-      const commentCount = await this.getPullRequestComments(owner, repo, prNumber);
+      const commentCount = await this.getPullRequestComments(
+        owner,
+        repo,
+        prNumber
+      );
 
       // Calculate time to first review
-      const timeToFirstReview = reviews.length > 0 && reviews[0]
-        ? this.calculateTimeToFirstReview(pr.createdAt, reviews[0].submittedAt)
-        : undefined;
+      const timeToFirstReview =
+        reviews.length > 0 && reviews[0]
+          ? this.calculateTimeToFirstReview(
+              pr.createdAt,
+              reviews[0].submittedAt
+            )
+          : undefined;
 
       // Calculate time to merge
       const timeToMerge = pr.mergedAt
@@ -484,7 +527,8 @@ export class GitHubClient extends BaseAPIClient {
       ];
 
       // Enhance PR with metrics
-      if (timeToFirstReview !== undefined) pr.timeToFirstReview = timeToFirstReview;
+      if (timeToFirstReview !== undefined)
+        pr.timeToFirstReview = timeToFirstReview;
       if (timeToMerge !== undefined) pr.timeToMerge = timeToMerge;
       pr.reviews = reviews;
       pr.reviewComments = commentCount;
@@ -525,7 +569,11 @@ export class GitHubClient extends BaseAPIClient {
       if (!pr) continue;
 
       try {
-        const enhanced = await this.getEnhancedPullRequest(owner, repo, pr.number);
+        const enhanced = await this.getEnhancedPullRequest(
+          owner,
+          repo,
+          pr.number
+        );
         enhancedPRs.push(enhanced);
 
         // Rate limiting: delay every 5 requests
@@ -542,7 +590,10 @@ export class GitHubClient extends BaseAPIClient {
   }
 
   // Calculate time to first review in hours
-  private calculateTimeToFirstReview(createdAt: string, firstReviewAt: string): number {
+  private calculateTimeToFirstReview(
+    createdAt: string,
+    firstReviewAt: string
+  ): number {
     const created = new Date(createdAt).getTime();
     const reviewed = new Date(firstReviewAt).getTime();
     return (reviewed - created) / (1000 * 60 * 60); // hours
@@ -573,7 +624,8 @@ export class GitHubClient extends BaseAPIClient {
         totalReviews += pr.reviews.length;
 
         for (const review of pr.reviews) {
-          reviewsByReviewer[review.reviewer] = (reviewsByReviewer[review.reviewer] || 0) + 1;
+          reviewsByReviewer[review.reviewer] =
+            (reviewsByReviewer[review.reviewer] || 0) + 1;
 
           if (review.state === 'APPROVED') {
             approvedCount++;
@@ -589,7 +641,8 @@ export class GitHubClient extends BaseAPIClient {
       reviewsByReviewer,
       averageReviewsPerPR: prs.length > 0 ? totalReviews / prs.length : 0,
       approvalRate: totalReviews > 0 ? (approvedCount / totalReviews) * 100 : 0,
-      changesRequestedRate: totalReviews > 0 ? (changesRequestedCount / totalReviews) * 100 : 0,
+      changesRequestedRate:
+        totalReviews > 0 ? (changesRequestedCount / totalReviews) * 100 : 0,
     };
   }
 
@@ -610,7 +663,8 @@ export class GitHubClient extends BaseAPIClient {
       commitsByAuthor[author] = (commitsByAuthor[author] || 0) + 1;
 
       // Count by day
-      const dateStr = commit.date || commit.author.date || new Date().toISOString();
+      const dateStr =
+        commit.date || commit.author.date || new Date().toISOString();
       const dateParts = dateStr.split('T');
       const day = dateParts[0] || dateStr;
       commitsByDay.set(day, (commitsByDay.get(day) || 0) + 1);
@@ -620,20 +674,22 @@ export class GitHubClient extends BaseAPIClient {
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
-    const peakCommitDay = commitsByDayArray.length > 0
-      ? commitsByDayArray.reduce((max, day) =>
-          day.count > max.count ? day : max,
-          { date: '', count: 0 }
-        ).date
-      : '';
+    const peakCommitDay =
+      commitsByDayArray.length > 0
+        ? commitsByDayArray.reduce(
+            (max, day) => (day.count > max.count ? day : max),
+            { date: '', count: 0 }
+          ).date
+        : '';
 
     return {
       totalCommits: commits.length,
       commitsByAuthor,
       commitsByDay: commitsByDayArray,
-      averageCommitsPerDay: commitsByDayArray.length > 0
-        ? commits.length / commitsByDayArray.length
-        : 0,
+      averageCommitsPerDay:
+        commitsByDayArray.length > 0
+          ? commits.length / commitsByDayArray.length
+          : 0,
       peakCommitDay,
     };
   }
@@ -649,7 +705,10 @@ export class GitHubClient extends BaseAPIClient {
     let totalLinesAdded = 0;
     let totalLinesDeleted = 0;
     const filesChanged = new Set<string>();
-    const changesByAuthor: Record<string, { additions: number; deletions: number }> = {};
+    const changesByAuthor: Record<
+      string,
+      { additions: number; deletions: number }
+    > = {};
 
     for (const commit of commits) {
       if (commit.stats) {
@@ -684,7 +743,9 @@ export class GitHubClient extends BaseAPIClient {
   }
 
   // Data transformation methods
-  private transformRepositoryData(repo: GitHubRepositoryResponse): GitHubRepository {
+  private transformRepositoryData(
+    repo: GitHubRepositoryResponse
+  ): GitHubRepository {
     return {
       owner: repo.owner.login,
       repo: repo.name,
@@ -759,7 +820,9 @@ export class GitHubClient extends BaseAPIClient {
       // 4. It was closed during the sprint
 
       // Check if PR has any activity in the date range
-      const dates = [createdAt, updatedAt, mergedAt, closedAt].filter(d => d !== null) as Date[];
+      const dates = [createdAt, updatedAt, mergedAt, closedAt].filter(
+        d => d !== null
+      );
 
       for (const date of dates) {
         if (sinceDate && date < sinceDate) {
@@ -855,7 +918,11 @@ export class GitHubClient extends BaseAPIClient {
     return `${this.buildRepositoryUrl(owner, repo)}/commit/${sha}`;
   }
 
-  public buildPullRequestUrl(owner: string, repo: string, number: number): string {
+  public buildPullRequestUrl(
+    owner: string,
+    repo: string,
+    number: number
+  ): string {
     return `${this.buildRepositoryUrl(owner, repo)}/pull/${number}`;
   }
 
@@ -885,7 +952,9 @@ export class GitHubClient extends BaseAPIClient {
       const commitsByIssue = new Map<string, Commit[]>();
 
       for (const commit of allCommits) {
-        const referencedIssues = this.extractIssueKeysFromCommitMessage(commit.message);
+        const referencedIssues = this.extractIssueKeysFromCommitMessage(
+          commit.message
+        );
 
         for (const issueKey of referencedIssues) {
           // Only include commits that reference the requested issue keys
@@ -906,7 +975,11 @@ export class GitHubClient extends BaseAPIClient {
 
         // Sort commits by date (most recent first) and limit
         const sortedCommits = commits
-          .sort((a, b) => new Date(b.author.date).getTime() - new Date(a.author.date).getTime())
+          .sort(
+            (a, b) =>
+              new Date(b.author.date).getTime() -
+              new Date(a.author.date).getTime()
+          )
           .slice(0, params.max_commits_per_issue || 20);
 
         result.push({
@@ -916,9 +989,11 @@ export class GitHubClient extends BaseAPIClient {
       }
 
       return result;
-
     } catch (error) {
-      console.error(`Failed to find commits with Jira references for ${owner}/${repo}:`, error);
+      console.error(
+        `Failed to find commits with Jira references for ${owner}/${repo}:`,
+        error
+      );
       throw error;
     }
   }
@@ -964,7 +1039,10 @@ export class GitHubClient extends BaseAPIClient {
 
         // Sort PRs by date (most recent first) and limit
         const sortedPRs = prs
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
           .slice(0, maxPRsPerIssue);
 
         result.push({
@@ -974,9 +1052,11 @@ export class GitHubClient extends BaseAPIClient {
       }
 
       return result;
-
     } catch (error) {
-      console.error(`Failed to find pull requests with Jira references for ${owner}/${repo}:`, error);
+      console.error(
+        `Failed to find pull requests with Jira references for ${owner}/${repo}:`,
+        error
+      );
       throw error;
     }
   }
@@ -1012,7 +1092,9 @@ export class GitHubClient extends BaseAPIClient {
 
       // Safety check to prevent infinite loops
       if (allPRs.length >= 5000) {
-        console.warn(`Repository ${owner}/${repo} has too many PRs, limiting to first 5000`);
+        console.warn(
+          `Repository ${owner}/${repo} has too many PRs, limiting to first 5000`
+        );
         break;
       }
     }
@@ -1036,9 +1118,10 @@ export class GitHubClient extends BaseAPIClient {
       if (matches) {
         matches.forEach(match => {
           // Extract just the issue key part
-          const issueKey = match.replace(/^(?:fixes?|closes?|resolves?)\s+/i, '')
-                                .replace(/^#/, '')
-                                .toUpperCase();
+          const issueKey = match
+            .replace(/^(?:fixes?|closes?|resolves?)\s+/i, '')
+            .replace(/^#/, '')
+            .toUpperCase();
           issueKeys.add(issueKey);
         });
       }

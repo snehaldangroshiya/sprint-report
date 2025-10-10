@@ -1,7 +1,6 @@
 import { JiraClient } from '../clients/jira-client.js';
 import { Logger } from '../utils/logger.js';
-import { ValidationUtils } from '../utils/validation.js';
-import { MCPToolSchemas } from '../utils/validation.js';
+import { ValidationUtils, MCPToolSchemas } from '../utils/validation.js';
 
 export class JiraTools {
   private logger: Logger;
@@ -18,7 +17,9 @@ export class JiraTools {
 
     try {
       const boards = await this.jiraClient.getBoards();
-      this.logger.info('Successfully retrieved boards', { count: boards.length });
+      this.logger.info('Successfully retrieved boards', {
+        count: boards.length,
+      });
       return boards;
     } catch (error) {
       this.logger.error(error as Error, 'get_boards');
@@ -30,18 +31,23 @@ export class JiraTools {
    * Get sprints for a board
    */
   async getSprints(args: { board_id: string }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.jiraGetSprints, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.jiraGetSprints,
+      args
+    );
     this.logger.info('Getting sprints for board', { boardId: params.board_id });
 
     try {
       const sprints = await this.jiraClient.getSprints(params.board_id);
       this.logger.info('Successfully retrieved sprints', {
         boardId: params.board_id,
-        count: sprints.length
+        count: sprints.length,
       });
       return sprints;
     } catch (error) {
-      this.logger.error(error as Error, 'get_sprints', { boardId: params.board_id });
+      this.logger.error(error as Error, 'get_sprints', {
+        boardId: params.board_id,
+      });
       throw error;
     }
   }
@@ -50,7 +56,10 @@ export class JiraTools {
    * Get sprint details
    */
   async getSprintDetails(args: { sprint_id: string }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.jiraGetSprintDetails, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.jiraGetSprintDetails,
+      args
+    );
     this.logger.info('Getting sprint details', { sprintId: params.sprint_id });
 
     try {
@@ -60,7 +69,9 @@ export class JiraTools {
       });
       return sprint;
     } catch (error) {
-      this.logger.error(error as Error, 'get_sprint_details', { sprintId: params.sprint_id });
+      this.logger.error(error as Error, 'get_sprint_details', {
+        sprintId: params.sprint_id,
+      });
       throw error;
     }
   }
@@ -74,7 +85,10 @@ export class JiraTools {
     max_results?: number;
     start_at?: number;
   }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.jiraSearchIssues, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.jiraSearchIssues,
+      args
+    );
     this.logger.info('Searching Jira issues', { jql: params.jql });
 
     try {
@@ -86,7 +100,7 @@ export class JiraTools {
       this.logger.info('Successfully searched issues', {
         jql: params.jql,
         total: issues.length,
-        returned: issues.length
+        returned: issues.length,
       });
       return issues;
     } catch (error) {
@@ -99,7 +113,10 @@ export class JiraTools {
    * Get issue by key
    */
   async getIssue(args: { issue_key: string; fields?: string[] }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.jiraGetIssue, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.jiraGetIssue,
+      args
+    );
     this.logger.info('Getting Jira issue', { issueKey: params.issue_key });
 
     try {
@@ -109,7 +126,9 @@ export class JiraTools {
       });
       return issue;
     } catch (error) {
-      this.logger.error(error as Error, 'get_issue', { issueKey: params.issue_key });
+      this.logger.error(error as Error, 'get_issue', {
+        issueKey: params.issue_key,
+      });
       throw error;
     }
   }
@@ -121,10 +140,13 @@ export class JiraTools {
     board_id: string;
     sprint_count?: number;
   }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.jiraGetVelocityData, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.jiraGetVelocityData,
+      args
+    );
     this.logger.info('Calculating velocity data', {
       boardId: params.board_id,
-      sprintCount: params.sprint_count
+      sprintCount: params.sprint_count,
     });
 
     try {
@@ -142,12 +164,14 @@ export class JiraTools {
             ['Done', 'Closed', 'Resolved'].includes(issue.status)
           );
 
-          const velocity = completedIssues.reduce((sum: number, issue: any) =>
-            sum + (issue.storyPoints || 0), 0
+          const velocity = completedIssues.reduce(
+            (sum: number, issue: any) => sum + (issue.storyPoints || 0),
+            0
           );
 
-          const commitment = issues.reduce((sum: number, issue: any) =>
-            sum + (issue.storyPoints || 0), 0
+          const commitment = issues.reduce(
+            (sum: number, issue: any) => sum + (issue.storyPoints || 0),
+            0
           );
 
           return {
@@ -155,14 +179,20 @@ export class JiraTools {
             name: sprint.name,
             velocity,
             commitment,
-            completed: velocity
+            completed: velocity,
           };
         })
       );
 
       // Calculate average and trend
-      const totalVelocity = sprintVelocities.reduce((sum, sprint) => sum + sprint.velocity, 0);
-      const average = sprintVelocities.length > 0 ? totalVelocity / sprintVelocities.length : 0;
+      const totalVelocity = sprintVelocities.reduce(
+        (sum, sprint) => sum + sprint.velocity,
+        0
+      );
+      const average =
+        sprintVelocities.length > 0
+          ? totalVelocity / sprintVelocities.length
+          : 0;
 
       // Determine trend
       let trend: 'increasing' | 'decreasing' | 'stable' = 'stable';
@@ -171,8 +201,10 @@ export class JiraTools {
         const earlier = sprintVelocities.slice(-4, -2);
 
         if (earlier.length > 0) {
-          const recentAvg = recent.reduce((sum, s) => sum + s.velocity, 0) / recent.length;
-          const earlierAvg = earlier.reduce((sum, s) => sum + s.velocity, 0) / earlier.length;
+          const recentAvg =
+            recent.reduce((sum, s) => sum + s.velocity, 0) / recent.length;
+          const earlierAvg =
+            earlier.reduce((sum, s) => sum + s.velocity, 0) / earlier.length;
 
           const changePercent = ((recentAvg - earlierAvg) / earlierAvg) * 100;
 
@@ -184,19 +216,19 @@ export class JiraTools {
       const result = {
         sprints: sprintVelocities,
         average: Math.round(average * 100) / 100,
-        trend
+        trend,
       };
 
       this.logger.info('Successfully calculated velocity data', {
         boardId: params.board_id,
         average: result.average,
-        trend: result.trend
+        trend: result.trend,
       });
 
       return result;
     } catch (error) {
       this.logger.error(error as Error, 'get_velocity_data', {
-        boardId: params.board_id
+        boardId: params.board_id,
       });
       throw error;
     }
@@ -206,8 +238,13 @@ export class JiraTools {
    * Get burndown data
    */
   async getBurndownData(args: { sprint_id: string }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.jiraGetBurndownData, args);
-    this.logger.info('Calculating burndown data', { sprintId: params.sprint_id });
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.jiraGetBurndownData,
+      args
+    );
+    this.logger.info('Calculating burndown data', {
+      sprintId: params.sprint_id,
+    });
 
     try {
       const sprint = await this.jiraClient.getSprintData(params.sprint_id);
@@ -217,13 +254,16 @@ export class JiraTools {
       }
 
       const issues = await this.jiraClient.getSprintIssues(params.sprint_id);
-      const totalStoryPoints = issues.reduce((sum: number, issue: any) =>
-        sum + (issue.storyPoints || 0), 0
+      const totalStoryPoints = issues.reduce(
+        (sum: number, issue: any) => sum + (issue.storyPoints || 0),
+        0
       );
 
       const startDate = new Date(sprint.startDate);
       const endDate = new Date(sprint.endDate);
-      const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const totalDays = Math.ceil(
+        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
 
       const days = [];
       for (let i = 0; i <= totalDays; i++) {
@@ -240,24 +280,24 @@ export class JiraTools {
           date: currentDate.toISOString().split('T')[0],
           remaining: Math.round(remaining * 100) / 100,
           ideal: Math.round(ideal * 100) / 100,
-          completed: Math.round(completed * 100) / 100
+          completed: Math.round(completed * 100) / 100,
         });
       }
 
       const result = {
         sprint_id: params.sprint_id,
-        days
+        days,
       };
 
       this.logger.info('Successfully calculated burndown data', {
         sprintId: params.sprint_id,
-        totalDays: days.length
+        totalDays: days.length,
       });
 
       return result;
     } catch (error) {
       this.logger.error(error as Error, 'get_burndown_data', {
-        sprintId: params.sprint_id
+        sprintId: params.sprint_id,
       });
       throw error;
     }
@@ -277,7 +317,7 @@ export class JiraTools {
       const result = {
         healthy: true,
         latency,
-        service: 'jira'
+        service: 'jira',
       };
 
       this.logger.info('Jira health check passed', { latency });
@@ -288,7 +328,7 @@ export class JiraTools {
       return {
         healthy: false,
         error: (error as Error).message,
-        service: 'jira'
+        service: 'jira',
       };
     }
   }

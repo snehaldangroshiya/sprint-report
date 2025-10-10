@@ -5,28 +5,32 @@ import { Issue, SprintData } from '@/types';
 export interface SprintReportData {
   sprint: SprintData;
   issues: Issue[];
-  commits?: Array<{
-    issueKey: string;
-    commits: Array<{
-      sha: string;
-      message: string;
-      author: string;
-      date: string;
-      url: string;
-    }>;
-  }> | undefined;
-  pullRequests?: Array<{
-    issueKey: string;
-    prs: Array<{
-      number: number;
-      title: string;
-      state: string;
-      author: string;
-      createdAt: string;
-      mergedAt?: string | undefined;
-      url: string;
-    }>;
-  }> | undefined;
+  commits?:
+    | Array<{
+        issueKey: string;
+        commits: Array<{
+          sha: string;
+          message: string;
+          author: string;
+          date: string;
+          url: string;
+        }>;
+      }>
+    | undefined;
+  pullRequests?:
+    | Array<{
+        issueKey: string;
+        prs: Array<{
+          number: number;
+          title: string;
+          state: string;
+          author: string;
+          createdAt: string;
+          mergedAt?: string | undefined;
+          url: string;
+        }>;
+      }>
+    | undefined;
   metrics: {
     totalIssues: number;
     completedIssues: number;
@@ -37,20 +41,24 @@ export interface SprintReportData {
     completedStoryPoints: number;
     storyPointsCompletionRate: number;
     issueTypeBreakdown: Record<string, number>;
-    velocityData?: {
-      previousSprints: Array<{
-        sprintName: string;
-        completedPoints: number;
-        plannedPoints: number;
-      }>;
-      averageVelocity: number;
-      currentSprintProjection: number;
-    } | undefined;
-    burndownData?: Array<{
-      date: string;
-      remainingPoints: number;
-      idealRemaining: number;
-    }> | undefined;
+    velocityData?:
+      | {
+          previousSprints: Array<{
+            sprintName: string;
+            completedPoints: number;
+            plannedPoints: number;
+          }>;
+          averageVelocity: number;
+          currentSprintProjection: number;
+        }
+      | undefined;
+    burndownData?:
+      | Array<{
+          date: string;
+          remainingPoints: number;
+          idealRemaining: number;
+        }>
+      | undefined;
   };
   generatedAt: string;
 }
@@ -583,21 +591,42 @@ export class ReportTemplateEngine {
     }
 `;
 
-  public static generateMarkdownReport(data: SprintReportData, config: TemplateConfig): string {
+  public static generateMarkdownReport(
+    data: SprintReportData,
+    config: TemplateConfig
+  ): string {
     return this.renderTemplate(this.MARKDOWN_TEMPLATE, data, config);
   }
 
-  public static generateHTMLReport(data: SprintReportData, config: TemplateConfig): string {
+  public static generateHTMLReport(
+    data: SprintReportData,
+    config: TemplateConfig
+  ): string {
     const template = this.HTML_TEMPLATE.replace('{{>css}}', this.CSS_STYLES);
     return this.renderTemplate(template, data, config);
   }
 
-  public static generateJSONReport(data: SprintReportData, _config: TemplateConfig): string {
+  public static generateJSONReport(
+    data: SprintReportData,
+    _config: TemplateConfig
+  ): string {
     return JSON.stringify(data, null, 2);
   }
 
-  public static generateCSVReport(data: SprintReportData, _config: TemplateConfig): string {
-    const headers = ['Key', 'Summary', 'Status', 'Assignee', 'Type', 'Priority', 'Story Points', 'Labels'];
+  public static generateCSVReport(
+    data: SprintReportData,
+    _config: TemplateConfig
+  ): string {
+    const headers = [
+      'Key',
+      'Summary',
+      'Status',
+      'Assignee',
+      'Type',
+      'Priority',
+      'Story Points',
+      'Labels',
+    ];
     const rows = [headers.join(',')];
 
     for (const issue of data.issues) {
@@ -609,7 +638,7 @@ export class ReportTemplateEngine {
         this.escapeCSV(issue.issueType),
         this.escapeCSV(issue.priority),
         issue.storyPoints?.toString() || '',
-        this.escapeCSV(issue.labels.join('; '))
+        this.escapeCSV(issue.labels.join('; ')),
       ];
       rows.push(row.join(','));
     }
@@ -617,7 +646,11 @@ export class ReportTemplateEngine {
     return rows.join('\n');
   }
 
-  private static renderTemplate(template: string, data: SprintReportData, _config: TemplateConfig): string {
+  private static renderTemplate(
+    template: string,
+    data: SprintReportData,
+    _config: TemplateConfig
+  ): string {
     let rendered = template;
 
     // Simple template replacement (in production, use a proper template engine like Handlebars)
@@ -634,77 +667,128 @@ export class ReportTemplateEngine {
     rendered = rendered.replace(/\{\{generatedAt\}\}/g, data.generatedAt);
 
     // Handle conditional blocks (simplified)
-    rendered = rendered.replace(/\{\{#if sprint\.goal\}\}(.*?)\{\{\/if\}\}/gs, (_match, content) => {
-      return data.sprint.goal ? content : '';
-    });
+    rendered = rendered.replace(
+      /\{\{#if sprint\.goal\}\}(.*?)\{\{\/if\}\}/gs,
+      (_match, content) => {
+        return data.sprint.goal ? content : '';
+      }
+    );
 
-    rendered = rendered.replace(/\{\{#if metrics\.velocityData\}\}(.*?)\{\{\/if\}\}/gs, (_match, content) => {
-      return data.metrics.velocityData ? content : '';
-    });
+    rendered = rendered.replace(
+      /\{\{#if metrics\.velocityData\}\}(.*?)\{\{\/if\}\}/gs,
+      (_match, content) => {
+        return data.metrics.velocityData ? content : '';
+      }
+    );
 
-    rendered = rendered.replace(/\{\{#if commits\}\}(.*?)\{\{\/if\}\}/gs, (_match, content) => {
-      return data.commits && data.commits.length > 0 ? content : '';
-    });
+    rendered = rendered.replace(
+      /\{\{#if commits\}\}(.*?)\{\{\/if\}\}/gs,
+      (_match, content) => {
+        return data.commits && data.commits.length > 0 ? content : '';
+      }
+    );
 
-    rendered = rendered.replace(/\{\{#if pullRequests\}\}(.*?)\{\{\/if\}\}/gs, (_match, content) => {
-      return data.pullRequests && data.pullRequests.length > 0 ? content : '';
-    });
+    rendered = rendered.replace(
+      /\{\{#if pullRequests\}\}(.*?)\{\{\/if\}\}/gs,
+      (_match, content) => {
+        return data.pullRequests && data.pullRequests.length > 0 ? content : '';
+      }
+    );
 
     // Handle each loops (simplified)
     rendered = this.handleEachLoop(rendered, 'issues', data.issues);
     rendered = this.handleEachLoop(rendered, 'commits', data.commits || []);
-    rendered = this.handleEachLoop(rendered, 'pullRequests', data.pullRequests || []);
+    rendered = this.handleEachLoop(
+      rendered,
+      'pullRequests',
+      data.pullRequests || []
+    );
 
     // Handle issue type breakdown
     if (data.metrics.issueTypeBreakdown) {
       const typeEntries = Object.entries(data.metrics.issueTypeBreakdown);
-      rendered = this.handleKeyValueLoop(rendered, 'metrics.issueTypeBreakdown', typeEntries);
+      rendered = this.handleKeyValueLoop(
+        rendered,
+        'metrics.issueTypeBreakdown',
+        typeEntries
+      );
     }
 
     return rendered;
   }
 
-  private static handleEachLoop(template: string, arrayName: string, array: any[]): string {
-    const regex = new RegExp(`\\{\\{#each ${arrayName}\\}\\}(.*?)\\{\\{\/each\\}\\}`, 'gs');
+  private static handleEachLoop(
+    template: string,
+    arrayName: string,
+    array: any[]
+  ): string {
+    const regex = new RegExp(
+      `\\{\\{#each ${arrayName}\\}\\}(.*?)\\{\\{\/each\\}\\}`,
+      'gs'
+    );
 
     return template.replace(regex, (_match, content) => {
-      return array.map(item => {
-        let itemContent = content;
+      return array
+        .map(item => {
+          let itemContent = content;
 
-        // Replace item properties
-        itemContent = itemContent.replace(/\{\{(\w+)\}\}/g, (_propMatch: string, prop: string) => {
-          const value = (item as any)[prop];
-          return value !== undefined ? String(value) : '';
-        });
+          // Replace item properties
+          itemContent = itemContent.replace(
+            /\{\{(\w+)\}\}/g,
+            (_propMatch: string, prop: string) => {
+              const value = item[prop];
+              return value !== undefined ? String(value) : '';
+            }
+          );
 
-        // Handle nested each loops (e.g., commits within commit groups)
-        itemContent = itemContent.replace(/\{\{#each (\w+)\}\}(.*?)\{\{\/each\}\}/gs, (_nestedMatch: any, nestedArrayName: any, nestedContent: any) => {
-          const nestedArray = (item as any)[nestedArrayName] || [];
-          return nestedArray.map((nestedItem: any) => {
-            let nestedItemContent = nestedContent;
-            nestedItemContent = nestedItemContent.replace(/\{\{(\w+)\}\}/g, (_nestedPropMatch: string, nestedProp: string) => {
-              const nestedValue = nestedItem[nestedProp];
-              return nestedValue !== undefined ? String(nestedValue) : '';
-            });
-            return nestedItemContent;
-          }).join('');
-        });
+          // Handle nested each loops (e.g., commits within commit groups)
+          itemContent = itemContent.replace(
+            /\{\{#each (\w+)\}\}(.*?)\{\{\/each\}\}/gs,
+            (_nestedMatch: any, nestedArrayName: any, nestedContent: any) => {
+              const nestedArray = item[nestedArrayName] || [];
+              return nestedArray
+                .map((nestedItem: any) => {
+                  let nestedItemContent = nestedContent;
+                  nestedItemContent = nestedItemContent.replace(
+                    /\{\{(\w+)\}\}/g,
+                    (_nestedPropMatch: string, nestedProp: string) => {
+                      const nestedValue = nestedItem[nestedProp];
+                      return nestedValue !== undefined
+                        ? String(nestedValue)
+                        : '';
+                    }
+                  );
+                  return nestedItemContent;
+                })
+                .join('');
+            }
+          );
 
-        return itemContent;
-      }).join('');
+          return itemContent;
+        })
+        .join('');
     });
   }
 
-  private static handleKeyValueLoop(template: string, objectPath: string, entries: [string, any][]): string {
-    const regex = new RegExp(`\\{\\{#each ${objectPath.replace('.', '\\.')}\\}\\}(.*?)\\{\\{\/each\\}\\}`, 'gs');
+  private static handleKeyValueLoop(
+    template: string,
+    objectPath: string,
+    entries: [string, any][]
+  ): string {
+    const regex = new RegExp(
+      `\\{\\{#each ${objectPath.replace('.', '\\.')}\\}\\}(.*?)\\{\\{\/each\\}\\}`,
+      'gs'
+    );
 
     return template.replace(regex, (_match, content) => {
-      return entries.map(([key, value]) => {
-        let itemContent = content;
-        itemContent = itemContent.replace(/\{\{@key\}\}/g, key);
-        itemContent = itemContent.replace(/\{\{this\}\}/g, String(value));
-        return itemContent;
-      }).join('');
+      return entries
+        .map(([key, value]) => {
+          let itemContent = content;
+          itemContent = itemContent.replace(/\{\{@key\}\}/g, key);
+          itemContent = itemContent.replace(/\{\{this\}\}/g, String(value));
+          return itemContent;
+        })
+        .join('');
     });
   }
 
@@ -726,7 +810,11 @@ export class ReportDataHelper {
     velocityData?: any,
     burndownData?: any
   ): SprintReportData {
-    const metrics = this.calculateSprintMetrics(issues, velocityData, burndownData);
+    const metrics = this.calculateSprintMetrics(
+      issues,
+      velocityData,
+      burndownData
+    );
 
     return {
       sprint,
@@ -748,7 +836,9 @@ export class ReportDataHelper {
       ['Done', 'Closed', 'Resolved'].includes(issue.status)
     ).length;
     const inProgressIssues = issues.filter(issue =>
-      ['In Progress', 'In Review', 'Code Review', 'Testing'].includes(issue.status)
+      ['In Progress', 'In Review', 'Code Review', 'Testing'].includes(
+        issue.status
+      )
     ).length;
     const todoIssues = issues.filter(issue =>
       ['To Do', 'Open', 'New', 'Backlog'].includes(issue.status)
@@ -763,20 +853,27 @@ export class ReportDataHelper {
       .map(issue => issue.storyPoints || 0)
       .reduce((sum, points) => sum + points, 0);
 
-    const issueTypeBreakdown = issues.reduce((acc, issue) => {
-      acc[issue.issueType] = (acc[issue.issueType] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const issueTypeBreakdown = issues.reduce(
+      (acc, issue) => {
+        acc[issue.issueType] = (acc[issue.issueType] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     return {
       totalIssues,
       completedIssues,
       inProgressIssues,
       todoIssues,
-      completionRate: totalIssues > 0 ? Math.round((completedIssues / totalIssues) * 100) : 0,
+      completionRate:
+        totalIssues > 0 ? Math.round((completedIssues / totalIssues) * 100) : 0,
       totalStoryPoints,
       completedStoryPoints,
-      storyPointsCompletionRate: totalStoryPoints > 0 ? Math.round((completedStoryPoints / totalStoryPoints) * 100) : 0,
+      storyPointsCompletionRate:
+        totalStoryPoints > 0
+          ? Math.round((completedStoryPoints / totalStoryPoints) * 100)
+          : 0,
       issueTypeBreakdown,
       velocityData,
       burndownData,

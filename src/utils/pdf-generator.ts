@@ -1,4 +1,5 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
+
 import { Logger } from '../utils/logger';
 
 export interface PDFGenerationOptions {
@@ -35,8 +36,8 @@ export class PDFGenerator {
           '--disable-accelerated-2d-canvas',
           '--no-first-run',
           '--no-zygote',
-          '--disable-gpu'
-        ]
+          '--disable-gpu',
+        ],
       });
       this.logger.info('PDF Generator initialized');
     } catch (error) {
@@ -61,27 +62,29 @@ export class PDFGenerator {
       // Set content
       await page.setContent(html, {
         waitUntil: 'networkidle0',
-        timeout: 30000
+        timeout: 30000,
       });
 
       // Configure PDF options
       const pdfOptions = {
-        format: options.format || 'A4' as const,
+        format: options.format || ('A4' as const),
         landscape: options.orientation === 'landscape',
         margin: options.margins || {
           top: '1in',
           right: '1in',
           bottom: '1in',
-          left: '1in'
+          left: '1in',
         },
         printBackground: true,
         displayHeaderFooter: options.displayHeaderFooter || false,
         headerTemplate: options.headerTemplate || '',
-        footerTemplate: options.footerTemplate || `
+        footerTemplate:
+          options.footerTemplate ||
+          `
           <div style="font-size: 10px; margin: 0 auto; color: #666;">
             <span class="pageNumber"></span> / <span class="totalPages"></span>
           </div>
-        `
+        `,
       };
 
       // Generate PDF
@@ -90,7 +93,7 @@ export class PDFGenerator {
       this.logger.info('PDF generated successfully', {
         type: 'pdf_generated',
         size: pdfBuffer.length,
-        format: options.format
+        format: options.format,
       });
 
       return pdfBuffer;
@@ -117,7 +120,7 @@ export class PDFGenerator {
         <div style="font-size: 12px; margin: 0 auto; padding: 10px; border-bottom: 1px solid #eee;">
           <strong>Sprint Report: ${reportData.sprint?.name || 'Unknown'}</strong>
         </div>
-      `
+      `,
     });
   }
 
@@ -134,7 +137,7 @@ export class PDFGenerator {
         <div style="font-size: 12px; margin: 0 auto; padding: 10px; border-bottom: 1px solid #eee;">
           <strong>Sprint Analytics Report</strong>
         </div>
-      `
+      `,
     });
   }
 
@@ -256,7 +259,9 @@ export class PDFGenerator {
             </div>
           </div>
 
-          ${reportData.issues ? `
+          ${
+            reportData.issues
+              ? `
           <div class="section">
             <h2>Sprint Issues</h2>
             <table>
@@ -270,7 +275,9 @@ export class PDFGenerator {
                 </tr>
               </thead>
               <tbody>
-                ${reportData.issues.map((issue: any) => `
+                ${reportData.issues
+                  .map(
+                    (issue: any) => `
                   <tr>
                     <td><strong>${issue.key}</strong></td>
                     <td>${issue.fields.summary}</td>
@@ -282,13 +289,19 @@ export class PDFGenerator {
                     </td>
                     <td>${issue.fields.assignee?.displayName || 'Unassigned'}</td>
                   </tr>
-                `).join('')}
+                `
+                  )
+                  .join('')}
               </tbody>
             </table>
           </div>
-          ` : ''}
+          `
+              : ''
+          }
 
-          ${reportData.commits ? `
+          ${
+            reportData.commits
+              ? `
           <div class="section">
             <h2>Code Activity</h2>
             <p><strong>Total Commits:</strong> ${reportData.commits.length}</p>
@@ -301,17 +314,24 @@ export class PDFGenerator {
                 </tr>
               </thead>
               <tbody>
-                ${reportData.commits.slice(0, 10).map((commit: any) => `
+                ${reportData.commits
+                  .slice(0, 10)
+                  .map(
+                    (commit: any) => `
                   <tr>
                     <td>${new Date(commit.commit.committer.date).toLocaleDateString()}</td>
                     <td>${commit.commit.author.name}</td>
                     <td>${commit.commit.message.split('\n')[0]}</td>
                   </tr>
-                `).join('')}
+                `
+                  )
+                  .join('')}
               </tbody>
             </table>
           </div>
-          ` : ''}
+          `
+              : ''
+          }
         </body>
       </html>
     `;
@@ -436,7 +456,9 @@ export class PDFGenerator {
             </div>
           </div>
 
-          ${analyticsData.sprintComparison ? `
+          ${
+            analyticsData.sprintComparison
+              ? `
           <div class="section">
             <h2>Sprint Comparison</h2>
             <table>
@@ -450,7 +472,9 @@ export class PDFGenerator {
                 </tr>
               </thead>
               <tbody>
-                ${analyticsData.sprintComparison.map((sprint: any) => `
+                ${analyticsData.sprintComparison
+                  .map(
+                    (sprint: any) => `
                   <tr>
                     <td><strong>${sprint.name}</strong></td>
                     <td>${sprint.planned}</td>
@@ -458,11 +482,15 @@ export class PDFGenerator {
                     <td>${sprint.velocity}</td>
                     <td>${((sprint.completed / sprint.planned) * 100).toFixed(1)}%</td>
                   </tr>
-                `).join('')}
+                `
+                  )
+                  .join('')}
               </tbody>
             </table>
           </div>
-          ` : ''}
+          `
+              : ''
+          }
         </body>
       </html>
     `;

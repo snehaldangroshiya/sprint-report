@@ -6,23 +6,25 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { AppConfig, ServerInfo, HealthStatus } from '@/types';
-import { JiraClient } from '@/clients/jira-client';
-import { GitHubClient } from '@/clients/github-client';
+
+import { EnhancedServerContext } from './enhanced-mcp-server';
+import { ToolRegistry } from './tool-registry';
+
 import { CacheManager } from '@/cache/cache-manager';
 import { CacheOptimizer } from '@/cache/cache-optimizer';
-import { ServiceRateLimiter } from '@/utils/rate-limiter';
-import { Logger, getLogger } from '@/utils/logger';
+import { GitHubClient } from '@/clients/github-client';
+import { JiraClient } from '@/clients/jira-client';
 import { createAppConfig } from '@/config/environment';
-import { BaseError } from '@/utils/errors';
-import { ToolRegistry } from './tool-registry';
 import { initializeGlobalPerformanceMonitor } from '@/performance/performance-monitor';
-import { SprintService } from '@/services/sprint-service';
 import { AnalyticsService } from '@/services/analytics-service';
+import { SprintService } from '@/services/sprint-service';
+import { AppConfig, ServerInfo, HealthStatus } from '@/types';
+import { BaseError } from '@/utils/errors';
+import { Logger, getLogger } from '@/utils/logger';
+import { ServiceRateLimiter } from '@/utils/rate-limiter';
 import { ExportService } from '@/services/export-service';
 import { ReportGenerator } from '@/reporting/report-generator';
 import { ReportTools } from '@/tools/report-tools';
-import { EnhancedServerContext } from './enhanced-mcp-server';
 
 // Legacy ServerContext - kept for backwards compatibility
 export interface ServerContext {
@@ -72,7 +74,7 @@ export class MCPServer {
     });
 
     // Handle tool execution
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    this.server.setRequestHandler(CallToolRequestSchema, async request => {
       if (!this.context) {
         throw new BaseError(
           'SERVER_NOT_INITIALIZED',
@@ -115,32 +117,32 @@ export class MCPServer {
       } catch (error) {
         const duration = Date.now() - Date.now();
 
-        this.context.logger.error(
-          error as Error,
-          `tool_${name}`,
-          {
-            tool_name: name,
-            arguments: Object.keys(args || {}),
-            duration,
-          }
-        );
+        this.context.logger.error(error as Error, `tool_${name}`, {
+          tool_name: name,
+          arguments: Object.keys(args || {}),
+          duration,
+        });
 
         // Transform internal errors to MCP-compatible format
         if (error instanceof BaseError) {
           return {
-            content: [{
-              type: 'text',
-              text: `Error: ${error.userMessage}`,
-            }],
+            content: [
+              {
+                type: 'text',
+                text: `Error: ${error.userMessage}`,
+              },
+            ],
             isError: true,
           };
         }
 
         return {
-          content: [{
-            type: 'text',
-            text: `Unexpected error occurred. Please try again later.`,
-          }],
+          content: [
+            {
+              type: 'text',
+              text: `Unexpected error occurred. Please try again later.`,
+            },
+          ],
           isError: true,
         };
       }
@@ -162,7 +164,7 @@ export class MCPServer {
       // Initialize logger first
       const logger = getLogger({
         level: config.logging.level as 'error' | 'warn' | 'info' | 'debug',
-        enableConsole: config.logging.enableApiLogging
+        enableConsole: config.logging.enableApiLogging,
       });
 
       logger.info('Server initialization started', {
@@ -184,14 +186,26 @@ export class MCPServer {
 
       // Initialize performance monitoring and optimization
       const performanceMonitor = initializeGlobalPerformanceMonitor();
-      const cacheOptimizer = new CacheOptimizer(cacheManager, performanceMonitor);
+      const cacheOptimizer = new CacheOptimizer(
+        cacheManager,
+        performanceMonitor
+      );
 
       // Initialize reporting services
-      const sprintService = new SprintService(jiraClient, githubClient, cacheManager);
+      const sprintService = new SprintService(
+        jiraClient,
+        githubClient,
+        cacheManager
+      );
       const analyticsService = (sprintService as any).analyticsService;
       const exportService = new ExportService();
       const reportGenerator = new ReportGenerator(sprintService);
-      const reportTools = new ReportTools(sprintService, analyticsService, exportService, reportGenerator);
+      const reportTools = new ReportTools(
+        sprintService,
+        analyticsService,
+        exportService,
+        reportGenerator
+      );
 
       // Store context
       this.context = {
@@ -222,17 +236,15 @@ export class MCPServer {
         initialization_time: initTime,
         tools_registered: this.toolRegistry.getToolDefinitions().length,
       });
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       console.error('Failed to initialize MCP server:', errorMessage);
 
       if (this.context?.logger) {
-        this.context.logger.error(
-          error as Error,
-          'server_initialization',
-          { phase: 'startup' }
-        );
+        this.context.logger.error(error as Error, 'server_initialization', {
+          phase: 'startup',
+        });
       }
 
       throw error;
@@ -277,9 +289,12 @@ export class MCPServer {
           return { name, success: true, result, duration };
         } catch (error) {
           const duration = Date.now() - startTime;
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          const errorMessage =
+            error instanceof Error ? error.message : 'Unknown error';
 
-          logger.error(error as Error, `Health check failed: ${name}`, { duration });
+          logger.error(error as Error, `Health check failed: ${name}`, {
+            duration,
+          });
           return { name, success: false, error: errorMessage, duration };
         }
       })
@@ -289,7 +304,10 @@ export class MCPServer {
     const failedChecks = results
       .map((result, index) => ({
         name: healthChecks[index]?.name || 'unknown',
-        result: result.status === 'fulfilled' ? result.value : { success: false, error: result.reason },
+        result:
+          result.status === 'fulfilled'
+            ? result.value
+            : { success: false, error: result.reason },
       }))
       .filter(({ result }) => !result.success);
 
@@ -350,16 +368,12 @@ export class MCPServer {
 
     try {
       // Cleanup resources
-      await Promise.allSettled([
-        cacheManager.cleanup(),
-        rateLimiter.destroy()
-      ]);
+      await Promise.allSettled([cacheManager.cleanup(), rateLimiter.destroy()]);
 
       logger.info('Server shutdown completed gracefully', {
         type: 'server_shutdown_complete',
         total_uptime: Date.now() - this.startTime,
       });
-
     } catch (error) {
       console.error('Error during shutdown:', error);
     } finally {
@@ -375,7 +389,7 @@ export class MCPServer {
         timestamp: new Date().toISOString(),
         uptime: 0,
         version: '1.0.0',
-        checks: []
+        checks: [],
       };
     }
 
@@ -393,22 +407,54 @@ export class MCPServer {
       const checks = [
         {
           name: 'jira',
-          status: (jiraHealth.status === 'fulfilled' && jiraHealth.value.healthy ? 'healthy' : 'unhealthy') as 'healthy' | 'unhealthy',
-          responseTime: jiraHealth.status === 'fulfilled' ? ('responseTime' in jiraHealth.value ? jiraHealth.value.responseTime : (jiraHealth.value as any).latency || 0) : 0,
-          error: jiraHealth.status === 'rejected' ? jiraHealth.reason?.message : undefined
+          status: (jiraHealth.status === 'fulfilled' && jiraHealth.value.healthy
+            ? 'healthy'
+            : 'unhealthy') as 'healthy' | 'unhealthy',
+          responseTime:
+            jiraHealth.status === 'fulfilled'
+              ? 'responseTime' in jiraHealth.value
+                ? jiraHealth.value.responseTime
+                : (jiraHealth.value as any).latency || 0
+              : 0,
+          error:
+            jiraHealth.status === 'rejected'
+              ? jiraHealth.reason?.message
+              : undefined,
         },
         {
           name: 'github',
-          status: (githubHealth.status === 'fulfilled' && githubHealth.value.healthy ? 'healthy' : 'unhealthy') as 'healthy' | 'unhealthy',
-          responseTime: githubHealth.status === 'fulfilled' ? ('responseTime' in githubHealth.value ? githubHealth.value.responseTime : (githubHealth.value as any).latency || 0) : 0,
-          error: githubHealth.status === 'rejected' ? githubHealth.reason?.message : undefined
+          status: (githubHealth.status === 'fulfilled' &&
+          githubHealth.value.healthy
+            ? 'healthy'
+            : 'unhealthy') as 'healthy' | 'unhealthy',
+          responseTime:
+            githubHealth.status === 'fulfilled'
+              ? 'responseTime' in githubHealth.value
+                ? githubHealth.value.responseTime
+                : (githubHealth.value as any).latency || 0
+              : 0,
+          error:
+            githubHealth.status === 'rejected'
+              ? githubHealth.reason?.message
+              : undefined,
         },
         {
           name: 'cache',
-          status: (cacheHealth.status === 'fulfilled' && cacheHealth.value.healthy ? 'healthy' : 'unhealthy') as 'healthy' | 'unhealthy',
-          responseTime: cacheHealth.status === 'fulfilled' ? ('responseTime' in cacheHealth.value ? cacheHealth.value.responseTime : (cacheHealth.value as any).latency || 0) : 0,
-          error: cacheHealth.status === 'rejected' ? cacheHealth.reason?.message : undefined
-        }
+          status: (cacheHealth.status === 'fulfilled' &&
+          cacheHealth.value.healthy
+            ? 'healthy'
+            : 'unhealthy') as 'healthy' | 'unhealthy',
+          responseTime:
+            cacheHealth.status === 'fulfilled'
+              ? 'responseTime' in cacheHealth.value
+                ? cacheHealth.value.responseTime
+                : (cacheHealth.value as any).latency || 0
+              : 0,
+          error:
+            cacheHealth.status === 'rejected'
+              ? cacheHealth.reason?.message
+              : undefined,
+        },
       ];
 
       const allHealthy = checks.every(check => check.status === 'healthy');
@@ -418,16 +464,15 @@ export class MCPServer {
         timestamp: new Date().toISOString(),
         uptime,
         version: '1.0.0',
-        checks
+        checks,
       };
-
     } catch (error) {
       return {
         status: 'unhealthy',
         timestamp: new Date().toISOString(),
         uptime,
         version: '1.0.0',
-        checks: []
+        checks: [],
       };
     }
   }
@@ -438,7 +483,24 @@ export class MCPServer {
       name: 'jira-github-sprint-reporter',
       version: '1.0.0',
       uptime: this.context ? Date.now() - this.startTime : 0,
-      capabilities: ['jira_integration', 'github_integration', 'sprint_reporting']
+      capabilities: [
+        'jira_integration',
+        'github_integration',
+        'sprint_reporting',
+      ],
     };
+  }
+
+  // Get server context (mainly for testing)
+  getContext(): EnhancedServerContext {
+    if (!this.context) {
+      throw new BaseError(
+        'SERVER_NOT_INITIALIZED',
+        'Server not initialized',
+        false,
+        'Server context is not available. Call initialize() first.'
+      );
+    }
+    return this.context;
   }
 }

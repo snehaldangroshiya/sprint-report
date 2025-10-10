@@ -1,7 +1,11 @@
 // Intelligent cache optimization and management system
 
+import {
+  PerformanceMonitor,
+  measurePerformance,
+} from '../performance/performance-monitor';
+
 import { CacheManager } from './cache-manager';
-import { PerformanceMonitor, measurePerformance } from '../performance/performance-monitor';
 
 export interface CachePattern {
   keyPattern: string;
@@ -49,7 +53,10 @@ export class CacheOptimizer {
   private cachePatterns: Map<string, CachePattern> = new Map();
   private optimizationRules: CacheOptimizationRule[] = [];
   private prefetchStrategies: Map<string, PrefetchStrategy> = new Map();
-  private optimizationHistory: Array<{ timestamp: number; result: CacheOptimizationResult }> = [];
+  private optimizationHistory: Array<{
+    timestamp: number;
+    result: CacheOptimizationResult;
+  }> = [];
 
   constructor(
     private cacheManager: CacheManager,
@@ -63,48 +70,56 @@ export class CacheOptimizer {
     // High-frequency, high-hit-rate keys should have extended TTL
     this.addOptimizationRule({
       name: 'extend-popular-keys',
-      condition: (pattern) => pattern.frequency > 100 && pattern.hitRate > 0.8,
+      condition: pattern => pattern.frequency > 100 && pattern.hitRate > 0.8,
       action: 'extend_ttl',
       value: 1.5, // Multiply current TTL by 1.5
       enabled: true,
-      description: 'Extend TTL for frequently accessed keys with high hit rates'
+      description:
+        'Extend TTL for frequently accessed keys with high hit rates',
     });
 
     // Low-hit-rate keys should be evicted
     this.addOptimizationRule({
       name: 'evict-low-performance',
-      condition: (pattern) => pattern.hitRate < 0.2 && (Date.now() - pattern.lastAccessed) > 300000, // 5 minutes
+      condition: pattern =>
+        pattern.hitRate < 0.2 && Date.now() - pattern.lastAccessed > 300000, // 5 minutes
       action: 'evict',
       enabled: true,
-      description: 'Evict keys with low hit rates that haven\'t been accessed recently'
+      description:
+        "Evict keys with low hit rates that haven't been accessed recently",
     });
 
     // Large, infrequently accessed keys should have reduced TTL
     this.addOptimizationRule({
       name: 'reduce-large-stale',
-      condition: (pattern) => pattern.avgSize > 10000 && pattern.frequency < 10 && (Date.now() - pattern.lastAccessed) > 180000, // 3 minutes
+      condition: pattern =>
+        pattern.avgSize > 10000 &&
+        pattern.frequency < 10 &&
+        Date.now() - pattern.lastAccessed > 180000, // 3 minutes
       action: 'reduce_ttl',
       value: 0.5, // Reduce TTL by half
       enabled: true,
-      description: 'Reduce TTL for large, infrequently accessed keys'
+      description: 'Reduce TTL for large, infrequently accessed keys',
     });
 
     // Preload patterns for predictable access
     this.addOptimizationRule({
       name: 'preload-sprint-data',
-      condition: (pattern) => pattern.keyPattern.includes('sprint:') && pattern.hitRate > 0.6,
+      condition: pattern =>
+        pattern.keyPattern.includes('sprint:') && pattern.hitRate > 0.6,
       action: 'preload',
       enabled: true,
-      description: 'Preload related sprint data for frequently accessed sprints'
+      description:
+        'Preload related sprint data for frequently accessed sprints',
     });
 
     // Compress large values that are accessed frequently
     this.addOptimizationRule({
       name: 'compress-large-frequent',
-      condition: (pattern) => pattern.avgSize > 50000 && pattern.frequency > 50,
+      condition: pattern => pattern.avgSize > 50000 && pattern.frequency > 50,
       action: 'compress',
       enabled: true,
-      description: 'Compress large values that are accessed frequently'
+      description: 'Compress large values that are accessed frequently',
     });
   }
 
@@ -116,13 +131,13 @@ export class CacheOptimizer {
         `sprint:${context.sprintId}:issues`,
         `sprint:${context.sprintId}:metrics`,
         `sprint:${context.sprintId}:velocity`,
-        `sprint:${context.sprintId}:burndown`
+        `sprint:${context.sprintId}:burndown`,
       ],
       dataLoader: async (_keys: string[]) => {
         // This would be implemented with actual data loading logic
         return {};
       },
-      priority: 1
+      priority: 1,
     });
 
     // Repository-related data prefetching
@@ -132,12 +147,12 @@ export class CacheOptimizer {
         `repo:${context.owner}:${context.repo}:commits:recent`,
         `repo:${context.owner}:${context.repo}:prs:open`,
         `repo:${context.owner}:${context.repo}:contributors`,
-        `repo:${context.owner}:${context.repo}:stats`
+        `repo:${context.owner}:${context.repo}:stats`,
       ],
       dataLoader: async (_keys: string[]) => {
         return {};
       },
-      priority: 2
+      priority: 2,
     });
 
     // Cross-service correlation prefetching
@@ -158,7 +173,7 @@ export class CacheOptimizer {
         return {};
       },
       priority: 3,
-      dependencies: ['sprint-ecosystem']
+      dependencies: ['sprint-ecosystem'],
     });
   }
 
@@ -172,7 +187,9 @@ export class CacheOptimizer {
       await this.analyzeKeyPattern(key);
     }
 
-    return Array.from(this.cachePatterns.values()).sort((a, b) => b.priority.localeCompare(a.priority));
+    return Array.from(this.cachePatterns.values()).sort((a, b) =>
+      b.priority.localeCompare(a.priority)
+    );
   }
 
   private async analyzeKeyPattern(key: string): Promise<void> {
@@ -183,14 +200,14 @@ export class CacheOptimizer {
     const pattern = this.extractPattern(key);
 
     // Get or create pattern analysis
-    let cachePattern = existing || {
+    const cachePattern = existing || {
       keyPattern: pattern,
       frequency: 0,
       avgSize: 0,
       hitRate: 0,
       lastAccessed: now,
       priority: 'medium' as const,
-      tags: this.extractTags(key)
+      tags: this.extractTags(key),
     };
 
     // Update frequency and access time
@@ -238,7 +255,7 @@ export class CacheOptimizer {
   }
 
   private calculatePriority(pattern: CachePattern): 'high' | 'medium' | 'low' {
-    const score = (pattern.frequency * 0.4) + (pattern.hitRate * 0.6);
+    const score = pattern.frequency * 0.4 + pattern.hitRate * 0.6;
 
     if (score > 80) return 'high';
     if (score > 40) return 'medium';
@@ -256,11 +273,11 @@ export class CacheOptimizer {
         extend_ttl: 0,
         reduce_ttl: 0,
         evict: 0,
-        compress: 0
+        compress: 0,
       },
       spaceSaved: 0,
       estimatedPerformanceGain: 0,
-      recommendations: []
+      recommendations: [],
     };
 
     for (const pattern of patterns) {
@@ -273,7 +290,7 @@ export class CacheOptimizer {
     // Record optimization history
     this.optimizationHistory.push({
       timestamp: Date.now(),
-      result: { ...result }
+      result: { ...result },
     });
 
     // Limit history size
@@ -284,14 +301,20 @@ export class CacheOptimizer {
     return result;
   }
 
-  private async applyOptimizationRules(pattern: CachePattern, result: CacheOptimizationResult): Promise<void> {
+  private async applyOptimizationRules(
+    pattern: CachePattern,
+    result: CacheOptimizationResult
+  ): Promise<void> {
     for (const rule of this.optimizationRules) {
       if (!rule.enabled || !rule.condition(pattern)) continue;
 
       try {
         await this.executeOptimizationAction(rule, pattern, result);
       } catch (error) {
-        console.warn(`Failed to execute optimization rule ${rule.name}:`, error);
+        console.warn(
+          `Failed to execute optimization rule ${rule.name}:`,
+          error
+        );
       }
     }
   }
@@ -349,23 +372,35 @@ export class CacheOptimizer {
           .map(([key, value]) => ({
             key,
             value,
-            ttl: 1800 // 30 minutes TTL
+            ttl: 1800, // 30 minutes TTL
           }));
 
         if (entries.length > 0) {
           await this.cacheManager.setMany(entries);
         }
       } catch (error) {
-        console.warn(`Failed to execute prefetch strategy ${strategy.name}:`, error);
+        console.warn(
+          `Failed to execute prefetch strategy ${strategy.name}:`,
+          error
+        );
       }
     }
   }
 
-  private isStrategyApplicable(strategy: PrefetchStrategy, pattern: CachePattern): boolean {
+  private isStrategyApplicable(
+    strategy: PrefetchStrategy,
+    pattern: CachePattern
+  ): boolean {
     // Check if strategy tags match pattern tags
-    if (strategy.name === 'sprint-ecosystem' && pattern.tags.includes('sprint')) return true;
-    if (strategy.name === 'repository-ecosystem' && pattern.tags.includes('repository')) return true;
-    if (strategy.name === 'issue-correlation' && pattern.tags.includes('issue')) return true;
+    if (strategy.name === 'sprint-ecosystem' && pattern.tags.includes('sprint'))
+      return true;
+    if (
+      strategy.name === 'repository-ecosystem' &&
+      pattern.tags.includes('repository')
+    )
+      return true;
+    if (strategy.name === 'issue-correlation' && pattern.tags.includes('issue'))
+      return true;
 
     return false;
   }
@@ -395,10 +430,15 @@ export class CacheOptimizer {
     return context;
   }
 
-  private async adjustTTL(pattern: CachePattern, multiplier: number): Promise<void> {
+  private async adjustTTL(
+    pattern: CachePattern,
+    multiplier: number
+  ): Promise<void> {
     // This would require cache manager enhancement to support TTL adjustment
     // For now, we'll simulate by re-caching with new TTL
-    console.debug(`Would adjust TTL for pattern ${pattern.keyPattern} by factor ${multiplier}`);
+    console.debug(
+      `Would adjust TTL for pattern ${pattern.keyPattern} by factor ${multiplier}`
+    );
   }
 
   private async evictPattern(pattern: CachePattern): Promise<void> {
@@ -415,22 +455,32 @@ export class CacheOptimizer {
 
     const highFrequencyPatterns = patterns.filter(p => p.frequency > 100);
     if (highFrequencyPatterns.length > 0) {
-      recommendations.push(`Consider increasing cache memory allocation. Found ${highFrequencyPatterns.length} high-frequency access patterns.`);
+      recommendations.push(
+        `Consider increasing cache memory allocation. Found ${highFrequencyPatterns.length} high-frequency access patterns.`
+      );
     }
 
     const lowHitRatePatterns = patterns.filter(p => p.hitRate < 0.3);
     if (lowHitRatePatterns.length > 5) {
-      recommendations.push(`Review cache strategy. ${lowHitRatePatterns.length} patterns have low hit rates (<30%).`);
+      recommendations.push(
+        `Review cache strategy. ${lowHitRatePatterns.length} patterns have low hit rates (<30%).`
+      );
     }
 
     const largePatterns = patterns.filter(p => p.avgSize > 100000);
     if (largePatterns.length > 0) {
-      recommendations.push(`Consider implementing compression for large cache entries. Found ${largePatterns.length} patterns with average size >100KB.`);
+      recommendations.push(
+        `Consider implementing compression for large cache entries. Found ${largePatterns.length} patterns with average size >100KB.`
+      );
     }
 
-    const stalePatterns = patterns.filter(p => (Date.now() - p.lastAccessed) > 3600000); // 1 hour
+    const stalePatterns = patterns.filter(
+      p => Date.now() - p.lastAccessed > 3600000
+    ); // 1 hour
     if (stalePatterns.length > 10) {
-      recommendations.push(`Clean up stale cache entries. ${stalePatterns.length} patterns haven't been accessed in over 1 hour.`);
+      recommendations.push(
+        `Clean up stale cache entries. ${stalePatterns.length} patterns haven't been accessed in over 1 hour.`
+      );
     }
 
     return recommendations;
@@ -463,18 +513,22 @@ export class CacheOptimizer {
     repositories?: Array<{ owner: string; repo: string }>;
     issueKeys?: string[];
   }): Promise<void> {
-    const strategies = Array.from(this.prefetchStrategies.values())
-      .sort((a, b) => a.priority - b.priority);
+    const strategies = Array.from(this.prefetchStrategies.values()).sort(
+      (a, b) => a.priority - b.priority
+    );
 
     for (const strategy of strategies) {
       try {
-        let keys: string[] = [];
+        const keys: string[] = [];
 
         if (strategy.name === 'sprint-ecosystem' && context.sprintIds) {
           for (const sprintId of context.sprintIds) {
             keys.push(...strategy.keyGenerator({ sprintId }));
           }
-        } else if (strategy.name === 'repository-ecosystem' && context.repositories) {
+        } else if (
+          strategy.name === 'repository-ecosystem' &&
+          context.repositories
+        ) {
           for (const repo of context.repositories) {
             keys.push(...strategy.keyGenerator(repo));
           }
@@ -491,7 +545,7 @@ export class CacheOptimizer {
             .map(([key, value]) => ({
               key,
               value,
-              ttl: 1800
+              ttl: 1800,
             }));
 
           if (entries.length > 0) {
@@ -499,12 +553,18 @@ export class CacheOptimizer {
           }
         }
       } catch (error) {
-        console.warn(`Failed to warm cache with strategy ${strategy.name}:`, error);
+        console.warn(
+          `Failed to warm cache with strategy ${strategy.name}:`,
+          error
+        );
       }
     }
   }
 
-  public getOptimizationHistory(): Array<{ timestamp: number; result: CacheOptimizationResult }> {
+  public getOptimizationHistory(): Array<{
+    timestamp: number;
+    result: CacheOptimizationResult;
+  }> {
     return this.optimizationHistory.slice();
   }
 
@@ -529,7 +589,8 @@ export class CacheOptimizer {
     recommendations: string[];
   } {
     const patterns = Array.from(this.cachePatterns.values());
-    const lastOptimization = this.optimizationHistory[this.optimizationHistory.length - 1];
+    const lastOptimization =
+      this.optimizationHistory[this.optimizationHistory.length - 1];
 
     const result: {
       totalPatterns: number;
@@ -541,11 +602,15 @@ export class CacheOptimizer {
     } = {
       totalPatterns: patterns.length,
       highPriorityPatterns: patterns.filter(p => p.priority === 'high').length,
-      averageHitRate: patterns.length > 0
-        ? patterns.reduce((sum, p) => sum + p.hitRate, 0) / patterns.length
-        : 0,
-      totalSpaceSaved: this.optimizationHistory.reduce((sum, opt) => sum + opt.result.spaceSaved, 0),
-      recommendations: this.generateRecommendations(patterns)
+      averageHitRate:
+        patterns.length > 0
+          ? patterns.reduce((sum, p) => sum + p.hitRate, 0) / patterns.length
+          : 0,
+      totalSpaceSaved: this.optimizationHistory.reduce(
+        (sum, opt) => sum + opt.result.spaceSaved,
+        0
+      ),
+      recommendations: this.generateRecommendations(patterns),
     };
 
     if (lastOptimization) {

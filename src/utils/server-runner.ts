@@ -23,11 +23,16 @@ export async function runServer(
 ): Promise<void> {
   // Setup error handlers
   process.on('unhandledRejection', (reason, promise) => {
-    console.error(`${serverName} - Unhandled Rejection at:`, promise, 'reason:', reason);
+    console.error(
+      `${serverName} - Unhandled Rejection at:`,
+      promise,
+      'reason:',
+      reason
+    );
     process.exit(1);
   });
 
-  process.on('uncaughtException', (error) => {
+  process.on('uncaughtException', error => {
     console.error(`${serverName} - Uncaught Exception:`, error);
     process.exit(1);
   });

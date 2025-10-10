@@ -30,18 +30,24 @@ export class BaseError extends Error {
 
   private getDefaultUserMessage(): string {
     const messages: Record<string, string> = {
-      'JIRA_AUTH_ERROR': 'Unable to authenticate with Jira. Please check your credentials.',
-      'GITHUB_AUTH_ERROR': 'Unable to authenticate with GitHub. Please check your token.',
-      'JIRA_API_ERROR': 'Jira service is temporarily unavailable. Please try again.',
-      'GITHUB_API_ERROR': 'GitHub service is temporarily unavailable. Please try again.',
-      'VALIDATION_ERROR': 'Invalid input provided. Please check your request.',
-      'RATE_LIMIT_ERROR': 'Too many requests. Please wait before trying again.',
-      'TIMEOUT_ERROR': 'Request timed out. Please try again.',
-      'CACHE_ERROR': 'Caching service unavailable. Continuing without cache.',
-      'REPORT_GENERATION_ERROR': 'Unable to generate report. Please try again.',
+      JIRA_AUTH_ERROR:
+        'Unable to authenticate with Jira. Please check your credentials.',
+      GITHUB_AUTH_ERROR:
+        'Unable to authenticate with GitHub. Please check your token.',
+      JIRA_API_ERROR:
+        'Jira service is temporarily unavailable. Please try again.',
+      GITHUB_API_ERROR:
+        'GitHub service is temporarily unavailable. Please try again.',
+      VALIDATION_ERROR: 'Invalid input provided. Please check your request.',
+      RATE_LIMIT_ERROR: 'Too many requests. Please wait before trying again.',
+      TIMEOUT_ERROR: 'Request timed out. Please try again.',
+      CACHE_ERROR: 'Caching service unavailable. Continuing without cache.',
+      REPORT_GENERATION_ERROR: 'Unable to generate report. Please try again.',
     };
 
-    return messages[this.code] || 'An unexpected error occurred. Please try again.';
+    return (
+      messages[this.code] || 'An unexpected error occurred. Please try again.'
+    );
   }
 
   toJSON(): Record<string, any> {
@@ -59,7 +65,12 @@ export class BaseError extends Error {
 export class JiraAPIError extends BaseError implements APIError {
   public readonly status?: number;
 
-  constructor(message: string, status?: number, retryable = true, context?: any) {
+  constructor(
+    message: string,
+    status?: number,
+    retryable = true,
+    context?: any
+  ) {
     super(message, 'JIRA_API_ERROR', retryable, undefined, context);
     if (status !== undefined) {
       (this as any).status = status;
@@ -70,7 +81,12 @@ export class JiraAPIError extends BaseError implements APIError {
 export class GitHubAPIError extends BaseError implements APIError {
   public readonly status?: number;
 
-  constructor(message: string, status?: number, retryable = true, context?: any) {
+  constructor(
+    message: string,
+    status?: number,
+    retryable = true,
+    context?: any
+  ) {
     super(message, 'GITHUB_API_ERROR', retryable, undefined, context);
     if (status !== undefined) {
       (this as any).status = status;
@@ -81,7 +97,13 @@ export class GitHubAPIError extends BaseError implements APIError {
 export class AuthenticationError extends BaseError {
   constructor(service: string, context?: any) {
     const code = service === 'jira' ? 'JIRA_AUTH_ERROR' : 'GITHUB_AUTH_ERROR';
-    super(`Authentication failed for ${service}`, code, false, undefined, context);
+    super(
+      `Authentication failed for ${service}`,
+      code,
+      false,
+      undefined,
+      context
+    );
   }
 }
 
@@ -187,9 +209,11 @@ export class ErrorClassifier {
     }
 
     // Network errors are generally retryable
-    if (error.message.includes('ECONNRESET') ||
-        error.message.includes('ENOTFOUND') ||
-        error.message.includes('ETIMEDOUT')) {
+    if (
+      error.message.includes('ECONNRESET') ||
+      error.message.includes('ENOTFOUND') ||
+      error.message.includes('ETIMEDOUT')
+    ) {
       return true;
     }
 
@@ -208,8 +232,10 @@ export class ErrorClassifier {
       return true;
     }
 
-    return error.message.toLowerCase().includes('rate limit') ||
-           error.message.includes('429');
+    return (
+      error.message.toLowerCase().includes('rate limit') ||
+      error.message.includes('429')
+    );
   }
 
   static isAuthError(error: Error): boolean {
@@ -217,9 +243,11 @@ export class ErrorClassifier {
       return true;
     }
 
-    return error.message.toLowerCase().includes('unauthorized') ||
-           error.message.includes('401') ||
-           error.message.includes('403');
+    return (
+      error.message.toLowerCase().includes('unauthorized') ||
+      error.message.includes('401') ||
+      error.message.includes('403')
+    );
   }
 
   static sanitizeErrorForLogging(error: Error): any {
@@ -253,7 +281,11 @@ export class ErrorClassifier {
     return sanitized;
   }
 
-  static createUserFriendlyError(error: Error): { message: string; code?: string; retryable?: boolean } {
+  static createUserFriendlyError(error: Error): {
+    message: string;
+    code?: string;
+    retryable?: boolean;
+  } {
     if (error instanceof BaseError) {
       return {
         message: error.userMessage,
@@ -355,7 +387,7 @@ function enhanceError(error: Error, context: any): Error {
 function extractRetryAfter(error: Error): number {
   // Try to extract retry-after from error message or response
   const retryAfterMatch = error.message.match(/retry.*?(\d+)/i);
-  if (retryAfterMatch && retryAfterMatch[1]) {
+  if (retryAfterMatch?.[1]) {
     return parseInt(retryAfterMatch[1], 10);
   }
 

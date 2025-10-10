@@ -1,8 +1,5 @@
-import { GitHubClient } from '../clients/github-client.js';
 import { CacheManager } from '../cache/cache-manager.js';
-import { Logger } from '../utils/logger.js';
-import { SprintService } from './sprint-service.js';
-import { CacheKeyBuilder } from '../utils/cache-keys.js';
+import { GitHubClient } from '../clients/github-client.js';
 import {
   Issue,
   Sprint,
@@ -21,6 +18,10 @@ import {
   NextSprintForecast,
   CarryoverItems,
 } from '../types/index.js';
+import { CacheKeyBuilder } from '../utils/cache-keys.js';
+import { Logger } from '../utils/logger.js';
+
+import { SprintService } from './sprint-service.js';
 
 export class AnalyticsService {
   private logger: Logger;
@@ -31,7 +32,9 @@ export class AnalyticsService {
     private cache: CacheManager
   ) {
     if (!cache) {
-      throw new Error('CacheManager is required for AnalyticsService initialization');
+      throw new Error(
+        'CacheManager is required for AnalyticsService initialization'
+      );
     }
     this.logger = new Logger('AnalyticsService');
   }
@@ -44,26 +47,34 @@ export class AnalyticsService {
     repo: string,
     period: '1month' | '3months' | '6months' | '1year' = '6months'
   ): Promise<CommitTrendData[]> {
-    const cacheKey = CacheKeyBuilder.analytics.commitTrends(owner, repo, period);
+    const cacheKey = CacheKeyBuilder.analytics.commitTrends(
+      owner,
+      repo,
+      period
+    );
     let trends = await this.cache.get(cacheKey);
 
     if (!trends) {
       const now = new Date();
       const monthsBack = this.getPeriodMonths(period);
-      const startDate = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
-
-      // Get commits for the period
-      const commits = await this.githubClient.getCommits(
-        owner,
-        repo,
-        {
-          since: startDate.toISOString(),
-          until: now.toISOString()
-        }
+      const startDate = new Date(
+        now.getFullYear(),
+        now.getMonth() - monthsBack,
+        1
       );
 
+      // Get commits for the period
+      const commits = await this.githubClient.getCommits(owner, repo, {
+        since: startDate.toISOString(),
+        until: now.toISOString(),
+      });
+
       // Get pull requests for the period
-      const pullRequests = await this.githubClient.getPullRequests(owner, repo, { state: 'all' });
+      const pullRequests = await this.githubClient.getPullRequests(
+        owner,
+        repo,
+        { state: 'all' }
+      );
       const filteredPRs = pullRequests.filter((pr: any) => {
         const createdAt = new Date(pr.created_at);
         return createdAt >= startDate && createdAt <= now;
@@ -99,7 +110,7 @@ export class AnalyticsService {
         .map(([date, data]) => ({
           date,
           commits: data.commits,
-          prs: data.prs
+          prs: data.prs,
         }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
@@ -118,14 +129,25 @@ export class AnalyticsService {
     repo?: string,
     period: '1month' | '3months' | '6months' | '1year' = '6months'
   ): Promise<AnalyticsReport> {
-    this.logger.info('Generating analytics report', { boardId, owner, repo, period });
+    this.logger.info('Generating analytics report', {
+      boardId,
+      owner,
+      repo,
+      period,
+    });
 
     try {
       // Get velocity data
-      const velocityData = await this.sprintService.getVelocityData(boardId, 10);
+      const velocityData = await this.sprintService.getVelocityData(
+        boardId,
+        10
+      );
 
       // Get team performance data
-      const teamPerformance = await this.sprintService.getTeamPerformanceData(boardId, 10);
+      const teamPerformance = await this.sprintService.getTeamPerformanceData(
+        boardId,
+        10
+      );
 
       // Initialize report
       const report: Partial<AnalyticsReport> = {
@@ -133,7 +155,7 @@ export class AnalyticsService {
         period,
         generatedAt: new Date().toISOString(),
         velocity: velocityData,
-        teamPerformance
+        teamPerformance,
       };
 
       // Get commit trends if GitHub info provided
@@ -147,12 +169,16 @@ export class AnalyticsService {
 
       this.logger.info('Analytics report generated successfully', {
         boardId,
-        summary: report.summary
+        summary: report.summary,
       });
 
       return report as AnalyticsReport;
     } catch (error) {
-      this.logger.error(error as Error, 'generate_analytics_report', { boardId, owner, repo });
+      this.logger.error(error as Error, 'generate_analytics_report', {
+        boardId,
+        owner,
+        repo,
+      });
       throw error;
     }
   }
@@ -165,21 +191,29 @@ export class AnalyticsService {
     repo: string,
     period: '1month' | '3months' | '6months' | '1year'
   ) {
-    const cacheKey = CacheKeyBuilder.analytics.githubMetrics(owner, repo, period);
+    const cacheKey = CacheKeyBuilder.analytics.githubMetrics(
+      owner,
+      repo,
+      period
+    );
     let metrics = await this.cache.get(cacheKey);
 
     if (!metrics) {
       const now = new Date();
       const monthsBack = this.getPeriodMonths(period);
-      const startDate = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
+      const startDate = new Date(
+        now.getFullYear(),
+        now.getMonth() - monthsBack,
+        1
+      );
 
       // Get all data for the period
       const [commits, pullRequests] = await Promise.all([
         this.githubClient.getCommits(owner, repo, {
           since: startDate.toISOString(),
-          until: now.toISOString()
+          until: now.toISOString(),
         }),
-        this.githubClient.getPullRequests(owner, repo, { state: 'all' })
+        this.githubClient.getPullRequests(owner, repo, { state: 'all' }),
       ]);
 
       // Filter PRs by date
@@ -192,7 +226,9 @@ export class AnalyticsService {
       const totalCommits = commits.length;
       const totalPRs = filteredPRs.length;
       const mergedPRs = filteredPRs.filter((pr: any) => pr.merged_at).length;
-      const openPRs = filteredPRs.filter((pr: any) => pr.state === 'open').length;
+      const openPRs = filteredPRs.filter(
+        (pr: any) => pr.state === 'open'
+      ).length;
 
       // Calculate contributor metrics
       const contributors = new Set(commits.map((commit: any) => commit.author));
@@ -207,9 +243,11 @@ export class AnalyticsService {
           return merged.getTime() - created.getTime();
         });
 
-      const avgTimeToMerge = mergedPRsWithTimes.length > 0
-        ? mergedPRsWithTimes.reduce((sum, time) => sum + time, 0) / mergedPRsWithTimes.length
-        : 0;
+      const avgTimeToMerge =
+        mergedPRsWithTimes.length > 0
+          ? mergedPRsWithTimes.reduce((sum, time) => sum + time, 0) /
+            mergedPRsWithTimes.length
+          : 0;
 
       metrics = {
         totalCommits,
@@ -218,8 +256,12 @@ export class AnalyticsService {
         openPRs,
         uniqueContributors: contributors.size,
         topContributors,
-        avgTimeToMergeHours: Math.round(avgTimeToMerge / (1000 * 60 * 60) * 100) / 100,
-        mergeRate: totalPRs > 0 ? Math.round((mergedPRs / totalPRs) * 100 * 100) / 100 : 0
+        avgTimeToMergeHours:
+          Math.round((avgTimeToMerge / (1000 * 60 * 60)) * 100) / 100,
+        mergeRate:
+          totalPRs > 0
+            ? Math.round((mergedPRs / totalPRs) * 100 * 100) / 100
+            : 0,
       };
 
       await this.cache.set(cacheKey, metrics, { ttl: 3600 }); // 1 hour cache
@@ -254,9 +296,16 @@ export class AnalyticsService {
     const gitHubMetrics = report.gitHubMetrics;
 
     // Calculate completion rate from team performance
-    const totalPlanned = teamPerformance.reduce((sum, sprint) => sum + sprint.planned, 0);
-    const totalCompleted = teamPerformance.reduce((sum, sprint) => sum + sprint.completed, 0);
-    const completionRate = totalPlanned > 0 ? (totalCompleted / totalPlanned) * 100 : 0;
+    const totalPlanned = teamPerformance.reduce(
+      (sum, sprint) => sum + sprint.planned,
+      0
+    );
+    const totalCompleted = teamPerformance.reduce(
+      (sum, sprint) => sum + sprint.completed,
+      0
+    );
+    const completionRate =
+      totalPlanned > 0 ? (totalCompleted / totalPlanned) * 100 : 0;
 
     // Calculate velocity trend
     const velocityTrend = velocity.trend;
@@ -268,8 +317,12 @@ export class AnalyticsService {
       const earlierMonths = report.commitTrends.slice(-4, -2);
 
       if (earlierMonths.length > 0) {
-        const recentAvg = recentMonths.reduce((sum, month) => sum + month.commits, 0) / recentMonths.length;
-        const earlierAvg = earlierMonths.reduce((sum, month) => sum + month.commits, 0) / earlierMonths.length;
+        const recentAvg =
+          recentMonths.reduce((sum, month) => sum + month.commits, 0) /
+          recentMonths.length;
+        const earlierAvg =
+          earlierMonths.reduce((sum, month) => sum + month.commits, 0) /
+          earlierMonths.length;
 
         const changePercent = ((recentAvg - earlierAvg) / earlierAvg) * 100;
 
@@ -295,7 +348,7 @@ export class AnalyticsService {
       totalSprints: teamPerformance.length,
       totalCommits: gitHubMetrics?.totalCommits || 0,
       totalPRs: gitHubMetrics?.totalPRs || 0,
-      uniqueContributors: gitHubMetrics?.uniqueContributors || 0
+      uniqueContributors: gitHubMetrics?.uniqueContributors || 0,
     };
 
     if (codeActivityTrend !== undefined) {
@@ -308,12 +361,14 @@ export class AnalyticsService {
   /**
    * Get number of months for period
    */
-  private getPeriodMonths(period: '1month' | '3months' | '6months' | '1year'): number {
+  private getPeriodMonths(
+    period: '1month' | '3months' | '6months' | '1year'
+  ): number {
     const periodMap = {
       '1month': 1,
       '3months': 3,
       '6months': 6,
-      '1year': 12
+      '1year': 12,
     };
     return periodMap[period];
   }
@@ -332,7 +387,7 @@ export class AnalyticsService {
 
     return {
       cacheHitRate: cacheStats.hitRate || 0,
-      memoryTrend
+      memoryTrend,
     };
   }
 
@@ -345,15 +400,21 @@ export class AnalyticsService {
     const recommendations: string[] = [];
 
     if (stats.hitRate < 50) {
-      recommendations.push('Consider increasing cache TTL for frequently accessed data');
+      recommendations.push(
+        'Consider increasing cache TTL for frequently accessed data'
+      );
     }
 
     if (stats.hitRate < 30) {
-      recommendations.push('Enable Redis clustering for better cache performance');
+      recommendations.push(
+        'Enable Redis clustering for better cache performance'
+      );
     }
 
     if (stats.keys && stats.keys > 1000) {
-      recommendations.push('Implement cache eviction policies for large datasets');
+      recommendations.push(
+        'Implement cache eviction policies for large datasets'
+      );
     }
 
     if (recommendations.length === 0) {
@@ -373,15 +434,15 @@ export class AnalyticsService {
   analyzeSprintGoal(sprint: Sprint, issues: Issue[]): SprintGoalAnalysis {
     const goal = sprint.goal || 'No sprint goal defined';
     const totalIssues = issues.length;
-    const completedIssues = issues.filter(i =>
-      i.status.toLowerCase() === 'done' ||
-      i.status.toLowerCase() === 'closed' ||
-      i.status.toLowerCase() === 'resolved'
+    const completedIssues = issues.filter(
+      i =>
+        i.status.toLowerCase() === 'done' ||
+        i.status.toLowerCase() === 'closed' ||
+        i.status.toLowerCase() === 'resolved'
     ).length;
 
-    const achievementPercentage = totalIssues > 0
-      ? (completedIssues / totalIssues) * 100
-      : 0;
+    const achievementPercentage =
+      totalIssues > 0 ? (completedIssues / totalIssues) * 100 : 0;
 
     const achieved = achievementPercentage >= 80; // 80% threshold
 
@@ -413,7 +474,10 @@ export class AnalyticsService {
             issueSummary: issue.summary,
             action: change.action,
             timestamp: change.timestamp,
-            reason: change.action === 'added' ? 'Added during sprint' : 'Removed during sprint',
+            reason:
+              change.action === 'added'
+                ? 'Added during sprint'
+                : 'Removed during sprint',
             author: change.author,
           };
 
@@ -426,8 +490,9 @@ export class AnalyticsService {
       }
     }
 
-    return scopeChanges.sort((a, b) =>
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    return scopeChanges.sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
   }
 
@@ -435,26 +500,30 @@ export class AnalyticsService {
    * Analyze spillover items (Tier 1)
    */
   analyzeSpillover(issues: Issue[]): SpilloverAnalysis {
-    const spilloverIssues = issues.filter(i =>
-      i.status.toLowerCase() !== 'done' &&
-      i.status.toLowerCase() !== 'closed' &&
-      i.status.toLowerCase() !== 'resolved'
+    const spilloverIssues = issues.filter(
+      i =>
+        i.status.toLowerCase() !== 'done' &&
+        i.status.toLowerCase() !== 'closed' &&
+        i.status.toLowerCase() !== 'resolved'
     );
 
     const spilloverStoryPoints = spilloverIssues.reduce(
-      (sum, i) => sum + (i.storyPoints || 0), 0
+      (sum, i) => sum + (i.storyPoints || 0),
+      0
     );
 
     const totalStoryPoints = issues.reduce(
-      (sum, i) => sum + (i.storyPoints || 0), 0
+      (sum, i) => sum + (i.storyPoints || 0),
+      0
     );
 
     return {
       totalSpilloverIssues: spilloverIssues.length,
       spilloverStoryPoints,
-      spilloverPercentage: totalStoryPoints > 0
-        ? Math.round((spilloverStoryPoints / totalStoryPoints) * 1000) / 10
-        : 0,
+      spilloverPercentage:
+        totalStoryPoints > 0
+          ? Math.round((spilloverStoryPoints / totalStoryPoints) * 1000) / 10
+          : 0,
       issues: spilloverIssues.map(i => {
         const spilloverItem: {
           key: string;
@@ -492,7 +561,8 @@ export class AnalyticsService {
           raisedDate: i.created,
           resolvedDate: i.resolved || '',
           daysBlocked: i.cycleTime || 1,
-          impact: (i.cycleTime || 0) > 2 ? 'high' as const : 'medium' as const,
+          impact:
+            (i.cycleTime || 0) > 2 ? ('high' as const) : ('medium' as const),
           assignee: i.assignee,
         };
         return blocker;
@@ -507,8 +577,10 @@ export class AnalyticsService {
     const sprintStart = new Date(sprint.startDate || Date.now());
     const sprintEnd = new Date(sprint.endDate || Date.now());
 
-    const bugs = issues.filter(i =>
-      i.issueType.toLowerCase() === 'bug' || i.issueType.toLowerCase() === 'defect'
+    const bugs = issues.filter(
+      i =>
+        i.issueType.toLowerCase() === 'bug' ||
+        i.issueType.toLowerCase() === 'defect'
     );
 
     const bugsCreated = bugs.filter(b => {
@@ -528,13 +600,14 @@ export class AnalyticsService {
     });
 
     const resolvedBugs = bugs.filter(b => b.resolved);
-    const avgResolutionTime = resolvedBugs.length > 0
-      ? resolvedBugs.reduce((sum, b) => {
-          const created = new Date(b.created).getTime();
-          const resolved = new Date(b.resolved!).getTime();
-          return sum + (resolved - created) / (1000 * 60 * 60);
-        }, 0) / resolvedBugs.length
-      : 0;
+    const avgResolutionTime =
+      resolvedBugs.length > 0
+        ? resolvedBugs.reduce((sum, b) => {
+            const created = new Date(b.created).getTime();
+            const resolved = new Date(b.resolved!).getTime();
+            return sum + (resolved - created) / (1000 * 60 * 60);
+          }, 0) / resolvedBugs.length
+        : 0;
 
     return {
       bugsCreated,
@@ -543,8 +616,8 @@ export class AnalyticsService {
       netBugChange: bugsCreated - bugsResolved,
       bugsByPriority,
       averageBugResolutionTime: Math.round(avgResolutionTime * 10) / 10,
-      criticalBugsOutstanding: bugs.filter(b =>
-        !b.resolved && b.priority.toLowerCase().includes('critical')
+      criticalBugsOutstanding: bugs.filter(
+        b => !b.resolved && b.priority.toLowerCase().includes('critical')
       ).length,
     };
   }
@@ -569,7 +642,8 @@ export class AnalyticsService {
     const times = withCycleTime.map(i => i.cycleTime!).sort((a, b) => a - b);
     const avg = times.reduce((sum, t) => sum + t, 0) / times.length;
     const median = times[Math.floor(times.length / 2)] || 0;
-    const p90 = times[Math.floor(times.length * 0.9)] || times[times.length - 1] || 0;
+    const p90 =
+      times[Math.floor(times.length * 0.9)] || times[times.length - 1] || 0;
 
     const cycleTimeByType: Record<string, number> = {};
     const cycleTimeByPriority: Record<string, number> = {};
@@ -634,9 +708,16 @@ export class AnalyticsService {
 
     epicMap.forEach((epicIssues, epicKey) => {
       const total = epicIssues.length;
-      const completed = epicIssues.filter(i => i.status.toLowerCase() === 'done').length;
-      const inProgress = epicIssues.filter(i => i.status.toLowerCase().includes('progress')).length;
-      const totalPoints = epicIssues.reduce((sum, i) => sum + (i.storyPoints || 0), 0);
+      const completed = epicIssues.filter(
+        i => i.status.toLowerCase() === 'done'
+      ).length;
+      const inProgress = epicIssues.filter(i =>
+        i.status.toLowerCase().includes('progress')
+      ).length;
+      const totalPoints = epicIssues.reduce(
+        (sum, i) => sum + (i.storyPoints || 0),
+        0
+      );
       const completedPoints = epicIssues
         .filter(i => i.status.toLowerCase() === 'done')
         .reduce((sum, i) => sum + (i.storyPoints || 0), 0);
@@ -650,7 +731,8 @@ export class AnalyticsService {
         todoIssues: total - completed - inProgress,
         totalStoryPoints: totalPoints,
         completedStoryPoints: completedPoints,
-        completionPercentage: total > 0 ? Math.round((completed / total) * 1000) / 10 : 0,
+        completionPercentage:
+          total > 0 ? Math.round((completed / total) * 1000) / 10 : 0,
         remainingWork: totalPoints - completedPoints,
       });
     });
@@ -663,13 +745,24 @@ export class AnalyticsService {
    */
   calculateTechnicalDebt(issues: Issue[]): TechnicalDebt {
     const techDebtIssues = issues.filter(i =>
-      i.labels.some(l => l.toLowerCase().includes('tech-debt') || l.toLowerCase().includes('refactor'))
+      i.labels.some(
+        l =>
+          l.toLowerCase().includes('tech-debt') ||
+          l.toLowerCase().includes('refactor')
+      )
     );
 
     const total = techDebtIssues.length;
-    const points = techDebtIssues.reduce((sum, i) => sum + (i.storyPoints || 0), 0);
-    const addressed = techDebtIssues.filter(i => i.status.toLowerCase() === 'done').length;
-    const added = techDebtIssues.filter(i => i.status.toLowerCase() !== 'done').length;
+    const points = techDebtIssues.reduce(
+      (sum, i) => sum + (i.storyPoints || 0),
+      0
+    );
+    const addressed = techDebtIssues.filter(
+      i => i.status.toLowerCase() === 'done'
+    ).length;
+    const added = techDebtIssues.filter(
+      i => i.status.toLowerCase() !== 'done'
+    ).length;
 
     const techDebtByCategory: Record<string, number> = {};
     techDebtIssues.forEach(i => {
@@ -677,7 +770,10 @@ export class AnalyticsService {
       techDebtByCategory[cat] = (techDebtByCategory[cat] || 0) + 1;
     });
 
-    const totalPoints = issues.reduce((sum, i) => sum + (i.storyPoints || 0), 0);
+    const totalPoints = issues.reduce(
+      (sum, i) => sum + (i.storyPoints || 0),
+      0
+    );
 
     return {
       totalTechDebtIssues: total,
@@ -686,7 +782,8 @@ export class AnalyticsService {
       techDebtAdded: added,
       netTechDebtChange: added - addressed,
       techDebtByCategory,
-      percentageOfSprintCapacity: totalPoints > 0 ? (points / totalPoints) * 100 : 0,
+      percentageOfSprintCapacity:
+        totalPoints > 0 ? (points / totalPoints) * 100 : 0,
     };
   }
 
@@ -701,10 +798,12 @@ export class AnalyticsService {
           id: `RISK-${idx + 1}`,
           description: i.summary,
           probability: 'medium' as const,
-          impact: i.priority.toLowerCase().includes('critical') ? 'high' as const : 'medium' as const,
+          impact: i.priority.toLowerCase().includes('critical')
+            ? ('high' as const)
+            : ('medium' as const),
           mitigation: i.blockerReason || '',
           owner: i.assignee,
-          status: i.resolved ? 'mitigated' as const : 'active' as const,
+          status: i.resolved ? ('mitigated' as const) : ('active' as const),
           raisedDate: i.created,
           relatedIssues: [i.key],
         };
@@ -719,9 +818,11 @@ export class AnalyticsService {
     velocityHistory: number[],
     spillover: SpilloverAnalysis
   ): NextSprintForecast {
-    const avgVelocity = velocityHistory.length > 0
-      ? velocityHistory.reduce((sum, v) => sum + v, 0) / velocityHistory.length
-      : 0;
+    const avgVelocity =
+      velocityHistory.length > 0
+        ? velocityHistory.reduce((sum, v) => sum + v, 0) /
+          velocityHistory.length
+        : 0;
 
     const recentVelocity = velocityHistory.slice(-3);
     const trend = this.calculateVelocityTrend(recentVelocity);
@@ -738,12 +839,19 @@ export class AnalyticsService {
       recommendations.push('High carryover - review capacity planning');
     }
     if (spillover.totalSpilloverIssues > 5) {
-      recommendations.push(`${spillover.totalSpilloverIssues} items carried over - review planning`);
+      recommendations.push(
+        `${spillover.totalSpilloverIssues} items carried over - review planning`
+      );
     }
 
     return {
       forecastedVelocity: Math.round(forecasted * 10) / 10,
-      confidenceLevel: velocityHistory.length >= 5 ? 'high' : velocityHistory.length >= 3 ? 'medium' : 'low',
+      confidenceLevel:
+        velocityHistory.length >= 5
+          ? 'high'
+          : velocityHistory.length >= 3
+            ? 'medium'
+            : 'low',
       recommendedCapacity: Math.round(available * 10) / 10,
       carryoverItems: spillover.totalSpilloverIssues,
       carryoverStoryPoints: carryover,
@@ -756,7 +864,10 @@ export class AnalyticsService {
   /**
    * Analyze carryover items (Forward Looking)
    */
-  analyzeCarryoverItems(spillover: SpilloverAnalysis, totalCommitment: number): CarryoverItems {
+  analyzeCarryoverItems(
+    spillover: SpilloverAnalysis,
+    totalCommitment: number
+  ): CarryoverItems {
     const mostCommonReasons: Record<string, number> = {};
     spillover.issues.forEach(i => {
       mostCommonReasons[i.reason] = (mostCommonReasons[i.reason] || 0) + 1;
@@ -798,23 +909,28 @@ export class AnalyticsService {
         return carryoverItem;
       }),
       analysis: {
-        percentageOfOriginalCommitment: totalCommitment > 0
-          ? (spillover.spilloverStoryPoints / totalCommitment) * 100
-          : 0,
+        percentageOfOriginalCommitment:
+          totalCommitment > 0
+            ? (spillover.spilloverStoryPoints / totalCommitment) * 100
+            : 0,
         mostCommonReasons,
         recommendedActions,
       },
     };
   }
 
-  private calculateVelocityTrend(velocities: number[]): 'increasing' | 'decreasing' | 'stable' {
+  private calculateVelocityTrend(
+    velocities: number[]
+  ): 'increasing' | 'decreasing' | 'stable' {
     if (velocities.length < 2) return 'stable';
 
     const firstHalf = velocities.slice(0, Math.floor(velocities.length / 2));
     const secondHalf = velocities.slice(Math.floor(velocities.length / 2));
 
-    const firstAvg = firstHalf.reduce((sum, v) => sum + v, 0) / firstHalf.length;
-    const secondAvg = secondHalf.reduce((sum, v) => sum + v, 0) / secondHalf.length;
+    const firstAvg =
+      firstHalf.reduce((sum, v) => sum + v, 0) / firstHalf.length;
+    const secondAvg =
+      secondHalf.reduce((sum, v) => sum + v, 0) / secondHalf.length;
 
     const change = ((secondAvg - firstAvg) / firstAvg) * 100;
 

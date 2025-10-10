@@ -1,6 +1,7 @@
 // Advanced caching system with in-memory and Redis support
 
 import NodeCache from 'node-cache';
+
 import { CacheStats } from '@/types';
 import { CacheError } from '@/utils/errors';
 
@@ -105,7 +106,10 @@ export class CacheManager {
       // Test connection
       await this.redisClient.connect();
     } catch (error) {
-      console.warn('Failed to initialize Redis cache:', error instanceof Error ? error.message : 'Unknown error');
+      console.warn(
+        'Failed to initialize Redis cache:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       this.redisClient = null;
     }
   }
@@ -161,7 +165,11 @@ export class CacheManager {
   }
 
   // Set value in cache
-  async set<T>(key: string, value: T, options: CacheSetOptions = {}): Promise<void> {
+  async set<T>(
+    key: string,
+    value: T,
+    options: CacheSetOptions = {}
+  ): Promise<void> {
     try {
       const ttl = options.ttl || this.options.memory.ttl;
 
@@ -176,7 +184,9 @@ export class CacheManager {
 
           // If we're at max capacity, clear 10% of oldest entries
           if (currentSize >= this.options.memory.maxSize * 0.95) {
-            console.warn(`Memory cache near capacity (${currentSize}/${this.options.memory.maxSize}), clearing old entries`);
+            console.warn(
+              `Memory cache near capacity (${currentSize}/${this.options.memory.maxSize}), clearing old entries`
+            );
 
             // Clear 10% of entries by deleting keys
             const numToDelete = Math.floor(this.options.memory.maxSize * 0.1);
@@ -192,7 +202,10 @@ export class CacheManager {
         }
       } catch (memError: any) {
         // If memory cache fails, log but continue - Redis might still work
-        console.warn(`Memory cache set error for key ${key}:`, memError.message || memError);
+        console.warn(
+          `Memory cache set error for key ${key}:`,
+          memError.message || memError
+        );
         this.stats.errors++;
       }
 
@@ -217,21 +230,20 @@ export class CacheManager {
   }
 
   // Set multiple values in cache using pipeline (batch operation)
-  async setMany<T>(entries: Array<{ key: string; value: T; ttl?: number }>): Promise<void> {
+  async setMany<T>(
+    entries: Array<{ key: string; value: T; ttl?: number }>
+  ): Promise<void> {
     try {
       if (entries.length === 0) return;
 
       // L1: Memory cache (batch set) - handle max keys gracefully
-      let successCount = 0;
       let failureCount = 0;
 
       for (const entry of entries) {
         const ttl = entry.ttl || this.options.memory.ttl;
         try {
           const success = this.memoryCache.set(entry.key, entry.value, ttl);
-          if (success) {
-            successCount++;
-          } else {
+          if (!success) {
             failureCount++;
           }
         } catch (err) {
@@ -244,7 +256,9 @@ export class CacheManager {
       if (failureCount > entries.length * 0.3) {
         const keys = this.memoryCache.keys();
         const currentSize = keys.length;
-        console.warn(`Memory cache batch set had ${failureCount} failures (${currentSize}/${this.options.memory.maxSize}), clearing old entries`);
+        console.warn(
+          `Memory cache batch set had ${failureCount} failures (${currentSize}/${this.options.memory.maxSize}), clearing old entries`
+        );
 
         const numToDelete = Math.floor(this.options.memory.maxSize * 0.2);
         const keysToDelete = keys.slice(0, numToDelete);
@@ -270,9 +284,13 @@ export class CacheManager {
 
           // Check for errors in pipeline execution
           if (results) {
-            const errors = results.filter(([err]: [Error | null, unknown]) => err !== null);
+            const errors = results.filter(
+              ([err]: [Error | null, unknown]) => err !== null
+            );
             if (errors.length > 0) {
-              console.warn(`Redis pipeline setMany had ${errors.length} errors`);
+              console.warn(
+                `Redis pipeline setMany had ${errors.length} errors`
+              );
               this.stats.errors += errors.length;
             }
           }
@@ -412,7 +430,10 @@ export class CacheManager {
     } catch (error) {
       console.error(`Cache delete error for key ${key}:`, error);
       this.stats.errors++;
-      throw new CacheError(`delete:${key}`, error instanceof Error ? error : undefined);
+      throw new CacheError(
+        `delete:${key}`,
+        error instanceof Error ? error : undefined
+      );
     }
   }
 
@@ -449,13 +470,16 @@ export class CacheManager {
 
               // Count successful deletions
               if (results) {
-                const successfulDeletes = results.filter(([err, result]: [Error | null, unknown]) =>
-                  err === null && result === 1
+                const successfulDeletes = results.filter(
+                  ([err, result]: [Error | null, unknown]) =>
+                    err === null && result === 1
                 ).length;
                 deletedCount += successfulDeletes;
 
                 // Track errors
-                const errors = results.filter(([err]: [Error | null, unknown]) => err !== null);
+                const errors = results.filter(
+                  ([err]: [Error | null, unknown]) => err !== null
+                );
                 if (errors.length > 0) {
                   this.stats.errors += errors.length;
                 }
@@ -472,7 +496,10 @@ export class CacheManager {
     } catch (error) {
       console.error(`Cache delete pattern error for ${pattern}:`, error);
       this.stats.errors++;
-      throw new CacheError(`deletePattern:${pattern}`, error instanceof Error ? error : undefined);
+      throw new CacheError(
+        `deletePattern:${pattern}`,
+        error instanceof Error ? error : undefined
+      );
     }
   }
 
@@ -626,7 +653,11 @@ export class CacheManager {
   }
 
   // Health check
-  async healthCheck(): Promise<{ healthy: boolean; latency: number; error?: string }> {
+  async healthCheck(): Promise<{
+    healthy: boolean;
+    latency: number;
+    error?: string;
+  }> {
     const startTime = Date.now();
 
     try {
@@ -668,16 +699,18 @@ export class CacheManager {
 
   // Cache key utilities
   public static buildKey(...parts: (string | number)[]): string {
-    return parts
-      .map(part => String(part).replace(/:/g, '_'))
-      .join(':');
+    return parts.map(part => String(part).replace(/:/g, '_')).join(':');
   }
 
   public static buildSprintKey(sprintId: string, suffix?: string): string {
     return suffix ? `sprint:${sprintId}:${suffix}` : `sprint:${sprintId}`;
   }
 
-  public static buildRepositoryKey(owner: string, repo: string, suffix?: string): string {
+  public static buildRepositoryKey(
+    owner: string,
+    repo: string,
+    suffix?: string
+  ): string {
     const base = `repo:${owner}:${repo}`;
     return suffix ? `${base}:${suffix}` : base;
   }
@@ -707,7 +740,7 @@ export class CacheManager {
 
   private parseRedisDbKeys(info: string): number {
     const dbMatch = info.match(/db0:keys=(\d+)/);
-    return dbMatch && dbMatch[1] ? parseInt(dbMatch[1], 10) : 0;
+    return dbMatch?.[1] ? parseInt(dbMatch[1], 10) : 0;
   }
 
   // SCAN Redis keys using non-blocking iterator (replaces blocking KEYS command)
@@ -789,15 +822,23 @@ export class CacheWarmer {
     try {
       const operations = [
         () => githubClient.getRepositoryInfo(owner, repo),
-        () => githubClient.getCommits(owner, repo, { since, until, per_page: 30 }),
-        () => githubClient.getPullRequests(owner, repo, { state: 'all', per_page: 30 }),
+        () =>
+          githubClient.getCommits(owner, repo, { since, until, per_page: 30 }),
+        () =>
+          githubClient.getPullRequests(owner, repo, {
+            state: 'all',
+            per_page: 30,
+          }),
       ];
 
       await Promise.allSettled(operations.map(op => op()));
 
       console.log(`Cache warmed for repository ${owner}/${repo}`);
     } catch (error) {
-      console.warn(`Failed to warm cache for repository ${owner}/${repo}:`, error);
+      console.warn(
+        `Failed to warm cache for repository ${owner}/${repo}:`,
+        error
+      );
     }
   }
 }

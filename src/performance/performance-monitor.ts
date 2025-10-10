@@ -59,7 +59,10 @@ export interface AlertRule {
 export class PerformanceMonitor extends EventEmitter {
   private metrics: Map<string, PerformanceMetric[]> = new Map();
   private snapshots: PerformanceSnapshot[] = [];
-  private operations: Map<string, { startTime: number; duration?: number; success?: boolean }> = new Map();
+  private operations: Map<
+    string,
+    { startTime: number; duration?: number; success?: boolean }
+  > = new Map();
   private alertRules: AlertRule[] = [];
   private lastAlerts: Map<string, number> = new Map();
   private monitoringInterval?: NodeJS.Timeout;
@@ -77,66 +80,86 @@ export class PerformanceMonitor extends EventEmitter {
   private setupDefaultAlertRules(): void {
     this.addAlertRule({
       name: 'high-memory-usage',
-      condition: (snapshot) => (snapshot.memory.heapUsed / snapshot.memory.heapTotal) > 0.85,
+      condition: snapshot =>
+        snapshot.memory.heapUsed / snapshot.memory.heapTotal > 0.85,
       severity: 'warning',
-      message: 'High memory usage detected: {heapUsed}MB/{heapTotal}MB ({percentage}%)',
+      message:
+        'High memory usage detected: {heapUsed}MB/{heapTotal}MB ({percentage}%)',
       cooldown: 300000, // 5 minutes
-      enabled: true
+      enabled: true,
     });
 
     this.addAlertRule({
       name: 'low-cache-hit-rate',
-      condition: (snapshot) => snapshot.cache.hitRate < 0.5 && snapshot.cache.operations > 100,
+      condition: snapshot =>
+        snapshot.cache.hitRate < 0.5 && snapshot.cache.operations > 100,
       severity: 'warning',
       message: 'Low cache hit rate: {hitRate}% with {operations} operations',
       cooldown: 600000, // 10 minutes
-      enabled: true
+      enabled: true,
     });
 
     this.addAlertRule({
       name: 'high-error-rate',
-      condition: (snapshot) => snapshot.operations.total > 50 && (snapshot.operations.failed / snapshot.operations.total) > 0.1,
+      condition: snapshot =>
+        snapshot.operations.total > 50 &&
+        snapshot.operations.failed / snapshot.operations.total > 0.1,
       severity: 'error',
-      message: 'High error rate: {failed}/{total} operations failed ({errorRate}%)',
+      message:
+        'High error rate: {failed}/{total} operations failed ({errorRate}%)',
       cooldown: 300000, // 5 minutes
-      enabled: true
+      enabled: true,
     });
 
     this.addAlertRule({
       name: 'service-degraded',
-      condition: (snapshot) => Object.values(snapshot.services).some(service => service.status === 'degraded'),
+      condition: snapshot =>
+        Object.values(snapshot.services).some(
+          service => service.status === 'degraded'
+        ),
       severity: 'warning',
       message: 'Service degradation detected: {services}',
       cooldown: 600000, // 10 minutes
-      enabled: true
+      enabled: true,
     });
 
     this.addAlertRule({
       name: 'service-unhealthy',
-      condition: (snapshot) => Object.values(snapshot.services).some(service => service.status === 'unhealthy'),
+      condition: snapshot =>
+        Object.values(snapshot.services).some(
+          service => service.status === 'unhealthy'
+        ),
       severity: 'critical',
       message: 'Service unhealthy: {services}',
       cooldown: 180000, // 3 minutes
-      enabled: true
+      enabled: true,
     });
 
     this.addAlertRule({
       name: 'high-average-latency',
-      condition: (snapshot) => snapshot.operations.averageLatency > 2000 && snapshot.operations.total > 10,
+      condition: snapshot =>
+        snapshot.operations.averageLatency > 2000 &&
+        snapshot.operations.total > 10,
       severity: 'warning',
       message: 'High average latency: {latency}ms with {operations} operations',
       cooldown: 300000, // 5 minutes
-      enabled: true
+      enabled: true,
     });
   }
 
-  public recordMetric(name: string, value: number, unit: PerformanceMetric['unit'], tags: Record<string, string> = {}, context?: Record<string, any>): void {
+  public recordMetric(
+    name: string,
+    value: number,
+    unit: PerformanceMetric['unit'],
+    tags: Record<string, string> = {},
+    context?: Record<string, any>
+  ): void {
     const metric: PerformanceMetric = {
       name,
       value,
       unit,
       timestamp: Date.now(),
-      tags
+      tags,
     };
 
     if (context) {
@@ -160,7 +183,7 @@ export class PerformanceMonitor extends EventEmitter {
 
   public startOperation(operationId: string): void {
     this.operations.set(operationId, {
-      startTime: Date.now()
+      startTime: Date.now(),
     });
   }
 
@@ -176,19 +199,22 @@ export class PerformanceMonitor extends EventEmitter {
 
     this.recordMetric('operation.duration', duration, 'ms', {
       operation: operationId,
-      success: success.toString()
+      success: success.toString(),
     });
 
     this.recordMetric('operation.count', 1, 'count', {
       operation: operationId,
-      success: success.toString()
+      success: success.toString(),
     });
 
     this.operations.delete(operationId);
     return duration;
   }
 
-  public measureAsync<T>(operationName: string, operation: () => Promise<T>): Promise<T> {
+  public measureAsync<T>(
+    operationName: string,
+    operation: () => Promise<T>
+  ): Promise<T> {
     const operationId = `${operationName}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     this.startOperation(operationId);
 
@@ -217,7 +243,10 @@ export class PerformanceMonitor extends EventEmitter {
     }
   }
 
-  public createSnapshot(cacheStats: any, serviceHealths: Record<string, ServiceHealth>): PerformanceSnapshot {
+  public createSnapshot(
+    cacheStats: any,
+    serviceHealths: Record<string, ServiceHealth>
+  ): PerformanceSnapshot {
     const now = Date.now();
     const memInfo = process.memoryUsage();
 
@@ -232,19 +261,34 @@ export class PerformanceMonitor extends EventEmitter {
         free: 0, // Node.js doesn't provide this directly
         total: memInfo.rss + memInfo.external,
         heapUsed: memInfo.heapUsed,
-        heapTotal: memInfo.heapTotal
+        heapTotal: memInfo.heapTotal,
       },
       cache: {
         hitRate: cacheStats?.hitRate || 0,
         operations: (cacheStats?.hits || 0) + (cacheStats?.misses || 0),
-        errors: cacheStats?.errors || 0
+        errors: cacheStats?.errors || 0,
       },
       operations: operationMetrics,
       services: {
-        jira: serviceHealths.jira || { status: 'unhealthy', latency: 0, errorRate: 0, consecutiveErrors: 0 },
-        github: serviceHealths.github || { status: 'unhealthy', latency: 0, errorRate: 0, consecutiveErrors: 0 },
-        cache: serviceHealths.cache || { status: 'unhealthy', latency: 0, errorRate: 0, consecutiveErrors: 0 }
-      }
+        jira: serviceHealths.jira || {
+          status: 'unhealthy',
+          latency: 0,
+          errorRate: 0,
+          consecutiveErrors: 0,
+        },
+        github: serviceHealths.github || {
+          status: 'unhealthy',
+          latency: 0,
+          errorRate: 0,
+          consecutiveErrors: 0,
+        },
+        cache: serviceHealths.cache || {
+          status: 'unhealthy',
+          latency: 0,
+          errorRate: 0,
+          consecutiveErrors: 0,
+        },
+      },
     };
 
     this.snapshots.push(snapshot);
@@ -263,26 +307,38 @@ export class PerformanceMonitor extends EventEmitter {
 
   private calculateOperationMetrics(): PerformanceSnapshot['operations'] {
     const recentTime = Date.now() - this.snapshotInterval;
-    const operationDurations = this.getMetricsSince('operation.duration', recentTime);
+    const operationDurations = this.getMetricsSince(
+      'operation.duration',
+      recentTime
+    );
     const operationCounts = this.getMetricsSince('operation.count', recentTime);
 
-    const successful = operationCounts.filter(m => m.tags.success === 'true').length;
-    const failed = operationCounts.filter(m => m.tags.success === 'false').length;
+    const successful = operationCounts.filter(
+      m => m.tags.success === 'true'
+    ).length;
+    const failed = operationCounts.filter(
+      m => m.tags.success === 'false'
+    ).length;
     const total = successful + failed;
 
-    const averageLatency = operationDurations.length > 0
-      ? operationDurations.reduce((sum, m) => sum + m.value, 0) / operationDurations.length
-      : 0;
+    const averageLatency =
+      operationDurations.length > 0
+        ? operationDurations.reduce((sum, m) => sum + m.value, 0) /
+          operationDurations.length
+        : 0;
 
     return {
       total,
       successful,
       failed,
-      averageLatency
+      averageLatency,
     };
   }
 
-  private getMetricsSince(metricName: string, timestamp: number): PerformanceMetric[] {
+  private getMetricsSince(
+    metricName: string,
+    timestamp: number
+  ): PerformanceMetric[] {
     const metrics = this.metrics.get(metricName);
     if (!metrics) return [];
 
@@ -297,14 +353,17 @@ export class PerformanceMonitor extends EventEmitter {
       if (Date.now() - lastAlert < rule.cooldown) continue;
 
       if (rule.condition(snapshot)) {
-        const formattedMessage = this.formatAlertMessage(rule.message, snapshot);
+        const formattedMessage = this.formatAlertMessage(
+          rule.message,
+          snapshot
+        );
 
         this.emit('alert', {
           rule: rule.name,
           severity: rule.severity,
           message: formattedMessage,
           timestamp: Date.now(),
-          snapshot
+          snapshot,
         });
 
         this.lastAlerts.set(rule.name, Date.now());
@@ -312,21 +371,46 @@ export class PerformanceMonitor extends EventEmitter {
     }
   }
 
-  private formatAlertMessage(template: string, snapshot: PerformanceSnapshot): string {
+  private formatAlertMessage(
+    template: string,
+    snapshot: PerformanceSnapshot
+  ): string {
     return template
-      .replace('{heapUsed}', Math.round(snapshot.memory.heapUsed / 1024 / 1024).toString())
-      .replace('{heapTotal}', Math.round(snapshot.memory.heapTotal / 1024 / 1024).toString())
-      .replace('{percentage}', Math.round((snapshot.memory.heapUsed / snapshot.memory.heapTotal) * 100).toString())
+      .replace(
+        '{heapUsed}',
+        Math.round(snapshot.memory.heapUsed / 1024 / 1024).toString()
+      )
+      .replace(
+        '{heapTotal}',
+        Math.round(snapshot.memory.heapTotal / 1024 / 1024).toString()
+      )
+      .replace(
+        '{percentage}',
+        Math.round(
+          (snapshot.memory.heapUsed / snapshot.memory.heapTotal) * 100
+        ).toString()
+      )
       .replace('{hitRate}', Math.round(snapshot.cache.hitRate).toString())
       .replace('{operations}', snapshot.cache.operations.toString())
       .replace('{failed}', snapshot.operations.failed.toString())
       .replace('{total}', snapshot.operations.total.toString())
-      .replace('{errorRate}', Math.round((snapshot.operations.failed / snapshot.operations.total) * 100).toString())
-      .replace('{latency}', Math.round(snapshot.operations.averageLatency).toString())
-      .replace('{services}', Object.entries(snapshot.services)
-        .filter(([_, health]) => health.status !== 'healthy')
-        .map(([name, health]) => `${name}:${health.status}`)
-        .join(', '));
+      .replace(
+        '{errorRate}',
+        Math.round(
+          (snapshot.operations.failed / snapshot.operations.total) * 100
+        ).toString()
+      )
+      .replace(
+        '{latency}',
+        Math.round(snapshot.operations.averageLatency).toString()
+      )
+      .replace(
+        '{services}',
+        Object.entries(snapshot.services)
+          .filter(([_, health]) => health.status !== 'healthy')
+          .map(([name, health]) => `${name}:${health.status}`)
+          .join(', ')
+      );
   }
 
   public addAlertRule(rule: AlertRule): void {
@@ -365,7 +449,10 @@ export class PerformanceMonitor extends EventEmitter {
     return this.snapshots.slice(-count);
   }
 
-  public getMetricHistory(metricName: string, limit: number = 100): PerformanceMetric[] {
+  public getMetricHistory(
+    metricName: string,
+    limit: number = 100
+  ): PerformanceMetric[] {
     const metrics = this.metrics.get(metricName);
     if (!metrics) return [];
 
@@ -373,8 +460,15 @@ export class PerformanceMonitor extends EventEmitter {
   }
 
   public getPerformanceSummary(): {
-    metrics: Record<string, { count: number; average: number; min: number; max: number }>;
-    alerts: { total: number; byRule: Record<string, number>; bySeverity: Record<string, number> };
+    metrics: Record<
+      string,
+      { count: number; average: number; min: number; max: number }
+    >;
+    alerts: {
+      total: number;
+      byRule: Record<string, number>;
+      bySeverity: Record<string, number>;
+    };
     uptime: number;
     memoryTrend: 'increasing' | 'decreasing' | 'stable';
     cacheHitRate?: number;
@@ -383,7 +477,7 @@ export class PerformanceMonitor extends EventEmitter {
       metrics: {},
       alerts: { total: 0, byRule: {}, bySeverity: {} },
       uptime: process.uptime() * 1000,
-      memoryTrend: 'stable'
+      memoryTrend: 'stable',
     };
 
     // Calculate metric summaries
@@ -395,7 +489,7 @@ export class PerformanceMonitor extends EventEmitter {
         count: values.length,
         average: values.reduce((sum, v) => sum + v, 0) / values.length,
         min: Math.min(...values),
-        max: Math.max(...values)
+        max: Math.max(...values),
       };
     }
 
@@ -405,8 +499,12 @@ export class PerformanceMonitor extends EventEmitter {
       const firstHalf = recentSnapshots.slice(0, 5);
       const secondHalf = recentSnapshots.slice(-5);
 
-      const firstAvg = firstHalf.reduce((sum, s) => sum + s.memory.heapUsed, 0) / firstHalf.length;
-      const secondAvg = secondHalf.reduce((sum, s) => sum + s.memory.heapUsed, 0) / secondHalf.length;
+      const firstAvg =
+        firstHalf.reduce((sum, s) => sum + s.memory.heapUsed, 0) /
+        firstHalf.length;
+      const secondAvg =
+        secondHalf.reduce((sum, s) => sum + s.memory.heapUsed, 0) /
+        secondHalf.length;
 
       const percentChange = (secondAvg - firstAvg) / firstAvg;
 
@@ -440,17 +538,21 @@ export class PerformanceMonitor extends EventEmitter {
         m.name,
         m.value.toString(),
         m.unit,
-        JSON.stringify(m.tags)
+        JSON.stringify(m.tags),
       ]);
 
       return [headers, ...rows].map(row => row.join(',')).join('\n');
     }
 
-    return JSON.stringify({
-      metrics: Object.fromEntries(this.metrics.entries()),
-      snapshots: this.snapshots,
-      summary: this.getPerformanceSummary()
-    }, null, 2);
+    return JSON.stringify(
+      {
+        metrics: Object.fromEntries(this.metrics.entries()),
+        snapshots: this.snapshots,
+        summary: this.getPerformanceSummary(),
+      },
+      null,
+      2
+    );
   }
 
   public cleanup(): void {
@@ -468,12 +570,17 @@ export class PerformanceMonitor extends EventEmitter {
 
 // Performance decorator for automatic operation measurement
 export function measurePerformance(operationName?: string) {
-  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor
+  ) {
     const originalMethod = descriptor.value;
     const opName = operationName || `${target.constructor.name}.${propertyKey}`;
 
-    descriptor.value = function(...args: any[]) {
-      const monitor = (this as any).performanceMonitor || globalPerformanceMonitor;
+    descriptor.value = function (...args: any[]) {
+      const monitor =
+        (this as any).performanceMonitor || globalPerformanceMonitor;
       if (!monitor) {
         return originalMethod.apply(this, args);
       }

@@ -21,12 +21,15 @@ export class GitHubTools {
     per_page?: number;
     page?: number;
   }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.githubGetCommits, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.githubGetCommits,
+      args
+    );
     this.logger.info('Getting GitHub commits', {
       owner: params.owner,
       repo: params.repo,
       since: params.since,
-      until: params.until
+      until: params.until,
     });
 
     try {
@@ -53,14 +56,14 @@ export class GitHubTools {
       this.logger.info('Successfully retrieved commits', {
         owner: params.owner,
         repo: params.repo,
-        count: commits.length
+        count: commits.length,
       });
 
       return commits;
     } catch (error) {
       this.logger.error(error as Error, 'get_commits', {
         owner: params.owner,
-        repo: params.repo
+        repo: params.repo,
       });
       throw error;
     }
@@ -76,11 +79,14 @@ export class GitHubTools {
     per_page?: number;
     page?: number;
   }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.githubGetPullRequests, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.githubGetPullRequests,
+      args
+    );
     this.logger.info('Getting GitHub pull requests', {
       owner: params.owner,
       repo: params.repo,
-      state: params.state
+      state: params.state,
     });
 
     try {
@@ -103,14 +109,14 @@ export class GitHubTools {
       this.logger.info('Successfully retrieved pull requests', {
         owner: params.owner,
         repo: params.repo,
-        count: pullRequests.length
+        count: pullRequests.length,
       });
 
       return pullRequests;
     } catch (error) {
       this.logger.error(error as Error, 'get_pull_requests', {
         owner: params.owner,
-        repo: params.repo
+        repo: params.repo,
       });
       throw error;
     }
@@ -120,26 +126,32 @@ export class GitHubTools {
    * Get repository information
    */
   async getRepository(args: { owner: string; repo: string }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.githubGetRepository, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.githubGetRepository,
+      args
+    );
     this.logger.info('Getting GitHub repository', {
       owner: params.owner,
-      repo: params.repo
+      repo: params.repo,
     });
 
     try {
-      const repository = await this.githubClient.getRepositoryInfo(params.owner, params.repo);
+      const repository = await this.githubClient.getRepositoryInfo(
+        params.owner,
+        params.repo
+      );
 
       this.logger.info('Successfully retrieved repository', {
         owner: params.owner,
         repo: params.repo,
-        defaultBranch: repository.defaultBranch
+        defaultBranch: repository.defaultBranch,
       });
 
       return repository;
     } catch (error) {
       this.logger.error(error as Error, 'get_repository', {
         owner: params.owner,
-        repo: params.repo
+        repo: params.repo,
       });
       throw error;
     }
@@ -157,11 +169,14 @@ export class GitHubTools {
     per_page?: number;
     page?: number;
   }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.githubSearchCommitsByMessage, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.githubSearchCommitsByMessage,
+      args
+    );
     this.logger.info('Searching GitHub commits by message', {
       owner: params.owner,
       repo: params.repo,
-      query: params.query
+      query: params.query,
     });
 
     try {
@@ -177,7 +192,7 @@ export class GitHubTools {
         owner: params.owner,
         repo: params.repo,
         query: params.query,
-        count: commits.length
+        count: commits.length,
       });
 
       return commits;
@@ -185,7 +200,7 @@ export class GitHubTools {
       this.logger.error(error as Error, 'search_commits_by_message', {
         owner: params.owner,
         repo: params.repo,
-        query: params.query
+        query: params.query,
       });
       throw error;
     }
@@ -208,7 +223,7 @@ export class GitHubTools {
     this.logger.info('Finding commits with Jira references', {
       owner: params.owner,
       repo: params.repo,
-      issueKeys: params.issue_keys
+      issueKeys: params.issue_keys,
     });
 
     try {
@@ -224,7 +239,7 @@ export class GitHubTools {
         owner: params.owner,
         repo: params.repo,
         issueKeys: params.issue_keys,
-        results: result.length
+        results: result.length,
       });
 
       return result;
@@ -232,7 +247,7 @@ export class GitHubTools {
       this.logger.error(error as Error, 'find_commits_with_jira_references', {
         owner: params.owner,
         repo: params.repo,
-        issueKeys: params.issue_keys
+        issueKeys: params.issue_keys,
       });
       throw error;
     }
@@ -246,17 +261,24 @@ export class GitHubTools {
     repo: string;
     period: '1month' | '3months' | '6months' | '1year';
   }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.githubGetCommitTrends, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.githubGetCommitTrends,
+      args
+    );
     this.logger.info('Calculating commit trends', {
       owner: params.owner,
       repo: params.repo,
-      period: params.period
+      period: params.period,
     });
 
     try {
       const now = new Date();
       const monthsBack = this.getPeriodMonths(params.period || '6months');
-      const startDate = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
+      const startDate = new Date(
+        now.getFullYear(),
+        now.getMonth() - monthsBack,
+        1
+      );
 
       // Get commits for the period
       const commits = await this.githubClient.getCommits(
@@ -264,7 +286,7 @@ export class GitHubTools {
         params.repo,
         {
           since: startDate.toISOString(),
-          until: now.toISOString()
+          until: now.toISOString(),
         }
       );
 
@@ -308,7 +330,7 @@ export class GitHubTools {
         .map(([date, data]) => ({
           date,
           commits: data.commits,
-          prs: data.prs
+          prs: data.prs,
         }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
@@ -316,7 +338,7 @@ export class GitHubTools {
         owner: params.owner,
         repo: params.repo,
         period: params.period,
-        months: trends.length
+        months: trends.length,
       });
 
       return trends;
@@ -324,7 +346,7 @@ export class GitHubTools {
       this.logger.error(error as Error, 'get_commit_trends', {
         owner: params.owner,
         repo: params.repo,
-        period: params.period
+        period: params.period,
       });
       throw error;
     }
@@ -338,30 +360,33 @@ export class GitHubTools {
     repo: string;
     period?: '1month' | '3months' | '6months' | '1year';
   }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.githubGetRepositoryStats, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.githubGetRepositoryStats,
+      args
+    );
     this.logger.info('Getting repository statistics', {
       owner: params.owner,
       repo: params.repo,
-      period: params.period
+      period: params.period,
     });
 
     try {
       const period = params.period || '6months';
       const now = new Date();
       const monthsBack = this.getPeriodMonths(period);
-      const startDate = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
+      const startDate = new Date(
+        now.getFullYear(),
+        now.getMonth() - monthsBack,
+        1
+      );
 
       // Get all data for the period
       const [commits, pullRequests] = await Promise.all([
-        this.githubClient.getCommits(
-          params.owner,
-          params.repo,
-          {
-            since: startDate.toISOString(),
-            until: now.toISOString()
-          }
-        ),
-        this.githubClient.getPullRequests(params.owner, params.repo, {})
+        this.githubClient.getCommits(params.owner, params.repo, {
+          since: startDate.toISOString(),
+          until: now.toISOString(),
+        }),
+        this.githubClient.getPullRequests(params.owner, params.repo, {}),
       ]);
 
       // Filter PRs by date
@@ -374,7 +399,9 @@ export class GitHubTools {
       const totalCommits = commits.length;
       const totalPRs = filteredPRs.length;
       const mergedPRs = filteredPRs.filter((pr: any) => pr.merged_at).length;
-      const openPRs = filteredPRs.filter((pr: any) => pr.state === 'open').length;
+      const openPRs = filteredPRs.filter(
+        (pr: any) => pr.state === 'open'
+      ).length;
 
       // Calculate contributor metrics
       const contributors = new Set(commits.map((commit: any) => commit.author));
@@ -389,9 +416,11 @@ export class GitHubTools {
           return merged.getTime() - created.getTime();
         });
 
-      const avgTimeToMerge = mergedPRsWithTimes.length > 0
-        ? mergedPRsWithTimes.reduce((sum, time) => sum + time, 0) / mergedPRsWithTimes.length
-        : 0;
+      const avgTimeToMerge =
+        mergedPRsWithTimes.length > 0
+          ? mergedPRsWithTimes.reduce((sum, time) => sum + time, 0) /
+            mergedPRsWithTimes.length
+          : 0;
 
       const result = {
         period,
@@ -401,8 +430,12 @@ export class GitHubTools {
         openPRs,
         uniqueContributors: contributors.size,
         topContributors,
-        avgTimeToMergeHours: Math.round(avgTimeToMerge / (1000 * 60 * 60) * 100) / 100,
-        mergeRate: totalPRs > 0 ? Math.round((mergedPRs / totalPRs) * 100 * 100) / 100 : 0
+        avgTimeToMergeHours:
+          Math.round((avgTimeToMerge / (1000 * 60 * 60)) * 100) / 100,
+        mergeRate:
+          totalPRs > 0
+            ? Math.round((mergedPRs / totalPRs) * 100 * 100) / 100
+            : 0,
       };
 
       this.logger.info('Successfully calculated repository statistics', {
@@ -410,7 +443,7 @@ export class GitHubTools {
         repo: params.repo,
         period,
         totalCommits,
-        totalPRs
+        totalPRs,
       });
 
       return result;
@@ -418,7 +451,7 @@ export class GitHubTools {
       this.logger.error(error as Error, 'get_repository_stats', {
         owner: params.owner,
         repo: params.repo,
-        period: params.period
+        period: params.period,
       });
       throw error;
     }
@@ -438,7 +471,7 @@ export class GitHubTools {
       const result = {
         healthy: true,
         latency,
-        service: 'github'
+        service: 'github',
       };
 
       this.logger.info('GitHub health check passed', { latency });
@@ -449,7 +482,7 @@ export class GitHubTools {
       return {
         healthy: false,
         error: (error as Error).message,
-        service: 'github'
+        service: 'github',
       };
     }
   }
@@ -457,12 +490,14 @@ export class GitHubTools {
   /**
    * Get number of months for period
    */
-  private getPeriodMonths(period: '1month' | '3months' | '6months' | '1year'): number {
+  private getPeriodMonths(
+    period: '1month' | '3months' | '6months' | '1year'
+  ): number {
     const periodMap = {
       '1month': 1,
       '3months': 3,
       '6months': 6,
-      '1year': 12
+      '1year': 12,
     };
     return periodMap[period];
   }

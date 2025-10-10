@@ -1,6 +1,7 @@
 // Rate limiting implementation with token bucket algorithm
 
 import { RateLimitError } from './errors';
+
 import { RateLimitStatus, TokenBucket } from '@/types';
 
 export interface RateLimiterOptions {
@@ -36,7 +37,8 @@ export class RateLimiter {
 
     // Calculate when tokens will be available
     const tokensNeeded = 1 - bucket.tokens;
-    const timeToWait = (tokensNeeded / this.options.tokensPerInterval) * this.options.interval;
+    const timeToWait =
+      (tokensNeeded / this.options.tokensPerInterval) * this.options.interval;
 
     return {
       allowed: false,
@@ -51,14 +53,10 @@ export class RateLimiter {
     const status = await this.checkLimit(identifier);
 
     if (!status.allowed) {
-      throw new RateLimitError(
-        identifier,
-        status.retryAfter || 60,
-        {
-          remaining: status.remaining,
-          resetTime: status.resetTime,
-        }
-      );
+      throw new RateLimitError(identifier, status.retryAfter || 60, {
+        remaining: status.remaining,
+        resetTime: status.resetTime,
+      });
     }
   }
 
@@ -93,7 +91,8 @@ export class RateLimiter {
     let bucket = this.buckets.get(identifier);
 
     if (!bucket) {
-      const capacity = this.options.burstLimit || this.options.tokensPerInterval;
+      const capacity =
+        this.options.burstLimit || this.options.tokensPerInterval;
       bucket = {
         tokens: capacity,
         lastRefill: Date.now(),
@@ -109,7 +108,7 @@ export class RateLimiter {
   // Refill tokens in bucket based on elapsed time
   private refillBucket(bucket: TokenBucket, now: number): void {
     const elapsed = now - bucket.lastRefill;
-    const tokensToAdd = (elapsed * bucket.refillRate);
+    const tokensToAdd = elapsed * bucket.refillRate;
 
     bucket.tokens = Math.min(bucket.capacity, bucket.tokens + tokensToAdd);
     bucket.lastRefill = now;
@@ -117,9 +116,12 @@ export class RateLimiter {
 
   // Start periodic cleanup of old buckets
   private startCleanup(): void {
-    this.cleanupInterval = setInterval(() => {
-      this.cleanupOldBuckets();
-    }, 5 * 60 * 1000); // Cleanup every 5 minutes
+    this.cleanupInterval = setInterval(
+      () => {
+        this.cleanupOldBuckets();
+      },
+      5 * 60 * 1000
+    ); // Cleanup every 5 minutes
   }
 
   // Remove buckets that haven't been used recently
@@ -166,34 +168,49 @@ export class ServiceRateLimiter {
 
   constructor() {
     // GitHub API rate limits
-    this.rateLimiters.set('github-core', new RateLimiter({
-      tokensPerInterval: 5000,
-      interval: 60 * 60 * 1000, // 1 hour
-      burstLimit: 100, // Allow burst of 100 requests
-    }));
+    this.rateLimiters.set(
+      'github-core',
+      new RateLimiter({
+        tokensPerInterval: 5000,
+        interval: 60 * 60 * 1000, // 1 hour
+        burstLimit: 100, // Allow burst of 100 requests
+      })
+    );
 
-    this.rateLimiters.set('github-search', new RateLimiter({
-      tokensPerInterval: 30,
-      interval: 60 * 1000, // 1 minute
-      burstLimit: 10,
-    }));
+    this.rateLimiters.set(
+      'github-search',
+      new RateLimiter({
+        tokensPerInterval: 30,
+        interval: 60 * 1000, // 1 minute
+        burstLimit: 10,
+      })
+    );
 
     // Jira API rate limits (more conservative)
-    this.rateLimiters.set('jira', new RateLimiter({
-      tokensPerInterval: 600, // 10 requests per second
-      interval: 60 * 1000, // 1 minute
-      burstLimit: 50,
-    }));
+    this.rateLimiters.set(
+      'jira',
+      new RateLimiter({
+        tokensPerInterval: 600, // 10 requests per second
+        interval: 60 * 1000, // 1 minute
+        burstLimit: 50,
+      })
+    );
 
     // General API rate limits
-    this.rateLimiters.set('general', new RateLimiter({
-      tokensPerInterval: 100,
-      interval: 60 * 1000, // 1 minute
-      burstLimit: 20,
-    }));
+    this.rateLimiters.set(
+      'general',
+      new RateLimiter({
+        tokensPerInterval: 100,
+        interval: 60 * 1000, // 1 minute
+        burstLimit: 20,
+      })
+    );
   }
 
-  async checkLimit(service: string, identifier: string): Promise<RateLimitStatus> {
+  async checkLimit(
+    service: string,
+    identifier: string
+  ): Promise<RateLimitStatus> {
     const rateLimiter = this.rateLimiters.get(service);
     if (!rateLimiter) {
       throw new Error(`Unknown service: ${service}`);
@@ -211,7 +228,10 @@ export class ServiceRateLimiter {
     await rateLimiter.acquire(identifier);
   }
 
-  async getStatus(service: string, identifier: string): Promise<RateLimitStatus> {
+  async getStatus(
+    service: string,
+    identifier: string
+  ): Promise<RateLimitStatus> {
     const rateLimiter = this.rateLimiters.get(service);
     if (!rateLimiter) {
       throw new Error(`Unknown service: ${service}`);
@@ -255,7 +275,7 @@ export class ServiceRateLimiter {
 export class RateLimitMiddleware {
   constructor(
     private rateLimiter: RateLimiter,
-    private keyGenerator: (req: any) => string = (req) => req.ip || 'default'
+    private keyGenerator: (req: any) => string = req => req.ip || 'default'
   ) {}
 
   middleware() {
@@ -265,7 +285,10 @@ export class RateLimitMiddleware {
         const status = await this.rateLimiter.checkLimit(key);
 
         // Set rate limit headers
-        res.setHeader('X-RateLimit-Limit', this.rateLimiter['options'].tokensPerInterval);
+        res.setHeader(
+          'X-RateLimit-Limit',
+          this.rateLimiter['options'].tokensPerInterval
+        );
         res.setHeader('X-RateLimit-Remaining', status.remaining);
         res.setHeader('X-RateLimit-Reset', Math.ceil(status.resetTime / 1000));
 
@@ -324,7 +347,9 @@ export async function withBackoff<T>(
       // Check if it's a rate limit error
       if (error instanceof RateLimitError) {
         const delayMs = error.retryAfter * 1000;
-        console.log(`Rate limited, waiting ${error.retryAfter} seconds before retry`);
+        console.log(
+          `Rate limited, waiting ${error.retryAfter} seconds before retry`
+        );
         await delay(delayMs);
       } else {
         // Exponential backoff for other errors

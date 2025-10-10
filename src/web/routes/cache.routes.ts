@@ -1,5 +1,6 @@
 // Cache management routes
 import { Router } from 'express';
+
 import { EnhancedServerContext } from '@/server/enhanced-mcp-server';
 
 /**
@@ -8,7 +9,11 @@ import { EnhancedServerContext } from '@/server/enhanced-mcp-server';
 export function createCacheRouter(
   getContext: () => EnhancedServerContext,
   getMCPServer: () => any,
-  warmSprintCache: (sprintId: string, githubOwner: string, githubRepo: string) => Promise<void>,
+  warmSprintCache: (
+    sprintId: string,
+    githubOwner: string,
+    githubRepo: string
+  ) => Promise<void>,
   invalidateSprintCache: (sprintId: string) => Promise<void>,
   invalidateIssueCache: (issue: any, changelog: any) => Promise<void>
 ): Router {
@@ -46,12 +51,17 @@ export function createCacheRouter(
           sizeBytes: info.memory.size,
           sizeMB: (info.memory.size / 1024 / 1024).toFixed(2),
           maxKeys: info.memory.maxSize,
-          utilizationPercent: ((info.memory.keys / info.memory.maxSize) * 100).toFixed(2),
+          utilizationPercent: (
+            (info.memory.keys / info.memory.maxSize) *
+            100
+          ).toFixed(2),
         },
-        redis: info.redis ? {
-          connected: info.redis.connected,
-          keys: info.redis.keys || 0,
-        } : null,
+        redis: info.redis
+          ? {
+              connected: info.redis.connected,
+              keys: info.redis.keys || 0,
+            }
+          : null,
         performance: {
           averageHitLatency: '<1ms',
           averageMissLatency: '50-200ms',
@@ -104,7 +114,7 @@ export function createCacheRouter(
         message: 'Sprint cache warming completed successfully',
         sprintId,
         github_owner,
-        github_repo
+        github_repo,
       });
     } catch (error) {
       if (logger) {
@@ -137,13 +147,13 @@ export function createCacheRouter(
       logger = getContext().logger;
       const { issue, changelog } = req.body;
 
-      if (!issue || !issue.key) {
+      if (!issue?.key) {
         return res.status(400).json({ error: 'Invalid webhook payload' });
       }
 
       logger.info('Jira webhook received', {
         issueKey: issue.key,
-        eventType: req.body.webhookEvent
+        eventType: req.body.webhookEvent,
       });
 
       // Invalidate cache for affected sprints
@@ -165,14 +175,14 @@ export function createCacheRouter(
       logger = getContext().logger;
       const { sprint } = req.body;
 
-      if (!sprint || !sprint.id) {
+      if (!sprint?.id) {
         return res.status(400).json({ error: 'Invalid webhook payload' });
       }
 
       logger.info('Sprint webhook received', {
         sprintId: sprint.id,
         state: sprint.state,
-        eventType: req.body.webhookEvent
+        eventType: req.body.webhookEvent,
       });
 
       // If sprint completed, warm the cache

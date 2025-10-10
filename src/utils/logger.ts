@@ -88,16 +88,19 @@ export class Logger {
     return new Logger({
       service: childService,
       level: this.level,
-      enableConsole: this.enableConsole
+      enableConsole: this.enableConsole,
     });
   }
 }
 
 // Factory function for easy creation
-export function createLogger(service?: string, options?: Partial<LoggerOptions>): Logger {
+export function createLogger(
+  service?: string,
+  options?: Partial<LoggerOptions>
+): Logger {
   const loggerOptions: LoggerOptions = {
     level: options?.level || 'info',
-    enableConsole: options?.enableConsole ?? true
+    enableConsole: options?.enableConsole ?? true,
   };
   if (service !== undefined) {
     loggerOptions.service = service;
@@ -106,13 +109,18 @@ export function createLogger(service?: string, options?: Partial<LoggerOptions>)
 }
 
 // Default logger instance
-export const defaultLogger = new Logger({ service: 'NextReleaseMCP', level: 'info' });
+export const defaultLogger = new Logger({
+  service: 'NextReleaseMCP',
+  level: 'info',
+});
 
 // Alias for compatibility
 export type StructuredLogger = Logger;
 
 // Factory function with config compatibility
-export function getLogger(config?: LoggerOptions | { level: string; enableApiLogging: boolean }): Logger {
+export function getLogger(
+  config?: LoggerOptions | { level: string; enableApiLogging: boolean }
+): Logger {
   if (!config) {
     return defaultLogger;
   }
@@ -121,7 +129,7 @@ export function getLogger(config?: LoggerOptions | { level: string; enableApiLog
   if ('enableApiLogging' in config) {
     return new Logger({
       level: (config.level as LogLevel) || 'info',
-      enableConsole: config.enableApiLogging
+      enableConsole: config.enableApiLogging,
     });
   }
 

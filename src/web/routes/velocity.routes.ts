@@ -1,5 +1,6 @@
 // Velocity tracking and analysis routes
 import { Router } from 'express';
+
 import { EnhancedServerContext } from '@/server/enhanced-mcp-server';
 
 /**
@@ -8,7 +9,10 @@ import { EnhancedServerContext } from '@/server/enhanced-mcp-server';
  */
 export function createVelocityRouter(
   getContext: () => EnhancedServerContext,
-  calculateVelocityDataOptimized: (boardId: string, sprintCount: number) => Promise<any>,
+  calculateVelocityDataOptimized: (
+    boardId: string,
+    sprintCount: number
+  ) => Promise<any>,
   handleAPIError: (error: any, res: any, message: string) => void
 ): Router {
   const router = Router();
@@ -25,17 +29,26 @@ export function createVelocityRouter(
 
       const cachedData = await cacheManager.get(cacheKey);
       if (cachedData) {
-        logger.info('Velocity data served from cache', { boardId, sprintCount });
+        logger.info('Velocity data served from cache', {
+          boardId,
+          sprintCount,
+        });
         return res.json(cachedData);
       }
 
       // Calculate fresh data with optimized caching
-      const velocityData = await calculateVelocityDataOptimized(boardId, sprintCount);
+      const velocityData = await calculateVelocityDataOptimized(
+        boardId,
+        sprintCount
+      );
 
       // Cache for 15 minutes (closed sprints don't change often)
       await cacheManager.set(cacheKey, velocityData, { ttl: 900000 });
 
-      logger.info('Velocity data calculated and cached', { boardId, sprintCount });
+      logger.info('Velocity data calculated and cached', {
+        boardId,
+        sprintCount,
+      });
       return res.json(velocityData);
     } catch (error) {
       return handleAPIError(error, res, 'Failed to get velocity data');

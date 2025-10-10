@@ -1,10 +1,9 @@
-import { SprintService } from '../services/sprint-service.js';
+import { ReportGenerator } from '../reporting/report-generator.js';
 import { AnalyticsService } from '../services/analytics-service.js';
 import { ExportService } from '../services/export-service.js';
-import { ReportGenerator } from '../reporting/report-generator.js';
+import { SprintService } from '../services/sprint-service.js';
 import { Logger } from '../utils/logger.js';
-import { ValidationUtils } from '../utils/validation.js';
-import { MCPToolSchemas } from '../utils/validation.js';
+import { ValidationUtils, MCPToolSchemas } from '../utils/validation.js';
 
 export class ReportTools {
   private logger: Logger;
@@ -22,29 +21,38 @@ export class ReportTools {
    * Generate sprint report
    */
   async generateSprintReport(args: any): Promise<any> {
-    console.log('[REPORT-TOOLS] generateSprintReport called with args:', Object.keys(args));
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.generateSprintReport, args);
+    console.log(
+      '[REPORT-TOOLS] generateSprintReport called with args:',
+      Object.keys(args)
+    );
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.generateSprintReport,
+      args
+    );
     console.log('[REPORT-TOOLS] After validation, params:', {
       sprint_id: params.sprint_id,
       format: params.format,
       include_tier1: params.include_tier1,
       include_tier2: params.include_tier2,
-      include_tier3: params.include_tier3
+      include_tier3: params.include_tier3,
     });
     this.logger.info('Generating sprint report', {
       sprintId: params.sprint_id,
-      format: params.format
+      format: params.format,
     });
 
     try {
       console.log('[REPORT-TOOLS] Calling reportGenerator.generateReport...');
       const result = await this.reportGenerator.generateReport(params as any);
-      console.log('[REPORT-TOOLS] Report generated, result keys:', Object.keys(result));
+      console.log(
+        '[REPORT-TOOLS] Report generated, result keys:',
+        Object.keys(result)
+      );
 
       this.logger.info('Successfully generated sprint report', {
         reportId: result.id,
         format: params.format,
-        contentType: result.contentType
+        contentType: result.contentType,
       });
 
       return {
@@ -52,7 +60,7 @@ export class ReportTools {
         content: result.content,
         contentType: result.contentType,
         format: params.format,
-        sprint_id: params.sprint_id
+        sprint_id: params.sprint_id,
       };
     } catch (error) {
       this.logger.error(error as Error, 'generate_sprint_report', { params });
@@ -69,7 +77,9 @@ export class ReportTools {
     try {
       const reports = this.reportGenerator.getAllReports();
 
-      this.logger.info('Successfully retrieved reports', { count: reports.length });
+      this.logger.info('Successfully retrieved reports', {
+        count: reports.length,
+      });
 
       return reports;
     } catch (error) {
@@ -82,7 +92,10 @@ export class ReportTools {
    * Get specific report
    */
   async getReport(args: { report_id: string }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.getReport, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.getReport,
+      args
+    );
     this.logger.info('Getting report', { reportId: params.report_id });
 
     try {
@@ -94,12 +107,14 @@ export class ReportTools {
 
       this.logger.info('Successfully retrieved report', {
         reportId: params.report_id,
-        format: report.format
+        format: report.format,
       });
 
       return report;
     } catch (error) {
-      this.logger.error(error as Error, 'get_report', { reportId: params.report_id });
+      this.logger.error(error as Error, 'get_report', {
+        reportId: params.report_id,
+      });
       throw error;
     }
   }
@@ -108,7 +123,10 @@ export class ReportTools {
    * Delete report
    */
   async deleteReport(args: { report_id: string }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.deleteReport, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.deleteReport,
+      args
+    );
     this.logger.info('Deleting report', { reportId: params.report_id });
 
     try {
@@ -118,11 +136,15 @@ export class ReportTools {
         throw new Error(`Report not found: ${params.report_id}`);
       }
 
-      this.logger.info('Successfully deleted report', { reportId: params.report_id });
+      this.logger.info('Successfully deleted report', {
+        reportId: params.report_id,
+      });
 
       return { success: true };
     } catch (error) {
-      this.logger.error(error as Error, 'delete_report', { reportId: params.report_id });
+      this.logger.error(error as Error, 'delete_report', {
+        reportId: params.report_id,
+      });
       throw error;
     }
   }
@@ -137,10 +159,13 @@ export class ReportTools {
       orientation?: 'portrait' | 'landscape';
     };
   }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.exportSprintReportToPDF, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.exportSprintReportToPDF,
+      args
+    );
     this.logger.info('Exporting sprint report to PDF', {
       reportId: params.report_id,
-      format: params.format
+      format: params.format,
     });
 
     try {
@@ -149,8 +174,11 @@ export class ReportTools {
         throw new Error(`Report not found: ${params.report_id}`);
       }
 
-      // Regenerate the report for export - TODO: store full report data
-      const sprintData = await this.sprintService.getSprintDetails(report.sprint_id);
+      // Regenerate the report for export
+      // Note: Full report data storage would require additional database infrastructure
+      const sprintData = await this.sprintService.getSprintDetails(
+        report.sprint_id
+      );
       const pdfBuffer = await this.exportService.exportSprintReportToPDF(
         sprintData as any,
         { format: params.format as any }
@@ -158,17 +186,17 @@ export class ReportTools {
 
       this.logger.info('Successfully exported sprint report to PDF', {
         reportId: params.report_id,
-        size: pdfBuffer.length
+        size: pdfBuffer.length,
       });
 
       return {
         content: pdfBuffer,
         contentType: 'application/pdf',
-        size: pdfBuffer.length
+        size: pdfBuffer.length,
       };
     } catch (error) {
       this.logger.error(error as Error, 'export_sprint_report_pdf', {
-        reportId: params.report_id
+        reportId: params.report_id,
       });
       throw error;
     }
@@ -184,14 +212,19 @@ export class ReportTools {
       orientation?: 'portrait' | 'landscape';
     };
   }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.exportAnalyticsToPDF, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.exportAnalyticsToPDF,
+      args
+    );
     this.logger.info('Exporting analytics to PDF', {
       sprintId: params.sprint_id,
-      format: params.format
+      format: params.format,
     });
 
     try {
-      const analyticsData = await this.analyticsService.getAnalyticsReport(params.sprint_id);
+      const analyticsData = await this.analyticsService.getAnalyticsReport(
+        params.sprint_id
+      );
       const pdfBuffer = await this.exportService.exportAnalyticsToPDF(
         analyticsData,
         { format: params.format as any }
@@ -199,17 +232,17 @@ export class ReportTools {
 
       this.logger.info('Successfully exported analytics to PDF', {
         sprintId: params.sprint_id,
-        size: pdfBuffer.length
+        size: pdfBuffer.length,
       });
 
       return {
         content: pdfBuffer,
         contentType: 'application/pdf',
-        size: pdfBuffer.length
+        size: pdfBuffer.length,
       };
     } catch (error) {
       this.logger.error(error as Error, 'export_analytics_pdf', {
-        sprintId: params.sprint_id
+        sprintId: params.sprint_id,
       });
       throw error;
     }
@@ -224,12 +257,15 @@ export class ReportTools {
     repo?: string;
     period?: '1month' | '3months' | '6months' | '1year';
   }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.getAnalyticsReport, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.getAnalyticsReport,
+      args
+    );
     this.logger.info('Generating analytics report', {
       boardId: params.board_id,
       owner: params.owner,
       repo: params.repo,
-      period: params.period
+      period: params.period,
     });
 
     try {
@@ -243,7 +279,7 @@ export class ReportTools {
       this.logger.info('Successfully generated analytics report', {
         boardId: params.board_id,
         period: params.period,
-        summary: report.summary
+        summary: report.summary,
       });
 
       return report;
@@ -260,10 +296,13 @@ export class ReportTools {
     board_id: string;
     sprint_count?: number;
   }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.getVelocityData, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.getVelocityData,
+      args
+    );
     this.logger.info('Getting velocity data', {
       boardId: params.board_id,
-      sprintCount: params.sprint_count
+      sprintCount: params.sprint_count,
     });
 
     try {
@@ -275,7 +314,7 @@ export class ReportTools {
       this.logger.info('Successfully retrieved velocity data', {
         boardId: params.board_id,
         average: velocityData.average,
-        trend: velocityData.trend
+        trend: velocityData.trend,
       });
 
       return velocityData;
@@ -288,16 +327,24 @@ export class ReportTools {
   /**
    * Get burndown data
    */
-  async getBurndownData(args: { board_id: string; sprints?: number }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.getBurndownData, args);
+  async getBurndownData(args: {
+    board_id: string;
+    sprints?: number;
+  }): Promise<any> {
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.getBurndownData,
+      args
+    );
     this.logger.info('Getting burndown data', { boardId: params.board_id });
 
     try {
-      const burndownData = await this.sprintService.getBurndownData(params.board_id);
+      const burndownData = await this.sprintService.getBurndownData(
+        params.board_id
+      );
 
       this.logger.info('Successfully retrieved burndown data', {
         boardId: params.board_id,
-        sprints: params.sprints
+        sprints: params.sprints,
       });
 
       return burndownData;
@@ -314,10 +361,13 @@ export class ReportTools {
     board_id: string;
     sprints?: number;
   }): Promise<any> {
-    const params = ValidationUtils.validateAndParse(MCPToolSchemas.getTeamPerformanceData, args);
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.getTeamPerformanceData,
+      args
+    );
     this.logger.info('Getting team performance data', {
       boardId: params.board_id,
-      sprints: params.sprints
+      sprints: params.sprints,
     });
 
     try {
@@ -328,12 +378,14 @@ export class ReportTools {
 
       this.logger.info('Successfully retrieved team performance data', {
         boardId: params.board_id,
-        sprints: performanceData.length
+        sprints: performanceData.length,
       });
 
       return performanceData;
     } catch (error) {
-      this.logger.error(error as Error, 'get_team_performance_data', { params });
+      this.logger.error(error as Error, 'get_team_performance_data', {
+        params,
+      });
       throw error;
     }
   }
@@ -348,7 +400,7 @@ export class ReportTools {
       const metrics = await this.analyticsService.getDashboardMetrics();
 
       this.logger.info('Successfully retrieved dashboard metrics', {
-        cacheHitRate: metrics.cacheHitRate
+        cacheHitRate: metrics.cacheHitRate,
       });
 
       return metrics;
@@ -368,7 +420,7 @@ export class ReportTools {
       const optimizations = await this.analyticsService.getCacheOptimizations();
 
       this.logger.info('Successfully retrieved cache optimizations', {
-        recommendations: optimizations.recommendations.length
+        recommendations: optimizations.recommendations.length,
       });
 
       return optimizations;
@@ -389,13 +441,13 @@ export class ReportTools {
 
       this.logger.info('Health check completed', {
         healthy: healthResult.healthy,
-        services: Object.keys(healthResult.services)
+        services: Object.keys(healthResult.services),
       });
 
       return {
         status: healthResult.healthy ? 'healthy' : 'unhealthy',
         uptime: process.uptime() * 1000, // Convert to milliseconds
-        services: healthResult.services
+        services: healthResult.services,
       };
     } catch (error) {
       this.logger.error(error as Error, 'health_check');
@@ -403,7 +455,7 @@ export class ReportTools {
       return {
         status: 'unhealthy',
         uptime: process.uptime() * 1000,
-        error: (error as Error).message
+        error: (error as Error).message,
       };
     }
   }

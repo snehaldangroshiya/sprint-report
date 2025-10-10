@@ -1,9 +1,21 @@
 // Base API client with error handling, caching, and retry logic
 
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { withErrorHandling, BaseError, RateLimitError, TimeoutError, AuthenticationError } from '@/utils/errors';
-import { AppConfig } from '@/types';
+import axios, {
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponse,
+  AxiosError,
+} from 'axios';
+
 import { CacheManager } from '@/cache/cache-manager';
+import { AppConfig } from '@/types';
+import {
+  withErrorHandling,
+  BaseError,
+  RateLimitError,
+  TimeoutError,
+  AuthenticationError,
+} from '@/utils/errors';
 
 export interface APIClientOptions {
   baseURL: string;
@@ -45,9 +57,11 @@ export abstract class BaseAPIClient {
     this.setupInterceptors();
 
     // Use provided CacheManager or create a default one
-    this.cacheManager = cacheManager || new CacheManager({
-      memory: { maxSize: 100, ttl: 300 }
-    });
+    this.cacheManager =
+      cacheManager ||
+      new CacheManager({
+        memory: { maxSize: 100, ttl: 300 },
+      });
   }
 
   protected abstract get serviceName(): string;
@@ -57,7 +71,7 @@ export abstract class BaseAPIClient {
       baseURL: this.options.baseURL,
       timeout: this.options.timeout,
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'Content-Type': 'application/json',
         'User-Agent': this.options.userAgent || 'JiraGitHubReporter/1.0.0',
         ...this.options.headers,
@@ -77,7 +91,7 @@ export abstract class BaseAPIClient {
   private setupInterceptors(): void {
     // Request interceptor
     this.httpClient.interceptors.request.use(
-      (config) => {
+      config => {
         // Add request ID for tracking
         config.metadata = {
           requestId: this.generateRequestId(),
@@ -86,17 +100,17 @@ export abstract class BaseAPIClient {
 
         return config;
       },
-      (error) => Promise.reject(error)
+      error => Promise.reject(error)
     );
 
     // Response interceptor
     this.httpClient.interceptors.response.use(
-      (response) => {
+      response => {
         this.updateRateLimitInfo(response);
         this.logRequest(response);
         return response;
       },
-      (error) => {
+      error => {
         this.logError(error);
         return Promise.reject(this.transformError(error));
       }
@@ -137,7 +151,7 @@ export abstract class BaseAPIClient {
       {
         operation: `${this.serviceName}_request`,
         service: this.serviceName,
-        metadata: { endpoint, method: options.method || 'GET' }
+        metadata: { endpoint, method: options.method || 'GET' },
       }
     );
   }
@@ -175,7 +189,9 @@ export abstract class BaseAPIClient {
         await this.delay(delay);
 
         // Log retry attempt
-        console.log(`Retrying request to ${endpoint}, attempt ${attempt + 1}/${this.retryConfig.maxRetries}`);
+        console.log(
+          `Retrying request to ${endpoint}, attempt ${attempt + 1}/${this.retryConfig.maxRetries}`
+        );
       }
     }
 
@@ -206,7 +222,8 @@ export abstract class BaseAPIClient {
   }
 
   private calculateRetryDelay(attempt: number): number {
-    const exponentialDelay = this.retryConfig.baseDelay * Math.pow(2, attempt - 1);
+    const exponentialDelay =
+      this.retryConfig.baseDelay * Math.pow(2, attempt - 1);
     const jitter = Math.random() * 0.1 * exponentialDelay;
     return Math.min(exponentialDelay + jitter, this.retryConfig.maxDelay);
   }
@@ -216,7 +233,10 @@ export abstract class BaseAPIClient {
   }
 
   // Cache management - using CacheManager for Redis support
-  private generateCacheKey(endpoint: string, options: AxiosRequestConfig): string {
+  private generateCacheKey(
+    endpoint: string,
+    options: AxiosRequestConfig
+  ): string {
     const params = JSON.stringify({
       endpoint,
       method: options.method || 'GET',
@@ -228,14 +248,17 @@ export abstract class BaseAPIClient {
     let hash = 0;
     for (let i = 0; i < params.length; i++) {
       const char = params.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
 
     return `${this.serviceName}:${Math.abs(hash)}`;
   }
 
-  private async getFromCache<T>(endpoint: string, options: AxiosRequestConfig): Promise<T | null> {
+  private async getFromCache<T>(
+    endpoint: string,
+    options: AxiosRequestConfig
+  ): Promise<T | null> {
     const key = this.generateCacheKey(endpoint, options);
     return await this.cacheManager.get<T>(key);
   }
@@ -407,7 +430,9 @@ export abstract class BaseAPIClient {
     if (!this.config.logging.enableApiLogging) return;
 
     const config = error.config;
-    const duration = config?.metadata?.startTime ? Date.now() - config.metadata.startTime : 0;
+    const duration = config?.metadata?.startTime
+      ? Date.now() - config.metadata.startTime
+      : 0;
 
     console.error({
       service: this.serviceName,
@@ -425,7 +450,13 @@ export abstract class BaseAPIClient {
     await this.cacheManager.clear();
   }
 
-  public getCacheStats(): { size: number; entries: number; hits: number; misses: number; hitRate: number } {
+  public getCacheStats(): {
+    size: number;
+    entries: number;
+    hits: number;
+    misses: number;
+    hitRate: number;
+  } {
     const stats = this.cacheManager.getStats();
     return {
       size: stats.memory,
@@ -444,7 +475,11 @@ export abstract class BaseAPIClient {
     return this.rateLimitInfo ? { ...this.rateLimitInfo } : null;
   }
 
-  public async healthCheck(): Promise<{ healthy: boolean; responseTime: number; error?: string }> {
+  public async healthCheck(): Promise<{
+    healthy: boolean;
+    responseTime: number;
+    error?: string;
+  }> {
     const startTime = Date.now();
 
     try {

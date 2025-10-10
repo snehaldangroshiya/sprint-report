@@ -8,7 +8,4 @@ import { EnhancedMCPServer } from './server/enhanced-mcp-server';
 import { runServer } from './utils/server-runner';
 
 // Start the Enhanced MCP server
-runServer(
-  () => new EnhancedMCPServer(),
-  'Enhanced MCP Server'
-);
+runServer(() => new EnhancedMCPServer(), 'Enhanced MCP Server');

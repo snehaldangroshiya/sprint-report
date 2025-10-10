@@ -1,5 +1,6 @@
 // Sprint management routes
 import { Router } from 'express';
+
 import { EnhancedServerContext } from '@/server/enhanced-mcp-server';
 
 /**
@@ -9,8 +10,16 @@ export function createSprintRouter(
   getContext: () => EnhancedServerContext,
   callMCPTool: (toolName: string, args: any) => Promise<any>,
   getSprintCacheTTL: (sprintId: string, cacheManager: any) => Promise<number>,
-  generateComprehensiveReport: (sprintId: string, toolParams: any, cacheManager: any) => Promise<any>,
-  scheduleBackgroundRefresh: (cacheKey: string, refreshFunction: () => Promise<any>, ttl: number) => Promise<void>,
+  generateComprehensiveReport: (
+    sprintId: string,
+    toolParams: any,
+    cacheManager: any
+  ) => Promise<any>,
+  scheduleBackgroundRefresh: (
+    cacheKey: string,
+    refreshFunction: () => Promise<any>,
+    ttl: number
+  ) => Promise<void>,
   handleAPIError: (error: any, res: any, message: string) => void
 ): Router {
   const router = Router();
@@ -18,13 +27,15 @@ export function createSprintRouter(
   // Get boards
   router.get('/boards', (_req, res) => {
     try {
-      // Return hardcoded board for now
-      // TODO: Add proper MCP tool for getting all boards
-      res.json([{
-        id: '6306',
-        name: 'SCNT Board',
-        type: 'scrum'
-      }]);
+      // Return hardcoded board
+      // Note: Full board listing requires Jira Admin API access
+      res.json([
+        {
+          id: '6306',
+          name: 'SCNT Board',
+          type: 'scrum',
+        },
+      ]);
     } catch (error) {
       handleAPIError(error, res, 'Failed to get boards');
     }
@@ -44,24 +55,28 @@ export function createSprintRouter(
         const [active, closed, future] = await Promise.all([
           callMCPTool('jira_get_sprints', {
             board_id: board_id as string,
-            state: 'active'
+            state: 'active',
           }).catch(() => []),
           callMCPTool('jira_get_sprints', {
             board_id: board_id as string,
-            state: 'closed'
+            state: 'closed',
           }).catch(() => []),
           callMCPTool('jira_get_sprints', {
             board_id: board_id as string,
-            state: 'future'
-          }).catch(() => [])
+            state: 'future',
+          }).catch(() => []),
         ]);
 
         // Combine and sort by start date (newest first)
-        const allSprints = [...active, ...closed, ...future].sort((a: any, b: any) => {
-          if (!a.startDate) return 1;
-          if (!b.startDate) return -1;
-          return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
-        });
+        const allSprints = [...active, ...closed, ...future].sort(
+          (a: any, b: any) => {
+            if (!a.startDate) return 1;
+            if (!b.startDate) return -1;
+            return (
+              new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+            );
+          }
+        );
 
         return res.json(allSprints);
       }
@@ -69,7 +84,7 @@ export function createSprintRouter(
       // Single state request
       const result = await callMCPTool('jira_get_sprints', {
         board_id: board_id as string,
-        state: state as string
+        state: state as string,
       });
 
       return res.json(result);
@@ -82,12 +97,7 @@ export function createSprintRouter(
   router.get('/sprints/:sprintId/issues', async (req, res) => {
     try {
       const { sprintId } = req.params;
-      const {
-        fields,
-        max_results = 50,
-        page = 1,
-        per_page = 20
-      } = req.query;
+      const { fields, max_results = 50, page = 1, per_page = 20 } = req.query;
 
       const pageNum = parseInt(page as string);
       const perPage = Math.min(parseInt(per_page as string), 100); // Max 100 per page
@@ -105,7 +115,7 @@ export function createSprintRouter(
         const result = await callMCPTool('jira_get_sprint_issues', {
           sprint_id: sprintId,
           fields: fields ? (fields as string).split(',') : undefined,
-          max_results: maxResults
+          max_results: maxResults,
         });
 
         allIssues = Array.isArray(result) ? result : [];
@@ -119,12 +129,12 @@ export function createSprintRouter(
         logger.info('Sprint issues fetched and cached', {
           sprintId,
           totalIssues: allIssues.length,
-          ttl
+          ttl,
         });
       } else {
         logger.info('Sprint issues served from cache', {
           sprintId,
-          totalIssues: allIssues.length
+          totalIssues: allIssues.length,
         });
       }
 
@@ -144,8 +154,8 @@ export function createSprintRouter(
           total_issues: totalIssues,
           total_pages: totalPages,
           has_next: pageNum < totalPages,
-          has_prev: pageNum > 1
-        }
+          has_prev: pageNum > 1,
+        },
       });
     } catch (error) {
       return handleAPIError(error, res, 'Failed to get sprint issues');
@@ -171,7 +181,7 @@ export function createSprintRouter(
       const result = await callMCPTool('get_sprint_metrics', {
         sprint_id: sprintId,
         include_velocity: include_velocity === 'true',
-        include_burndown: include_burndown === 'true'
+        include_burndown: include_burndown === 'true',
       });
 
       // Determine TTL based on sprint state
@@ -198,7 +208,7 @@ export function createSprintRouter(
         include_tier2 = 'true',
         include_tier3 = 'true',
         include_forward_looking = 'true',
-        include_enhanced_github = 'true'
+        include_enhanced_github = 'true',
       } = req.query;
 
       const toolParams = {
@@ -224,11 +234,23 @@ export function createSprintRouter(
 
       const cachedData = await cacheManager.get(cacheKey);
       if (cachedData) {
-        logger.info('Comprehensive sprint report served from cache', { sprintId, github_owner, github_repo });
+        logger.info('Comprehensive sprint report served from cache', {
+          sprintId,
+          github_owner,
+          github_repo,
+        });
         // Background refresh for popular sprints (if cache is more than 50% expired)
-        scheduleBackgroundRefresh(cacheKey, async () => {
-          return await generateComprehensiveReport(sprintId, toolParams, cacheManager);
-        }, await getSprintCacheTTL(sprintId, cacheManager)).catch((err: Error) =>
+        scheduleBackgroundRefresh(
+          cacheKey,
+          async () => {
+            return await generateComprehensiveReport(
+              sprintId,
+              toolParams,
+              cacheManager
+            );
+          },
+          await getSprintCacheTTL(sprintId, cacheManager)
+        ).catch((err: Error) =>
           logger.warn('Background refresh failed', { error: err.message })
         );
         return res.json(cachedData);
@@ -244,14 +266,22 @@ export function createSprintRouter(
 
       const result = await callMCPTool('generate_sprint_report', toolParams);
       console.log('[COMPREHENSIVE] MCP tool raw result type:', typeof result);
-      console.log('[COMPREHENSIVE] MCP tool result keys:', result && typeof result === 'object' ? Object.keys(result) : 'N/A');
+      console.log(
+        '[COMPREHENSIVE] MCP tool result keys:',
+        result && typeof result === 'object' ? Object.keys(result) : 'N/A'
+      );
 
       // Extract content from MCP tool result
       let reportData;
-      if (typeof result === 'object' && result !== null && 'content' in result) {
-        const content = (result as any).content;
+      if (
+        typeof result === 'object' &&
+        result !== null &&
+        'content' in result
+      ) {
+        const content = result.content;
         // If content is already an object, use it directly; otherwise parse the JSON string
-        reportData = typeof content === 'string' ? JSON.parse(content) : content;
+        reportData =
+          typeof content === 'string' ? JSON.parse(content) : content;
       } else if (typeof result === 'string') {
         reportData = JSON.parse(result);
       } else {
@@ -260,41 +290,71 @@ export function createSprintRouter(
       }
 
       // Debug: Log what we received
-      console.log('[COMPREHENSIVE] Keys in reportData:', Object.keys(reportData));
+      console.log(
+        '[COMPREHENSIVE] Keys in reportData:',
+        Object.keys(reportData)
+      );
       console.log('[COMPREHENSIVE] Has sprintGoal?', !!reportData.sprintGoal);
       console.log('[COMPREHENSIVE] Has blockers?', !!reportData.blockers);
-      console.log('[COMPREHENSIVE] Has epicProgress?', !!reportData.epicProgress);
+      console.log(
+        '[COMPREHENSIVE] Has epicProgress?',
+        !!reportData.epicProgress
+      );
 
       // Reorganize data to match frontend expectations
       const response: any = {
         ...reportData,
-        tier1: reportData.sprintGoal || reportData.scopeChanges || reportData.spilloverAnalysis ? {
-          sprint_goal: reportData.sprintGoal,
-          scope_changes: reportData.scopeChanges,
-          spillover_analysis: reportData.spilloverAnalysis,
-        } : undefined,
-        tier2: reportData.blockers || reportData.bugMetrics || reportData.cycleTimeMetrics || reportData.teamCapacity ? {
-          blockers: reportData.blockers,
-          bug_metrics: reportData.bugMetrics,
-          cycle_time_metrics: reportData.cycleTimeMetrics,
-          team_capacity: reportData.teamCapacity,
-        } : undefined,
-        tier3: reportData.epicProgress || reportData.technicalDebt || reportData.risks ? {
-          epic_progress: reportData.epicProgress,
-          technical_debt: reportData.technicalDebt,
-          risks: reportData.risks,
-        } : undefined,
-        forward_looking: reportData.nextSprintForecast || reportData.carryoverItems ? {
-          next_sprint_forecast: reportData.nextSprintForecast,
-          carryover_items: reportData.carryoverItems,
-        } : undefined,
-        enhanced_github: reportData.enhancedGitHubMetrics ? {
-          commit_activity: reportData.enhancedGitHubMetrics.commitActivity,
-          pull_request_stats: reportData.enhancedGitHubMetrics.pullRequestStats,
-          code_change_stats: reportData.enhancedGitHubMetrics.codeChanges,
-          pr_to_issue_traceability: reportData.enhancedGitHubMetrics.prToIssueTraceability,
-          code_review_stats: reportData.enhancedGitHubMetrics.codeReviewStats,
-        } : undefined,
+        tier1:
+          reportData.sprintGoal ||
+          reportData.scopeChanges ||
+          reportData.spilloverAnalysis
+            ? {
+                sprint_goal: reportData.sprintGoal,
+                scope_changes: reportData.scopeChanges,
+                spillover_analysis: reportData.spilloverAnalysis,
+              }
+            : undefined,
+        tier2:
+          reportData.blockers ||
+          reportData.bugMetrics ||
+          reportData.cycleTimeMetrics ||
+          reportData.teamCapacity
+            ? {
+                blockers: reportData.blockers,
+                bug_metrics: reportData.bugMetrics,
+                cycle_time_metrics: reportData.cycleTimeMetrics,
+                team_capacity: reportData.teamCapacity,
+              }
+            : undefined,
+        tier3:
+          reportData.epicProgress ||
+          reportData.technicalDebt ||
+          reportData.risks
+            ? {
+                epic_progress: reportData.epicProgress,
+                technical_debt: reportData.technicalDebt,
+                risks: reportData.risks,
+              }
+            : undefined,
+        forward_looking:
+          reportData.nextSprintForecast || reportData.carryoverItems
+            ? {
+                next_sprint_forecast: reportData.nextSprintForecast,
+                carryover_items: reportData.carryoverItems,
+              }
+            : undefined,
+        enhanced_github: reportData.enhancedGitHubMetrics
+          ? {
+              commit_activity: reportData.enhancedGitHubMetrics.commitActivity,
+              pull_request_stats:
+                reportData.enhancedGitHubMetrics.pullRequestStats,
+              code_change_stats: reportData.enhancedGitHubMetrics.codeChanges,
+              pr_to_issue_traceability:
+                reportData.enhancedGitHubMetrics.prToIssueTraceability,
+              code_review_stats:
+                reportData.enhancedGitHubMetrics.codeReviewStats,
+            }
+          : undefined,
       };
 
       // Remove undefined fields
@@ -308,10 +368,19 @@ export function createSprintRouter(
       const ttl = await getSprintCacheTTL(sprintId, cacheManager);
       await cacheManager.set(cacheKey, response, { ttl });
 
-      logger.info('Comprehensive sprint report calculated and cached', { sprintId, github_owner, github_repo, ttl });
+      logger.info('Comprehensive sprint report calculated and cached', {
+        sprintId,
+        github_owner,
+        github_repo,
+        ttl,
+      });
       return res.json(response);
     } catch (error) {
-      return handleAPIError(error, res, 'Failed to get comprehensive sprint report');
+      return handleAPIError(
+        error,
+        res,
+        'Failed to get comprehensive sprint report'
+      );
     }
   });
 

@@ -93,7 +93,9 @@ export class ReportFormatter {
 
     if (['done', 'closed', 'resolved'].includes(lowerStatus)) {
       return `✅ ${status}`;
-    } else if (['in progress', 'in-progress', 'development'].includes(lowerStatus)) {
+    } else if (
+      ['in progress', 'in-progress', 'development'].includes(lowerStatus)
+    ) {
       return `🔄 ${status}`;
     } else if (['todo', 'to do', 'open', 'new'].includes(lowerStatus)) {
       return `📋 ${status}`;
@@ -175,13 +177,17 @@ export class ReportFormatter {
     const remainingSeconds = seconds % 60;
 
     if (minutes < 60) {
-      return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+      return remainingSeconds > 0
+        ? `${minutes}m ${remainingSeconds}s`
+        : `${minutes}m`;
     }
 
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
 
-    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+    return remainingMinutes > 0
+      ? `${hours}h ${remainingMinutes}m`
+      : `${hours}h`;
   }
 
   /**
@@ -234,9 +240,7 @@ export class ReportFormatter {
    * Create table separator
    */
   static createTableSeparator(widths: number[]): string {
-    return widths
-      .map(width => '-'.repeat(width))
-      .join('-|-');
+    return widths.map(width => '-'.repeat(width)).join('-|-');
   }
 
   /**
@@ -249,9 +253,13 @@ export class ReportFormatter {
       'Completion Rate': this.formatPercentage(metrics.completionRate),
       'Total Story Points': metrics.storyPoints.toString(),
       'Completed Story Points': metrics.completedStoryPoints.toString(),
-      'Velocity': metrics.velocity.toString(),
-      'Avg Cycle Time': this.formatDuration(metrics.averageCycleTime * 24 * 60 * 60 * 1000), // Convert days to ms
-      'Avg Lead Time': this.formatDuration(metrics.averageLeadTime * 24 * 60 * 60 * 1000) // Convert days to ms
+      Velocity: metrics.velocity.toString(),
+      'Avg Cycle Time': this.formatDuration(
+        metrics.averageCycleTime * 24 * 60 * 60 * 1000
+      ), // Convert days to ms
+      'Avg Lead Time': this.formatDuration(
+        metrics.averageLeadTime * 24 * 60 * 60 * 1000
+      ), // Convert days to ms
     };
   }
 
@@ -288,7 +296,11 @@ export class ReportFormatter {
   /**
    * Truncate text with ellipsis
    */
-  static truncate(text: string, maxLength: number, suffix: string = '...'): string {
+  static truncate(
+    text: string,
+    maxLength: number,
+    suffix: string = '...'
+  ): string {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength - suffix.length) + suffix;
   }
@@ -314,8 +326,10 @@ export class ReportFormatter {
       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
       if (diffMinutes < 1) return 'just now';
-      if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
-      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      if (diffMinutes < 60)
+        return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+      if (diffHours < 24)
+        return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
       if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
 
       return this.formatDate(dateString);

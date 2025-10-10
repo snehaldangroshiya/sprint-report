@@ -1,6 +1,7 @@
 // Input validation utilities
 
 import { z } from 'zod';
+
 import { InputValidationError, SecurityError } from './errors';
 
 // Common validation patterns
@@ -17,23 +18,42 @@ export const ValidationPatterns = {
 
 // Base validation schemas
 export const BaseSchemas = {
-  sprintId: z.string().regex(ValidationPatterns.sprintId, 'Sprint ID must be numeric'),
-  boardId: z.string().regex(ValidationPatterns.boardId, 'Board ID must be numeric'),
-  issueKey: z.string().regex(ValidationPatterns.issueKey, 'Invalid Jira issue key format'),
-  repositoryOwner: z.string().regex(ValidationPatterns.repositoryOwner, 'Invalid repository owner'),
-  repositoryName: z.string().regex(ValidationPatterns.repositoryName, 'Invalid repository name'),
+  sprintId: z
+    .string()
+    .regex(ValidationPatterns.sprintId, 'Sprint ID must be numeric'),
+  boardId: z
+    .string()
+    .regex(ValidationPatterns.boardId, 'Board ID must be numeric'),
+  issueKey: z
+    .string()
+    .regex(ValidationPatterns.issueKey, 'Invalid Jira issue key format'),
+  repositoryOwner: z
+    .string()
+    .regex(ValidationPatterns.repositoryOwner, 'Invalid repository owner'),
+  repositoryName: z
+    .string()
+    .regex(ValidationPatterns.repositoryName, 'Invalid repository name'),
   dateString: z.string().datetime('Invalid ISO date format'),
   sha: z.string().regex(ValidationPatterns.sha, 'Invalid git SHA format'),
 
   repository: z.object({
-    owner: z.string().regex(ValidationPatterns.repositoryOwner, 'Invalid repository owner'),
-    repo: z.string().regex(ValidationPatterns.repositoryName, 'Invalid repository name'),
+    owner: z
+      .string()
+      .regex(ValidationPatterns.repositoryOwner, 'Invalid repository owner'),
+    repo: z
+      .string()
+      .regex(ValidationPatterns.repositoryName, 'Invalid repository name'),
   }),
 
-  dateRange: z.object({
-    start: z.string().datetime(),
-    end: z.string().datetime(),
-  }).refine(data => new Date(data.start) < new Date(data.end), 'Start date must be before end date'),
+  dateRange: z
+    .object({
+      start: z.string().datetime(),
+      end: z.string().datetime(),
+    })
+    .refine(
+      data => new Date(data.start) < new Date(data.end),
+      'Start date must be before end date'
+    ),
 
   pagination: z.object({
     page: z.number().int().min(1).max(1000).default(1),
@@ -122,12 +142,17 @@ export const MCPToolSchemas = {
 
   correlateIssuesWithCommits: z.object({
     sprint_id: BaseSchemas.sprintId,
-    github_repos: z.array(BaseSchemas.repository).min(1, 'At least one repository required').max(10, 'Too many repositories'),
+    github_repos: z
+      .array(BaseSchemas.repository)
+      .min(1, 'At least one repository required')
+      .max(10, 'Too many repositories'),
   }),
 
   generateBasicSprintReport: z.object({
     sprint_id: BaseSchemas.sprintId,
-    github_repos: z.array(BaseSchemas.repository).max(10, 'Too many repositories'),
+    github_repos: z
+      .array(BaseSchemas.repository)
+      .max(10, 'Too many repositories'),
     format: z.enum(['html', 'json']).default('html'),
     include_charts: z.boolean().default(true),
     include_details: z.boolean().default(true),
@@ -164,7 +189,10 @@ export const MCPToolSchemas = {
   githubFindCommitsWithJiraReferences: z.object({
     owner: BaseSchemas.repositoryOwner,
     repo: BaseSchemas.repositoryName,
-    issue_keys: z.array(BaseSchemas.issueKey).min(1).max(100, 'Too many issue keys'),
+    issue_keys: z
+      .array(BaseSchemas.issueKey)
+      .min(1)
+      .max(100, 'Too many issue keys'),
     since: BaseSchemas.dateString.optional(),
     until: BaseSchemas.dateString.optional(),
     max_commits_per_issue: z.number().int().min(1).max(50).default(20),
@@ -199,7 +227,7 @@ export const MCPToolSchemas = {
     format: z.enum(['pdf', 'html']).default('pdf'),
   }),
 
-    getAnalyticsReport: z.object({
+  getAnalyticsReport: z.object({
     board_id: BaseSchemas.boardId,
     owner: z.string().optional(),
     repo: z.string().optional(),
@@ -230,7 +258,9 @@ export const MCPToolSchemas = {
   githubGetCommitTrends: z.object({
     owner: BaseSchemas.repositoryOwner,
     repo: BaseSchemas.repositoryName,
-    period: z.enum(['1month', '3months', '6months', '1year']).default('6months'),
+    period: z
+      .enum(['1month', '3months', '6months', '1year'])
+      .default('6months'),
   }),
 
   githubGetRepositoryStats: z.object({
@@ -322,14 +352,21 @@ export class InputSanitizer {
       .replace(/[<>]/g, ''); // Remove angle brackets
   }
 
-  static sanitizeArray(input: string[], maxItems = 100, maxLength = 100): string[] {
+  static sanitizeArray(
+    input: string[],
+    maxItems = 100,
+    maxLength = 100
+  ): string[] {
     return input
       .slice(0, maxItems)
       .map(item => this.sanitizeString(item, maxLength))
       .filter(item => item.length > 0);
   }
 
-  static sanitizeObject(input: Record<string, any>, allowedKeys: string[]): Record<string, any> {
+  static sanitizeObject(
+    input: Record<string, any>,
+    allowedKeys: string[]
+  ): Record<string, any> {
     const sanitized: Record<string, any> = {};
 
     for (const key of allowedKeys) {
@@ -338,7 +375,10 @@ export class InputSanitizer {
 
         if (typeof value === 'string') {
           sanitized[key] = this.sanitizeString(value);
-        } else if (Array.isArray(value) && value.every(item => typeof item === 'string')) {
+        } else if (
+          Array.isArray(value) &&
+          value.every(item => typeof item === 'string')
+        ) {
           sanitized[key] = this.sanitizeArray(value);
         } else if (typeof value === 'number' || typeof value === 'boolean') {
           sanitized[key] = value;
@@ -352,7 +392,11 @@ export class InputSanitizer {
 
 // Validation utilities
 export class ValidationUtils {
-  static validateAndParse<T>(schema: z.ZodSchema<T>, input: unknown, _context?: string): T {
+  static validateAndParse<T>(
+    schema: z.ZodSchema<T>,
+    input: unknown,
+    _context?: string
+  ): T {
     try {
       return schema.parse(input);
     } catch (error) {
@@ -382,7 +426,11 @@ export class ValidationUtils {
     const endDate = new Date(end);
 
     if (isNaN(startDate.getTime())) {
-      throw new InputValidationError('start', start, 'Invalid start date format');
+      throw new InputValidationError(
+        'start',
+        start,
+        'Invalid start date format'
+      );
     }
 
     if (isNaN(endDate.getTime())) {
@@ -390,12 +438,17 @@ export class ValidationUtils {
     }
 
     if (startDate >= endDate) {
-      throw new InputValidationError('dateRange', { start, end }, 'Start date must be before end date');
+      throw new InputValidationError(
+        'dateRange',
+        { start, end },
+        'Start date must be before end date'
+      );
     }
 
     // Check for reasonable date range (not more than 1 year)
     const maxDays = 365;
-    const diffDays = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+    const diffDays =
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
 
     if (diffDays > maxDays) {
       throw new InputValidationError(
@@ -406,13 +459,23 @@ export class ValidationUtils {
     }
   }
 
-  static validateRepositoryList(repos: Array<{ owner: string; repo: string }>): void {
+  static validateRepositoryList(
+    repos: Array<{ owner: string; repo: string }>
+  ): void {
     if (repos.length === 0) {
-      throw new InputValidationError('github_repos', repos, 'At least one repository is required');
+      throw new InputValidationError(
+        'github_repos',
+        repos,
+        'At least one repository is required'
+      );
     }
 
     if (repos.length > 10) {
-      throw new InputValidationError('github_repos', repos, 'Maximum 10 repositories allowed');
+      throw new InputValidationError(
+        'github_repos',
+        repos,
+        'Maximum 10 repositories allowed'
+      );
     }
 
     // Check for duplicates
@@ -420,7 +483,11 @@ export class ValidationUtils {
     for (const repo of repos) {
       const key = `${repo.owner}/${repo.repo}`;
       if (repoKeys.has(key)) {
-        throw new InputValidationError('github_repos', repos, `Duplicate repository: ${key}`);
+        throw new InputValidationError(
+          'github_repos',
+          repos,
+          `Duplicate repository: ${key}`
+        );
       }
       repoKeys.add(key);
     }
@@ -435,11 +502,19 @@ export class ValidationUtils {
 
   static validatePaginationParams(page: number, limit: number): void {
     if (page < 1 || page > 1000) {
-      throw new InputValidationError('page', page, 'Page must be between 1 and 1000');
+      throw new InputValidationError(
+        'page',
+        page,
+        'Page must be between 1 and 1000'
+      );
     }
 
     if (limit < 1 || limit > 1000) {
-      throw new InputValidationError('limit', limit, 'Limit must be between 1 and 1000');
+      throw new InputValidationError(
+        'limit',
+        limit,
+        'Limit must be between 1 and 1000'
+      );
     }
   }
 }
@@ -453,19 +528,33 @@ export class RequestSizeValidator {
   static validateRequestSize(data: any): void {
     const size = this.calculateObjectSize(data);
     if (size > this.MAX_REQUEST_SIZE) {
-      throw new SecurityError(`Request size ${size} bytes exceeds maximum ${this.MAX_REQUEST_SIZE} bytes`);
+      throw new SecurityError(
+        `Request size ${size} bytes exceeds maximum ${this.MAX_REQUEST_SIZE} bytes`
+      );
     }
   }
 
   static validateArrayLength(array: any[], name: string): void {
     if (array.length > this.MAX_ARRAY_LENGTH) {
-      throw new InputValidationError(name, array, `Array length ${array.length} exceeds maximum ${this.MAX_ARRAY_LENGTH}`);
+      throw new InputValidationError(
+        name,
+        array,
+        `Array length ${array.length} exceeds maximum ${this.MAX_ARRAY_LENGTH}`
+      );
     }
   }
 
-  static validateStringLength(str: string, name: string, maxLength = this.MAX_STRING_LENGTH): void {
+  static validateStringLength(
+    str: string,
+    name: string,
+    maxLength = this.MAX_STRING_LENGTH
+  ): void {
     if (str.length > maxLength) {
-      throw new InputValidationError(name, str, `String length ${str.length} exceeds maximum ${maxLength}`);
+      throw new InputValidationError(
+        name,
+        str,
+        `String length ${str.length} exceeds maximum ${maxLength}`
+      );
     }
   }
 
@@ -476,7 +565,7 @@ export class RequestSizeValidator {
 
 // Helper function to convert Zod schema to MCP-compatible JSON Schema
 function zodToMCPSchema(zodSchema: z.ZodObject<any>): {
-  type: "object";
+  type: 'object';
   properties?: Record<string, unknown>;
   required?: string[];
 } {
@@ -486,7 +575,7 @@ function zodToMCPSchema(zodSchema: z.ZodObject<any>): {
 
   for (const [key, value] of Object.entries(shape)) {
     const zodField = value as z.ZodTypeAny;
-    properties[key] = { type: "string" }; // Simplified - MCP will validate with Zod anyway
+    properties[key] = { type: 'string' }; // Simplified - MCP will validate with Zod anyway
 
     // Check if field is optional
     if (!zodField.isOptional()) {
@@ -495,9 +584,9 @@ function zodToMCPSchema(zodSchema: z.ZodObject<any>): {
   }
 
   return {
-    type: "object",
+    type: 'object',
     properties,
-    ...(required.length > 0 ? { required } : {})
+    ...(required.length > 0 ? { required } : {}),
   };
 }
 
@@ -510,11 +599,21 @@ export const ToolSchemas = {
   jiraSearchIssues: zodToMCPSchema(MCPToolSchemas.jiraSearchIssues),
   githubGetCommits: zodToMCPSchema(MCPToolSchemas.githubGetCommits),
   githubGetPullRequests: zodToMCPSchema(MCPToolSchemas.githubGetPullRequests),
-  githubSearchCommits: zodToMCPSchema(MCPToolSchemas.githubSearchCommitsByMessage),
-  githubSearchCommitsByMessage: zodToMCPSchema(MCPToolSchemas.githubSearchCommitsByMessage), // Alias
-  githubSearchPullRequestsByDate: zodToMCPSchema(MCPToolSchemas.githubSearchPullRequestsByDate),
-  githubFindCommitsByIssue: zodToMCPSchema(MCPToolSchemas.githubFindCommitsWithJiraReferences),
-  githubFindCommitsWithJiraReferences: zodToMCPSchema(MCPToolSchemas.githubFindCommitsWithJiraReferences), // Alias
+  githubSearchCommits: zodToMCPSchema(
+    MCPToolSchemas.githubSearchCommitsByMessage
+  ),
+  githubSearchCommitsByMessage: zodToMCPSchema(
+    MCPToolSchemas.githubSearchCommitsByMessage
+  ), // Alias
+  githubSearchPullRequestsByDate: zodToMCPSchema(
+    MCPToolSchemas.githubSearchPullRequestsByDate
+  ),
+  githubFindCommitsByIssue: zodToMCPSchema(
+    MCPToolSchemas.githubFindCommitsWithJiraReferences
+  ),
+  githubFindCommitsWithJiraReferences: zodToMCPSchema(
+    MCPToolSchemas.githubFindCommitsWithJiraReferences
+  ), // Alias
   generateSprintReport: zodToMCPSchema(MCPToolSchemas.generateSprintReport),
   getSprintMetrics: zodToMCPSchema(MCPToolSchemas.getSprintMetrics),
   getServerHealth: zodToMCPSchema(MCPToolSchemas.healthCheck),

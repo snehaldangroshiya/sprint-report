@@ -6,36 +6,47 @@ import 'module-alias/register';
 // MCP Server with HTTP/SSE Transport
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
-import express, { Request, Response } from 'express';
 import cors from 'cors';
-import { JiraClient } from './clients/jira-client';
-import { GitHubClient } from './clients/github-client';
-import { CacheManager } from './cache/cache-manager';
-import { ServiceRateLimiter } from './utils/rate-limiter';
-import { getLogger } from './utils/logger';
-import { createAppConfig } from './config/environment';
-import { ToolRegistry } from './server/tool-registry';
-import { EnhancedServerContext } from './server/enhanced-mcp-server';
-import { CacheOptimizer } from './cache/cache-optimizer';
-import { initializeGlobalPerformanceMonitor } from './performance/performance-monitor';
-import { SprintService } from './services/sprint-service';
-import { ExportService } from './services/export-service';
-import { ReportGenerator } from './reporting/report-generator';
-import { ReportTools } from './tools/report-tools';
+import express, { Request, Response } from 'express';
 
-const PORT = process.env.MCP_HTTP_PORT ? parseInt(process.env.MCP_HTTP_PORT) : 3001;
+import { CacheManager } from './cache/cache-manager';
+import { CacheOptimizer } from './cache/cache-optimizer';
+import { GitHubClient } from './clients/github-client';
+import { JiraClient } from './clients/jira-client';
+import { createAppConfig } from './config/environment';
+import { initializeGlobalPerformanceMonitor } from './performance/performance-monitor';
+import { ReportGenerator } from './reporting/report-generator';
+import { EnhancedServerContext } from './server/enhanced-mcp-server';
+import { ToolRegistry } from './server/tool-registry';
+import { ExportService } from './services/export-service';
+import { SprintService } from './services/sprint-service';
+import { ReportTools } from './tools/report-tools';
+import { getLogger } from './utils/logger';
+import { ServiceRateLimiter } from './utils/rate-limiter';
+
+const PORT = process.env.MCP_HTTP_PORT
+  ? parseInt(process.env.MCP_HTTP_PORT)
+  : 3001;
 const HOST = process.env.MCP_SERVER_HOST || 'localhost';
 
 async function main() {
   const app = express();
 
   // Middleware
-  app.use(cors({
-    origin: process.env.NODE_ENV === 'production'
-      ? process.env.ALLOWED_ORIGINS?.split(',') || []
-      : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:5173'],
-    credentials: true,
-  }));
+  app.use(
+    cors({
+      origin:
+        process.env.NODE_ENV === 'production'
+          ? process.env.ALLOWED_ORIGINS?.split(',') || []
+          : [
+              'http://localhost:3000',
+              'http://localhost:3001',
+              'http://localhost:3002',
+              'http://localhost:5173',
+            ],
+      credentials: true,
+    })
+  );
   app.use(express.json());
   app.use(express.text());
 
@@ -52,11 +63,20 @@ async function main() {
   const cacheOptimizer = new CacheOptimizer(cacheManager, performanceMonitor);
 
   // Initialize reporting services
-  const sprintService = new SprintService(jiraClient, githubClient, cacheManager);
+  const sprintService = new SprintService(
+    jiraClient,
+    githubClient,
+    cacheManager
+  );
   const analyticsService = (sprintService as any).analyticsService;
   const exportService = new ExportService();
   const reportGenerator = new ReportGenerator(sprintService);
-  const reportTools = new ReportTools(sprintService, analyticsService, exportService, reportGenerator);
+  const reportTools = new ReportTools(
+    sprintService,
+    analyticsService,
+    exportService,
+    reportGenerator
+  );
 
   const context: EnhancedServerContext = {
     config,
@@ -91,10 +111,14 @@ async function main() {
   const toolRegistry = new ToolRegistry(logger);
   toolRegistry.registerAllTools();
 
-  logger.info(`Registered ${toolRegistry.getToolDefinitions().length} MCP tools`);
+  logger.info(
+    `Registered ${toolRegistry.getToolDefinitions().length} MCP tools`
+  );
 
   // Set up tool handlers (from @modelcontextprotocol/sdk)
-  const { ListToolsRequestSchema, CallToolRequestSchema } = await import('@modelcontextprotocol/sdk/types.js');
+  const { ListToolsRequestSchema, CallToolRequestSchema } = await import(
+    '@modelcontextprotocol/sdk/types.js'
+  );
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
@@ -164,11 +188,12 @@ async function main() {
   // MCP message endpoint - handle incoming messages
   app.post('/message', async (req: Request, res: Response) => {
     try {
-      const message = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const message =
+        typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
 
       logger.info('Received MCP message:', {
         method: message.method,
-        id: message.id
+        id: message.id,
       });
 
       // Find the appropriate transport (for now, use the first one)
@@ -184,7 +209,6 @@ async function main() {
       // The transport will handle the message through the connected server
       // Just acknowledge receipt
       res.status(202).end();
-
     } catch (error: any) {
       logger.error('Error handling message:', error);
       res.status(400).json({ error: error.message });
@@ -209,7 +233,9 @@ async function main() {
     console.log(`🔌 MCP SSE Endpoint: http://${HOST}:${PORT}/sse`);
     console.log(`📨 MCP Message Endpoint: http://${HOST}:${PORT}/message`);
     console.log(`❤️  Health Check: http://${HOST}:${PORT}/health`);
-    console.log(`🛠️  Tools Available: ${toolRegistry.getToolDefinitions().length}`);
+    console.log(
+      `🛠️  Tools Available: ${toolRegistry.getToolDefinitions().length}`
+    );
     console.log('='.repeat(60));
     console.log('\nMCP Server is ready to accept HTTP connections');
     console.log('Connect using: http://localhost:3001/sse\n');
@@ -237,12 +263,12 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', error => {
   console.error('Uncaught Exception:', error);
   process.exit(1);
 });
 
-main().catch((error) => {
+main().catch(error => {
   console.error('Failed to start MCP HTTP server:', error);
   process.exit(1);
 });

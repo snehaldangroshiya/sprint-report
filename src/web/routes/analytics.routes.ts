@@ -1,5 +1,6 @@
 // Analytics routes (commit trends, team performance, issue types)
 import { Router } from 'express';
+
 import { EnhancedServerContext } from '@/server/enhanced-mcp-server';
 
 /**
@@ -9,9 +10,20 @@ import { EnhancedServerContext } from '@/server/enhanced-mcp-server';
 export function createAnalyticsRouter(
   getContext: () => EnhancedServerContext,
   callMCPTool: (toolName: string, args: any) => Promise<any>,
-  aggregateCommitsByMonth: (commits: any[], pullRequests: any[], startDate?: Date, endDate?: Date) => any[],
-  calculateTeamPerformance: (boardId: string, sprintCount: number) => Promise<any[]>,
-  calculateIssueTypeDistribution: (boardId: string, sprintCount: number) => Promise<any[]>,
+  aggregateCommitsByMonth: (
+    commits: any[],
+    pullRequests: any[],
+    startDate?: Date,
+    endDate?: Date
+  ) => any[],
+  calculateTeamPerformance: (
+    boardId: string,
+    sprintCount: number
+  ) => Promise<any[]>,
+  calculateIssueTypeDistribution: (
+    boardId: string,
+    sprintCount: number
+  ) => Promise<any[]>,
   handleAPIError: (error: any, res: any, message: string) => void
 ): Router {
   const router = Router();
@@ -59,14 +71,15 @@ export function createAnalyticsRouter(
         let page = 1;
         let hasMore = true;
 
-        while (hasMore && page <= 10) { // Limit to 10 pages (1000 commits max)
+        while (hasMore && page <= 10) {
+          // Limit to 10 pages (1000 commits max)
           const commits = await callMCPTool('github_get_commits', {
             owner,
             repo,
             since: startDate.toISOString(),
             until: endDate.toISOString(),
             per_page: 100,
-            page
+            page,
           });
 
           if (commits && commits.length > 0) {
@@ -86,7 +99,8 @@ export function createAnalyticsRouter(
         let page = 1;
         let hasMore = true;
 
-        while (hasMore && page <= 10) { // Limit to 10 pages (1000 PRs max)
+        while (hasMore && page <= 10) {
+          // Limit to 10 pages (1000 PRs max)
           try {
             const prs = await callMCPTool('github_get_pull_requests', {
               owner,
@@ -95,7 +109,7 @@ export function createAnalyticsRouter(
               since: startDate.toISOString(),
               until: endDate.toISOString(),
               per_page: 100,
-              page
+              page,
             });
 
             if (prs && prs.length > 0) {
@@ -106,7 +120,10 @@ export function createAnalyticsRouter(
               hasMore = false;
             }
           } catch (err) {
-            logger.warn('Failed to fetch pull requests page', { page, error: (err as Error).message });
+            logger.warn('Failed to fetch pull requests page', {
+              page,
+              error: (err as Error).message,
+            });
             hasMore = false;
           }
         }
@@ -116,16 +133,25 @@ export function createAnalyticsRouter(
 
       const [commits, pullRequests] = await Promise.all([
         fetchAllCommits(),
-        fetchAllPRs()
+        fetchAllPRs(),
       ]);
 
       // Aggregate commits and PRs by month, filling in missing months with zeros
-      const trends = aggregateCommitsByMonth(commits, pullRequests, startDate, endDate);
+      const trends = aggregateCommitsByMonth(
+        commits,
+        pullRequests,
+        startDate,
+        endDate
+      );
 
       // Cache for 10 minutes
       await cacheManager.set(cacheKey, trends, { ttl: 600000 });
 
-      logger.info('Commit trends calculated and cached', { owner, repo, period });
+      logger.info('Commit trends calculated and cached', {
+        owner,
+        repo,
+        period,
+      });
       return res.json(trends);
     } catch (error) {
       return handleAPIError(error, res, 'Failed to get commit trends');
@@ -144,7 +170,10 @@ export function createAnalyticsRouter(
 
       const cachedData = await cacheManager.get(cacheKey);
       if (cachedData) {
-        logger.info('Team performance served from cache', { boardId, sprintCount });
+        logger.info('Team performance served from cache', {
+          boardId,
+          sprintCount,
+        });
         return res.json(cachedData);
       }
 
@@ -153,9 +182,16 @@ export function createAnalyticsRouter(
       // Only cache non-empty results
       if (performance && performance.length > 0) {
         await cacheManager.set(cacheKey, performance, { ttl: 300000 });
-        logger.info('Team performance calculated and cached', { boardId, sprintCount, count: performance.length });
+        logger.info('Team performance calculated and cached', {
+          boardId,
+          sprintCount,
+          count: performance.length,
+        });
       } else {
-        logger.warn('Team performance returned empty, not caching', { boardId, sprintCount });
+        logger.warn('Team performance returned empty, not caching', {
+          boardId,
+          sprintCount,
+        });
       }
 
       return res.json(performance);
@@ -176,19 +212,32 @@ export function createAnalyticsRouter(
 
       const cachedData = await cacheManager.get(cacheKey);
       if (cachedData) {
-        logger.info('Issue type distribution served from cache', { boardId, sprintCount });
+        logger.info('Issue type distribution served from cache', {
+          boardId,
+          sprintCount,
+        });
         return res.json(cachedData);
       }
 
-      const issueTypes = await calculateIssueTypeDistribution(boardId, sprintCount);
+      const issueTypes = await calculateIssueTypeDistribution(
+        boardId,
+        sprintCount
+      );
 
       // Cache for 10 minutes
       await cacheManager.set(cacheKey, issueTypes, { ttl: 600000 });
 
-      logger.info('Issue type distribution calculated and cached', { boardId, sprintCount });
+      logger.info('Issue type distribution calculated and cached', {
+        boardId,
+        sprintCount,
+      });
       return res.json(issueTypes);
     } catch (error) {
-      return handleAPIError(error, res, 'Failed to get issue type distribution');
+      return handleAPIError(
+        error,
+        res,
+        'Failed to get issue type distribution'
+      );
     }
   });
 

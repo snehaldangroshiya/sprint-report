@@ -25,10 +25,19 @@ export function createGitHubRouter(
   router.get('/repos/:owner/:repo/commits', async (req, res) => {
     try {
       const { owner, repo } = req.params;
-      const { since, until, author, max_results, per_page = 30, page = 1 } = req.query;
+      const {
+        since,
+        until,
+        author,
+        max_results,
+        per_page = 30,
+        page = 1,
+      } = req.query;
 
       // Support both max_results (from web UI) and per_page (standard pagination)
-      const perPage = max_results ? parseInt(max_results as string) : parseInt(per_page as string);
+      const perPage = max_results
+        ? parseInt(max_results as string)
+        : parseInt(per_page as string);
 
       const result = await callMCPTool('github_get_commits', {
         owner,
@@ -37,7 +46,7 @@ export function createGitHubRouter(
         until: formatDate(until as string),
         author: author as string,
         per_page: perPage,
-        page: parseInt(page as string)
+        page: parseInt(page as string),
       });
 
       res.json(result);
@@ -53,14 +62,16 @@ export function createGitHubRouter(
       const { state = 'all', max_results, per_page = 30, page = 1 } = req.query;
 
       // Support both max_results (from web UI) and per_page (standard pagination)
-      const perPage = max_results ? parseInt(max_results as string) : parseInt(per_page as string);
+      const perPage = max_results
+        ? parseInt(max_results as string)
+        : parseInt(per_page as string);
 
       const result = await callMCPTool('github_get_pull_requests', {
         owner,
         repo,
         state: state as string,
         per_page: perPage,
-        page: parseInt(page as string)
+        page: parseInt(page as string),
       });
 
       res.json(result);
@@ -80,20 +91,21 @@ export function createGitHubRouter(
         return;
       }
 
-      const result = await callMCPTool('github_find_commits_with_jira_references', {
-        owner,
-        repo,
-        issue_keys,
-        since,
-        until,
-        max_commits_per_issue
-      });
+      const result = await callMCPTool(
+        'github_find_commits_with_jira_references',
+        {
+          owner,
+          repo,
+          issue_keys,
+          since,
+          until,
+          max_commits_per_issue,
+        }
+      );
 
       res.json(result);
-      return;
     } catch (error) {
       handleAPIError(error, res, 'Failed to find commits with Jira references');
-      return;
     }
   });
 

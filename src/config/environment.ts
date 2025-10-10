@@ -1,9 +1,10 @@
 // Environment configuration and validation
 
-import { z } from 'zod';
 import * as dotenv from 'dotenv';
-import { ConfigurationError } from '@/utils/errors';
+import { z } from 'zod';
+
 import { AppConfig } from '@/types';
+import { ConfigurationError } from '@/utils/errors';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -19,7 +20,10 @@ const JiraConfigSchema = z.object({
 
 const GitHubConfigSchema = z.object({
   token: z.string().min(1, 'GitHub token is required'),
-  apiUrl: z.string().url('GitHub API URL must be valid').default('https://api.github.com'),
+  apiUrl: z
+    .string()
+    .url('GitHub API URL must be valid')
+    .default('https://api.github.com'),
   timeout: z.number().int().min(1000).max(120000).default(30000),
   userAgent: z.string().min(1).default('JiraGitHubReporter/1.0.0'),
 });
@@ -29,12 +33,14 @@ const CacheConfigSchema = z.object({
     maxSize: z.number().int().min(10).max(1000000).default(50000),
     ttl: z.number().int().min(60).max(3600).default(300),
   }),
-  redis: z.object({
-    host: z.string().min(1).default('localhost'),
-    port: z.number().int().min(1).max(65535).default(6379),
-    password: z.string().optional(),
-    db: z.number().int().min(0).max(15).default(0),
-  }).optional(),
+  redis: z
+    .object({
+      host: z.string().min(1).default('localhost'),
+      port: z.number().int().min(1).max(65535).default(6379),
+      password: z.string().optional(),
+      db: z.number().int().min(0).max(15).default(0),
+    })
+    .optional(),
 });
 
 const ServerConfigSchema = z.object({
@@ -47,12 +53,22 @@ const ServerConfigSchema = z.object({
 const ReportsConfigSchema = z.object({
   outputDir: z.string().min(1).default('./sprint-reports'),
   templateDir: z.string().min(1).default('./src/templates'),
-  maxSize: z.number().int().min(1024).max(100 * 1024 * 1024).default(50 * 1024 * 1024),
+  maxSize: z
+    .number()
+    .int()
+    .min(1024)
+    .max(100 * 1024 * 1024)
+    .default(50 * 1024 * 1024),
 });
 
 const SecurityConfigSchema = z.object({
   rateLimitPerMinute: z.number().int().min(1).max(1000).default(100),
-  maxRequestSize: z.number().int().min(1024).max(50 * 1024 * 1024).default(10 * 1024 * 1024),
+  maxRequestSize: z
+    .number()
+    .int()
+    .min(1024)
+    .max(50 * 1024 * 1024)
+    .default(10 * 1024 * 1024),
   enableHelmet: z.boolean().default(true),
 });
 
@@ -80,37 +96,57 @@ function getEnvironmentVariables(): Record<string, any> {
       baseUrl: process.env.JIRA_BASE_URL,
       email: process.env.JIRA_EMAIL,
       apiToken: process.env.JIRA_API_TOKEN,
-      maxResults: process.env.JIRA_MAX_RESULTS ? parseInt(process.env.JIRA_MAX_RESULTS, 10) : undefined,
-      timeout: process.env.JIRA_TIMEOUT ? parseInt(process.env.JIRA_TIMEOUT, 10) : undefined,
+      maxResults: process.env.JIRA_MAX_RESULTS
+        ? parseInt(process.env.JIRA_MAX_RESULTS, 10)
+        : undefined,
+      timeout: process.env.JIRA_TIMEOUT
+        ? parseInt(process.env.JIRA_TIMEOUT, 10)
+        : undefined,
     },
 
     // GitHub configuration
     github: {
       token: process.env.GITHUB_TOKEN,
       apiUrl: process.env.GITHUB_API_URL,
-      timeout: process.env.GITHUB_TIMEOUT ? parseInt(process.env.GITHUB_TIMEOUT, 10) : undefined,
+      timeout: process.env.GITHUB_TIMEOUT
+        ? parseInt(process.env.GITHUB_TIMEOUT, 10)
+        : undefined,
       userAgent: process.env.GITHUB_USER_AGENT,
     },
 
     // Cache configuration
     cache: {
       memory: {
-        maxSize: process.env.MEMORY_CACHE_MAX_SIZE ? parseInt(process.env.MEMORY_CACHE_MAX_SIZE, 10) : undefined,
-        ttl: process.env.MEMORY_CACHE_TTL ? parseInt(process.env.MEMORY_CACHE_TTL, 10) : undefined,
+        maxSize: process.env.MEMORY_CACHE_MAX_SIZE
+          ? parseInt(process.env.MEMORY_CACHE_MAX_SIZE, 10)
+          : undefined,
+        ttl: process.env.MEMORY_CACHE_TTL
+          ? parseInt(process.env.MEMORY_CACHE_TTL, 10)
+          : undefined,
       },
-      redis: process.env.REDIS_HOST ? {
-        host: process.env.REDIS_HOST,
-        port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT, 10) : undefined,
-        password: process.env.REDIS_PASSWORD,
-        db: process.env.REDIS_DB ? parseInt(process.env.REDIS_DB, 10) : undefined,
-      } : undefined,
+      redis: process.env.REDIS_HOST
+        ? {
+            host: process.env.REDIS_HOST,
+            port: process.env.REDIS_PORT
+              ? parseInt(process.env.REDIS_PORT, 10)
+              : undefined,
+            password: process.env.REDIS_PASSWORD,
+            db: process.env.REDIS_DB
+              ? parseInt(process.env.REDIS_DB, 10)
+              : undefined,
+          }
+        : undefined,
     },
 
     // Server configuration
     server: {
-      port: process.env.MCP_SERVER_PORT ? parseInt(process.env.MCP_SERVER_PORT, 10) : undefined,
+      port: process.env.MCP_SERVER_PORT
+        ? parseInt(process.env.MCP_SERVER_PORT, 10)
+        : undefined,
       host: process.env.MCP_SERVER_HOST,
-      cors: process.env.ENABLE_CORS ? process.env.ENABLE_CORS === 'true' : undefined,
+      cors: process.env.ENABLE_CORS
+        ? process.env.ENABLE_CORS === 'true'
+        : undefined,
       corsOrigin: process.env.CORS_ORIGIN,
     },
 
@@ -118,24 +154,43 @@ function getEnvironmentVariables(): Record<string, any> {
     reports: {
       outputDir: process.env.REPORT_OUTPUT_DIR,
       templateDir: process.env.REPORT_TEMPLATE_DIR,
-      maxSize: process.env.REPORT_MAX_SIZE ? parseInt(process.env.REPORT_MAX_SIZE, 10) : undefined,
+      maxSize: process.env.REPORT_MAX_SIZE
+        ? parseInt(process.env.REPORT_MAX_SIZE, 10)
+        : undefined,
     },
 
     // Security configuration
     security: {
-      rateLimitPerMinute: process.env.RATE_LIMIT_PER_MINUTE ? parseInt(process.env.RATE_LIMIT_PER_MINUTE, 10) : undefined,
-      maxRequestSize: process.env.MAX_REQUEST_SIZE ? parseInt(process.env.MAX_REQUEST_SIZE, 10) : undefined,
-      enableHelmet: process.env.ENABLE_HELMET ? process.env.ENABLE_HELMET === 'true' : undefined,
+      rateLimitPerMinute: process.env.RATE_LIMIT_PER_MINUTE
+        ? parseInt(process.env.RATE_LIMIT_PER_MINUTE, 10)
+        : undefined,
+      maxRequestSize: process.env.MAX_REQUEST_SIZE
+        ? parseInt(process.env.MAX_REQUEST_SIZE, 10)
+        : undefined,
+      enableHelmet: process.env.ENABLE_HELMET
+        ? process.env.ENABLE_HELMET === 'true'
+        : undefined,
     },
 
     // Logging configuration
     logging: {
-      level: process.env.LOG_LEVEL as 'error' | 'warn' | 'info' | 'debug' | undefined,
-      enableApiLogging: process.env.ENABLE_API_LOGGING ? process.env.ENABLE_API_LOGGING === 'true' : undefined,
+      level: process.env.LOG_LEVEL as
+        | 'error'
+        | 'warn'
+        | 'info'
+        | 'debug'
+        | undefined,
+      enableApiLogging: process.env.ENABLE_API_LOGGING
+        ? process.env.ENABLE_API_LOGGING === 'true'
+        : undefined,
     },
 
     // Node environment
-    nodeEnv: process.env.NODE_ENV as 'development' | 'test' | 'production' | undefined,
+    nodeEnv: process.env.NODE_ENV as
+      | 'development'
+      | 'test'
+      | 'production'
+      | undefined,
   };
 }
 
@@ -151,9 +206,9 @@ export function createAppConfig(): AppConfig {
     return parsedConfig as AppConfig;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const errorMessages = error.errors.map(err =>
-        `${err.path.join('.')}: ${err.message}`
-      ).join('\n');
+      const errorMessages = error.errors
+        .map(err => `${err.path.join('.')}: ${err.message}`)
+        .join('\n');
 
       throw new ConfigurationError(
         'environment_validation',
@@ -168,7 +223,10 @@ export function createAppConfig(): AppConfig {
 // Additional configuration validation
 function validateConfiguration(config: AppConfig): void {
   // Validate Jira URL format
-  if (!config.jira.baseUrl.includes('atlassian.net') && !config.jira.baseUrl.includes('jira')) {
+  if (
+    !config.jira.baseUrl.includes('atlassian.net') &&
+    !config.jira.baseUrl.includes('jira')
+  ) {
     throw new ConfigurationError(
       'jira.baseUrl',
       'Jira base URL should be an Atlassian URL (e.g., https://company.atlassian.net)'
@@ -176,8 +234,13 @@ function validateConfiguration(config: AppConfig): void {
   }
 
   // Validate GitHub token format (basic check)
-  if (!config.github.token.startsWith('ghp_') && !config.github.token.startsWith('github_pat_')) {
-    console.warn('GitHub token format may be invalid. Expected format: ghp_* or github_pat_*');
+  if (
+    !config.github.token.startsWith('ghp_') &&
+    !config.github.token.startsWith('github_pat_')
+  ) {
+    console.warn(
+      'GitHub token format may be invalid. Expected format: ghp_* or github_pat_*'
+    );
   }
 
   // Validate output directory exists or can be created
@@ -212,7 +275,9 @@ function validateConfiguration(config: AppConfig): void {
   // Production-specific validations
   if (config.nodeEnv === 'production') {
     if (config.server.corsOrigin === '*') {
-      console.warn('WARNING: CORS origin is set to "*" in production. Consider restricting it.');
+      console.warn(
+        'WARNING: CORS origin is set to "*" in production. Consider restricting it.'
+      );
     }
 
     if (config.logging.level === 'debug') {
@@ -223,32 +288,42 @@ function validateConfiguration(config: AppConfig): void {
 
 // Configuration utilities
 export class ConfigValidator {
-  static async validateJiraConnection(config: AppConfig): Promise<{ valid: boolean; error?: string }> {
+  static async validateJiraConnection(
+    config: AppConfig
+  ): Promise<{ valid: boolean; error?: string }> {
     try {
       const axios = require('axios');
-      const response = await axios.get(`${config.jira.baseUrl}/rest/api/2/myself`, {
-        auth: {
-          username: config.jira.email,
-          password: config.jira.apiToken,
-        },
-        timeout: config.jira.timeout,
-      });
+      const response = await axios.get(
+        `${config.jira.baseUrl}/rest/api/2/myself`,
+        {
+          auth: {
+            username: config.jira.email,
+            password: config.jira.apiToken,
+          },
+          timeout: config.jira.timeout,
+        }
+      );
 
       return { valid: response.status === 200 };
     } catch (error: any) {
       return {
         valid: false,
-        error: error.response?.status === 401 ? 'Invalid credentials' : error.message
+        error:
+          error.response?.status === 401
+            ? 'Invalid credentials'
+            : error.message,
       };
     }
   }
 
-  static async validateGitHubConnection(config: AppConfig): Promise<{ valid: boolean; error?: string; scopes?: string[] }> {
+  static async validateGitHubConnection(
+    config: AppConfig
+  ): Promise<{ valid: boolean; error?: string; scopes?: string[] }> {
     try {
       const axios = require('axios');
       const response = await axios.get(`${config.github.apiUrl}/user`, {
         headers: {
-          'Authorization': `Bearer ${config.github.token}`,
+          Authorization: `Bearer ${config.github.token}`,
           'User-Agent': config.github.userAgent,
         },
         timeout: config.github.timeout,
@@ -256,7 +331,9 @@ export class ConfigValidator {
 
       const scopes = response.headers['x-oauth-scopes']?.split(', ') || [];
       const requiredScopes = ['repo'];
-      const hasRequiredScopes = requiredScopes.every(scope => scopes.includes(scope));
+      const hasRequiredScopes = requiredScopes.every(scope =>
+        scopes.includes(scope)
+      );
 
       if (!hasRequiredScopes) {
         return {
@@ -270,7 +347,7 @@ export class ConfigValidator {
     } catch (error: any) {
       return {
         valid: false,
-        error: error.response?.status === 401 ? 'Invalid token' : error.message
+        error: error.response?.status === 401 ? 'Invalid token' : error.message,
       };
     }
   }

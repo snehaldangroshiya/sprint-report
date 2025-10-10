@@ -1,19 +1,21 @@
 import { SprintService } from '../services/sprint-service.js';
-import { ReportTemplateEngine, SprintReportData, TemplateConfig } from '../templates/report-templates.js';
-import { Logger } from '../utils/logger.js';
+import {
+  ReportTemplateEngine,
+  SprintReportData,
+  TemplateConfig,
+} from '../templates/report-templates.js';
 import {
   SprintReport,
   SprintReportRequest,
-  ReportStorage
+  ReportStorage,
 } from '../types/index.js';
+import { Logger } from '../utils/logger.js';
 
 export class ReportGenerator {
   private logger: Logger;
   private reports: Map<string, ReportStorage> = new Map();
 
-  constructor(
-    private sprintService: SprintService
-  ) {
+  constructor(private sprintService: SprintService) {
     this.logger = new Logger('ReportGenerator');
   }
 
@@ -31,8 +33,8 @@ export class ReportGenerator {
         tier2: request.include_tier2,
         tier3: request.include_tier3,
         forwardLooking: request.include_forward_looking,
-        enhancedGithub: request.include_enhanced_github
-      }
+        enhancedGithub: request.include_enhanced_github,
+      },
     });
 
     try {
@@ -42,10 +44,13 @@ export class ReportGenerator {
         format: request.format,
         include_tier1: request.include_tier1,
         include_tier2: request.include_tier2,
-        include_tier3: request.include_tier3
+        include_tier3: request.include_tier3,
       });
       const reportData = await this.sprintService.generateSprintReport(request);
-      console.log('[REPORT-GEN] Received reportData with keys:', Object.keys(reportData));
+      console.log(
+        '[REPORT-GEN] Received reportData with keys:',
+        Object.keys(reportData)
+      );
       console.log('[REPORT-GEN] Has metadata?', !!reportData.metadata);
       console.log('[REPORT-GEN] Has sprintGoal?', !!reportData.sprintGoal);
 
@@ -84,10 +89,15 @@ export class ReportGenerator {
         id: reportId,
         sprint_id: request.sprint_id,
         format: request.format,
-        content: typeof content === 'string' ? content : (content as Buffer).toString('base64'),
+        content:
+          typeof content === 'string'
+            ? content
+            : (content as Buffer).toString('base64'),
         contentType,
         created_at: new Date().toISOString(),
-        size: Buffer.isBuffer(content) ? content.length : Buffer.byteLength(content, 'utf8')
+        size: Buffer.isBuffer(content)
+          ? content.length
+          : Buffer.byteLength(content, 'utf8'),
       };
 
       this.reports.set(reportId, reportStorage);
@@ -95,7 +105,7 @@ export class ReportGenerator {
       this.logger.info('Sprint report generated successfully', {
         reportId,
         format: request.format,
-        size: reportStorage.size
+        size: reportStorage.size,
       });
 
       return { id: reportId, content, contentType };
@@ -116,7 +126,9 @@ export class ReportGenerator {
    * Get all stored reports
    */
   getAllReports(): Omit<ReportStorage, 'content'>[] {
-    return Array.from(this.reports.values()).map(({ content, ...report }) => report);
+    return Array.from(this.reports.values()).map(
+      ({ content: _content, ...report }) => report
+    );
   }
 
   /**
@@ -129,7 +141,10 @@ export class ReportGenerator {
   /**
    * Generate HTML report
    */
-  private generateHTML(report: SprintReport, theme: string = 'default'): string {
+  private generateHTML(
+    report: SprintReport,
+    theme: string = 'default'
+  ): string {
     // Convert SprintReport to SprintReportData format expected by template engine
     const templateData: SprintReportData = {
       sprint: {
@@ -138,29 +153,33 @@ export class ReportGenerator {
         startDate: report.sprint.startDate || '',
         endDate: report.sprint.endDate || '',
         state: report.sprint.state as 'ACTIVE' | 'CLOSED' | 'FUTURE',
-        boardId: parseInt(report.sprint.boardId, 10)
+        boardId: parseInt(report.sprint.boardId, 10),
       },
       issues: report.sprint.issues || [], // Get issues from sprint
       commits: report.commits?.map(c => ({
         issueKey: '',
-        commits: [{
-          sha: c.sha,
-          message: c.message,
-          author: c.author.name,
-          date: c.date,
-          url: c.url
-        }]
+        commits: [
+          {
+            sha: c.sha,
+            message: c.message,
+            author: c.author.name,
+            date: c.date,
+            url: c.url,
+          },
+        ],
       })),
       pullRequests: report.pullRequests?.map(pr => ({
         issueKey: '',
-        prs: [{
-          number: pr.number,
-          title: pr.title,
-          state: pr.state,
-          author: pr.author,
-          createdAt: pr.createdAt,
-          url: ''
-        }]
+        prs: [
+          {
+            number: pr.number,
+            title: pr.title,
+            state: pr.state,
+            author: pr.author,
+            createdAt: pr.createdAt,
+            url: '',
+          },
+        ],
       })),
       metrics: {
         totalIssues: report.metrics.totalIssues,
@@ -170,28 +189,34 @@ export class ReportGenerator {
         completionRate: report.metrics.completionRate,
         totalStoryPoints: report.metrics.storyPoints,
         completedStoryPoints: report.metrics.completedStoryPoints,
-        storyPointsCompletionRate: (report.metrics.completedStoryPoints / report.metrics.storyPoints) * 100 || 0,
+        storyPointsCompletionRate:
+          (report.metrics.completedStoryPoints / report.metrics.storyPoints) *
+            100 || 0,
         issueTypeBreakdown: report.metrics.issuesByType,
-        ...(report.velocity ? {
-          velocityData: {
-            previousSprints: report.velocity.sprints.map(s => ({
-              sprintName: s.name,
-              completedPoints: s.completed,
-              plannedPoints: s.commitment
-            })),
-            averageVelocity: report.velocity.average,
-            currentSprintProjection: report.velocity.average
-          }
-        } : {}),
-        ...(report.burndown ? {
-          burndownData: report.burndown.days.map(d => ({
-            date: d.date,
-            remainingPoints: d.remaining,
-            idealRemaining: d.ideal
-          }))
-        } : {})
+        ...(report.velocity
+          ? {
+              velocityData: {
+                previousSprints: report.velocity.sprints.map(s => ({
+                  sprintName: s.name,
+                  completedPoints: s.completed,
+                  plannedPoints: s.commitment,
+                })),
+                averageVelocity: report.velocity.average,
+                currentSprintProjection: report.velocity.average,
+              },
+            }
+          : {}),
+        ...(report.burndown
+          ? {
+              burndownData: report.burndown.days.map(d => ({
+                date: d.date,
+                remainingPoints: d.remaining,
+                idealRemaining: d.ideal,
+              })),
+            }
+          : {}),
       },
-      generatedAt: report.metadata.generatedAt
+      generatedAt: report.metadata.generatedAt,
     };
 
     const config: TemplateConfig = {
@@ -200,7 +225,7 @@ export class ReportGenerator {
       includePullRequests: !!report.pullRequests,
       includeVelocity: !!report.velocity,
       includeBurndown: !!report.burndown,
-      theme: theme as 'default' | 'dark' | 'corporate'
+      theme: theme as 'default' | 'dark' | 'corporate',
     };
 
     return ReportTemplateEngine.generateHTMLReport(templateData, config);
@@ -210,7 +235,8 @@ export class ReportGenerator {
    * Generate Markdown report
    */
   private generateMarkdown(report: SprintReport): string {
-    const { sprint, metrics, commits, pullRequests, velocity, burndown } = report;
+    const { sprint, metrics, commits, pullRequests, velocity, burndown } =
+      report;
 
     let markdown = `# Sprint Report: ${sprint.name}\n\n`;
 
@@ -359,7 +385,7 @@ export class ReportGenerator {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32bit integer
     }
     return Math.abs(hash).toString(36);
@@ -369,8 +395,10 @@ export class ReportGenerator {
    * Clean up old reports (keep last 100)
    */
   cleanupOldReports(): void {
-    const reports = Array.from(this.reports.entries())
-      .sort(([, a], [, b]) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const reports = Array.from(this.reports.entries()).sort(
+      ([, a], [, b]) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
 
     if (reports.length > 100) {
       const toDelete = reports.slice(100);
@@ -380,7 +408,7 @@ export class ReportGenerator {
 
       this.logger.info('Cleaned up old reports', {
         deleted: toDelete.length,
-        remaining: this.reports.size
+        remaining: this.reports.size,
       });
     }
   }

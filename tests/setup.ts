@@ -116,7 +116,7 @@ export const mockJiraResponse = {
     ],
   }),
 
-  getSprintIssues: (sprintId: string) => ({
+  getSprintIssues: (_sprintId: string) => ({
     issues: [
       {
         id: 'test-issue-1',
@@ -140,7 +140,7 @@ export const mockJiraResponse = {
 };
 
 export const mockGitHubResponse = {
-  getCommits: (owner: string, repo: string) => [
+  getCommits: (_owner: string, _repo: string) => [
     {
       sha: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0',
       commit: {
@@ -170,7 +170,7 @@ export const mockGitHubResponse = {
     },
   ],
 
-  getPullRequests: (owner: string, repo: string) => [
+  getPullRequests: (_owner: string, _repo: string) => [
     {
       id: 1,
       number: 123,

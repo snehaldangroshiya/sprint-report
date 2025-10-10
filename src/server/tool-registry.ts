@@ -1,11 +1,20 @@
 // Tool registry for MCP server tools
 
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
+
 import { EnhancedServerContext } from './enhanced-mcp-server';
-import { ValidationUtils, ToolSchemas, MCPToolSchemas } from '@/utils/validation';
-import { BaseError } from '@/utils/errors';
-import { ErrorRecoveryManager, withErrorRecovery } from '@/utils/error-recovery';
 import { OptimizedMetricsHandler } from './optimized-metrics-handler';
+
+import {
+  ErrorRecoveryManager,
+  withErrorRecovery,
+} from '@/utils/error-recovery';
+import { BaseError } from '@/utils/errors';
+import {
+  ValidationUtils,
+  ToolSchemas,
+  MCPToolSchemas,
+} from '@/utils/validation';
 
 export interface ToolHandler {
   (args: Record<string, any>, context: EnhancedServerContext): Promise<any>;
@@ -35,7 +44,6 @@ export class ToolRegistry {
   }
 
   registerAllTools(): void {
-
     // Jira tools
     this.registerTool({
       definition: {
@@ -113,7 +121,8 @@ export class ToolRegistry {
     this.registerTool({
       definition: {
         name: 'github_search_pull_requests_by_date',
-        description: 'Search pull requests by date range using GitHub Search API. Useful for historical sprints where standard pagination is inefficient.',
+        description:
+          'Search pull requests by date range using GitHub Search API. Useful for historical sprints where standard pagination is inefficient.',
         inputSchema: ToolSchemas.githubSearchPullRequestsByDate,
       },
       handler: this.handleGitHubSearchPullRequestsByDate.bind(this),
@@ -193,43 +202,50 @@ export class ToolRegistry {
     try {
       // Get the Zod schema for validation based on tool name
       const zodSchemaMap: Record<string, any> = {
-        'jira_get_sprints': MCPToolSchemas.jiraGetSprints,
-        'jira_get_sprint_issues': MCPToolSchemas.jiraGetSprintIssues,
-        'jira_get_sprint': MCPToolSchemas.jiraGetSprintDetails,
-        'jira_get_issue_details': MCPToolSchemas.jiraGetIssueDetails,
-        'jira_search_issues': MCPToolSchemas.jiraSearchIssues,
-        'github_get_commits': MCPToolSchemas.githubGetCommits,
-        'github_get_pull_requests': MCPToolSchemas.githubGetPullRequests,
-        'github_search_commits_by_message': MCPToolSchemas.githubSearchCommitsByMessage,
-        'github_search_pull_requests_by_date': MCPToolSchemas.githubSearchPullRequestsByDate,
-        'github_find_commits_with_jira_references': MCPToolSchemas.githubFindCommitsWithJiraReferences,
-        'generate_sprint_report': MCPToolSchemas.generateSprintReport,
-        'get_sprint_metrics': MCPToolSchemas.getSprintMetrics,
-        'health_check': MCPToolSchemas.healthCheck,
-        'cache_stats': MCPToolSchemas.cacheStats,
+        jira_get_sprints: MCPToolSchemas.jiraGetSprints,
+        jira_get_sprint_issues: MCPToolSchemas.jiraGetSprintIssues,
+        jira_get_sprint: MCPToolSchemas.jiraGetSprintDetails,
+        jira_get_issue_details: MCPToolSchemas.jiraGetIssueDetails,
+        jira_search_issues: MCPToolSchemas.jiraSearchIssues,
+        github_get_commits: MCPToolSchemas.githubGetCommits,
+        github_get_pull_requests: MCPToolSchemas.githubGetPullRequests,
+        github_search_commits_by_message:
+          MCPToolSchemas.githubSearchCommitsByMessage,
+        github_search_pull_requests_by_date:
+          MCPToolSchemas.githubSearchPullRequestsByDate,
+        github_find_commits_with_jira_references:
+          MCPToolSchemas.githubFindCommitsWithJiraReferences,
+        generate_sprint_report: MCPToolSchemas.generateSprintReport,
+        get_sprint_metrics: MCPToolSchemas.getSprintMetrics,
+        health_check: MCPToolSchemas.healthCheck,
+        cache_stats: MCPToolSchemas.cacheStats,
       };
 
       // Validate arguments against Zod schema
       const zodSchema = zodSchemaMap[name];
       const validatedArgs: Record<string, any> = zodSchema
-        ? ValidationUtils.validateAndParse(zodSchema, args as Record<string, any>)
-        : (args as Record<string, any>);
+        ? ValidationUtils.validateAndParse(zodSchema, args)
+        : args;
 
       // Execute the tool handler
       const result = await tool.handler(validatedArgs, context);
 
       return {
-        content: [{
-          type: 'text',
-          text: typeof result === 'string' ? result : JSON.stringify(result, null, 2),
-        }],
+        content: [
+          {
+            type: 'text',
+            text:
+              typeof result === 'string'
+                ? result
+                : JSON.stringify(result, null, 2),
+          },
+        ],
       };
     } catch (error) {
-      context.logger.logError(
-        error as Error,
-        `tool_${name}`,
-        { tool_name: name, arguments: Object.keys(args) }
-      );
+      context.logger.logError(error as Error, `tool_${name}`, {
+        tool_name: name,
+        arguments: Object.keys(args),
+      });
       throw error;
     }
   }
@@ -248,7 +264,11 @@ export class ToolRegistry {
     context: EnhancedServerContext
   ): Promise<any> {
     const { sprint_id, fields, max_results } = args;
-    return await context.jiraClient.getSprintIssues(sprint_id, fields, max_results);
+    return await context.jiraClient.getSprintIssues(
+      sprint_id,
+      fields,
+      max_results
+    );
   }
 
   private async handleJiraGetSprint(
@@ -309,7 +329,13 @@ export class ToolRegistry {
     context: EnhancedServerContext
   ): Promise<any> {
     const { owner, repo, query, since, until } = args;
-    return await context.githubClient.searchCommitsByMessage(owner, repo, query, since, until);
+    return await context.githubClient.searchCommitsByMessage(
+      owner,
+      repo,
+      query,
+      since,
+      until
+    );
   }
 
   private async handleGitHubSearchPullRequestsByDate(
@@ -343,16 +369,19 @@ export class ToolRegistry {
   // Sprint reporting tool handlers
   @withErrorRecovery('generateSprintReport', {
     partialResultTolerance: true,
-    fallback: async function(this: ToolRegistry) {
+    fallback: async function (this: ToolRegistry) {
       return 'Sprint report generation is temporarily unavailable. Please try again later.';
-    }
+    },
   })
   private async handleGenerateSprintReport(
     args: Record<string, any>,
     context: EnhancedServerContext
   ): Promise<any> {
     try {
-      console.log('[TOOL-REGISTRY] handleGenerateSprintReport called with format:', args.format);
+      console.log(
+        '[TOOL-REGISTRY] handleGenerateSprintReport called with format:',
+        args.format
+      );
 
       // Delegate to reportTools which has full tier analytics implementation
       const result = await context.reportTools.generateSprintReport(args);
@@ -360,8 +389,12 @@ export class ToolRegistry {
       console.log('[TOOL-REGISTRY] Result from reportTools:', {
         contentType: result.contentType,
         contentIsString: typeof result.content === 'string',
-        contentLength: typeof result.content === 'string' ? result.content.length : 'N/A',
-        contentPreview: typeof result.content === 'string' ? result.content.substring(0, 100) : 'object'
+        contentLength:
+          typeof result.content === 'string' ? result.content.length : 'N/A',
+        contentPreview:
+          typeof result.content === 'string'
+            ? result.content.substring(0, 100)
+            : 'object',
       });
 
       // Return the report content - if format is JSON, parse the string to return object
@@ -372,13 +405,8 @@ export class ToolRegistry {
 
       console.log('[TOOL-REGISTRY] Returning content as-is');
       return result.content;
-
     } catch (error) {
-      context.logger.logError(
-        error as Error,
-        'generateSprintReport',
-        { args }
-      );
+      context.logger.logError(error as Error, 'generateSprintReport', { args });
 
       // Return a degraded report with available data
       return this.generateFallbackSprintReport(args.sprint_id, error as Error);
@@ -386,14 +414,17 @@ export class ToolRegistry {
   }
 
   @withErrorRecovery('getSprintMetrics', {
-    partialResultTolerance: true
+    partialResultTolerance: true,
   })
   private async handleGetSprintMetrics(
     args: Record<string, any>,
     context: EnhancedServerContext
   ): Promise<any> {
     // Delegate to optimized metrics handler for better performance
-    return await this.optimizedMetricsHandler.getOptimizedSprintMetrics(args, context);
+    return await this.optimizedMetricsHandler.getOptimizedSprintMetrics(
+      args,
+      context
+    );
   }
 
   // Utility tool handlers
@@ -408,26 +439,42 @@ export class ToolRegistry {
 
       if (check_external_dependencies) {
         healthChecks.push(
-          context.jiraClient.validateConnection()
+          context.jiraClient
+            .validateConnection()
             .then(result => ({ service: 'jira', ...result }))
-            .catch(error => ({ service: 'jira', valid: false, error: error.message }))
+            .catch(error => ({
+              service: 'jira',
+              valid: false,
+              error: error.message,
+            }))
         );
 
         healthChecks.push(
-          context.githubClient.validateConnection()
+          context.githubClient
+            .validateConnection()
             .then(result => ({ service: 'github', ...result }))
-            .catch(error => ({ service: 'github', valid: false, error: error.message }))
+            .catch(error => ({
+              service: 'github',
+              valid: false,
+              error: error.message,
+            }))
         );
       }
 
       healthChecks.push(
-        context.cacheManager.healthCheck()
+        context.cacheManager
+          .healthCheck()
           .then(result => ({ service: 'cache', ...result }))
-          .catch(error => ({ service: 'cache', valid: false, error: error.message }))
+          .catch(error => ({
+            service: 'cache',
+            valid: false,
+            error: error.message,
+          }))
       );
 
       // Add error recovery manager health check
-      const errorRecoveryStats = this.errorRecoveryManager?.getCircuitBreakerStats() || {};
+      const errorRecoveryStats =
+        this.errorRecoveryManager?.getCircuitBreakerStats() || {};
       const circuitBreakerHealth = {
         service: 'circuit_breakers',
         valid: Object.values(errorRecoveryStats).every(state => !state.isOpen),
@@ -438,7 +485,9 @@ export class ToolRegistry {
       };
 
       const results = await Promise.allSettled(healthChecks);
-      const services: Record<string, any> = { circuit_breakers: circuitBreakerHealth };
+      const services: Record<string, any> = {
+        circuit_breakers: circuitBreakerHealth,
+      };
 
       let overallStatus = 'healthy';
       let healthyServices = 1; // circuit breakers counted as 1
@@ -494,7 +543,8 @@ export class ToolRegistry {
       };
 
       if (include_detailed_status) {
-        healthReport.summary.recommendations = this.generateHealthRecommendations(services);
+        healthReport.summary.recommendations =
+          this.generateHealthRecommendations(services);
         healthReport.summary.systemInfo = {
           uptime: process.uptime(),
           memoryUsage: process.memoryUsage(),
@@ -509,7 +559,6 @@ export class ToolRegistry {
       });
 
       return healthReport;
-
     } catch (error) {
       context.logger.logError(error as Error, 'healthCheck');
       return {
@@ -530,13 +579,16 @@ export class ToolRegistry {
     try {
       if (reset_stats) {
         // Reset statistics (be careful with this in production)
-        context.logger.warn('Cache statistics reset requested', { timestamp: new Date().toISOString() });
+        context.logger.warn('Cache statistics reset requested', {
+          timestamp: new Date().toISOString(),
+        });
       }
 
       const stats = context.cacheManager.getStats();
       const info = await context.cacheManager.getInfo();
       const rateLimiterStats = context.rateLimiter.getAllStats();
-      const errorRecoveryStats = this.errorRecoveryManager?.getCircuitBreakerStats() || {};
+      const errorRecoveryStats =
+        this.errorRecoveryManager?.getCircuitBreakerStats() || {};
 
       const result: any = {
         timestamp: new Date().toISOString(),
@@ -562,7 +614,11 @@ export class ToolRegistry {
           cacheBreakdownByOperation: this.getCacheBreakdownByOperation(stats),
           rateLimiterBreakdownByEndpoint: rateLimiterStats,
           errorRecoveryDetails: errorRecoveryStats,
-          recommendations: this.generatePerformanceRecommendations(stats, rateLimiterStats, errorRecoveryStats),
+          recommendations: this.generatePerformanceRecommendations(
+            stats,
+            rateLimiterStats,
+            errorRecoveryStats
+          ),
         };
       }
 
@@ -573,7 +629,6 @@ export class ToolRegistry {
       });
 
       return result;
-
     } catch (error) {
       context.logger.logError(error as Error, 'cacheStats');
       return {
@@ -613,23 +668,33 @@ The sprint report could not be fully generated due to a system error. This may b
 `;
   }
 
-  private generateHealthRecommendations(services: Record<string, any>): string[] {
+  private generateHealthRecommendations(
+    services: Record<string, any>
+  ): string[] {
     const recommendations: string[] = [];
 
     for (const [serviceName, serviceStatus] of Object.entries(services)) {
       if (!serviceStatus.valid) {
         switch (serviceName) {
           case 'jira':
-            recommendations.push('Check Jira connection settings and API credentials');
+            recommendations.push(
+              'Check Jira connection settings and API credentials'
+            );
             break;
           case 'github':
-            recommendations.push('Verify GitHub API token and repository access permissions');
+            recommendations.push(
+              'Verify GitHub API token and repository access permissions'
+            );
             break;
           case 'cache':
-            recommendations.push('Check cache service configuration and memory availability');
+            recommendations.push(
+              'Check cache service configuration and memory availability'
+            );
             break;
           case 'circuit_breakers':
-            recommendations.push('Review error rates and consider resetting circuit breakers');
+            recommendations.push(
+              'Review error rates and consider resetting circuit breakers'
+            );
             break;
         }
       }
@@ -644,25 +709,41 @@ The sprint report could not be fully generated due to a system error. This may b
 
   private calculateCachePerformanceMetrics(stats: any): any {
     const totalRequests = (stats.hits || 0) + (stats.misses || 0);
-    const hitRate = totalRequests > 0 ? Math.round((stats.hits / totalRequests) * 100) : 0;
+    const hitRate =
+      totalRequests > 0 ? Math.round((stats.hits / totalRequests) * 100) : 0;
 
     return {
       hitRate,
       missRate: 100 - hitRate,
       totalRequests,
-      efficiency: hitRate > 80 ? 'excellent' : hitRate > 60 ? 'good' : hitRate > 40 ? 'fair' : 'poor',
+      efficiency:
+        hitRate > 80
+          ? 'excellent'
+          : hitRate > 60
+            ? 'good'
+            : hitRate > 40
+              ? 'fair'
+              : 'poor',
     };
   }
 
   private calculateRateLimiterSummary(rateLimiterStats: any): any {
     const totalEndpoints = Object.keys(rateLimiterStats).length;
-    const activeEndpoints = Object.values(rateLimiterStats).filter((stat: any) => stat.requestCount > 0).length;
+    const activeEndpoints = Object.values(rateLimiterStats).filter(
+      (stat: any) => stat.requestCount > 0
+    ).length;
 
     return {
       totalEndpoints,
       activeEndpoints,
-      totalRequests: Object.values(rateLimiterStats).reduce((sum: number, stat: any) => sum + (stat.requestCount || 0), 0),
-      totalRejected: Object.values(rateLimiterStats).reduce((sum: number, stat: any) => sum + (stat.rejectedCount || 0), 0),
+      totalRequests: Object.values(rateLimiterStats).reduce(
+        (sum: number, stat: any) => sum + (stat.requestCount || 0),
+        0
+      ),
+      totalRejected: Object.values(rateLimiterStats).reduce(
+        (sum: number, stat: any) => sum + (stat.rejectedCount || 0),
+        0
+      ),
     };
   }
 
@@ -686,24 +767,38 @@ The sprint report could not be fully generated due to a system error. This may b
 
     // Cache recommendations
     const totalRequests = (cacheStats.hits || 0) + (cacheStats.misses || 0);
-    const hitRate = totalRequests > 0 ? (cacheStats.hits / totalRequests) * 100 : 0;
+    const hitRate =
+      totalRequests > 0 ? (cacheStats.hits / totalRequests) * 100 : 0;
 
     if (hitRate < 60) {
-      recommendations.push('Consider increasing cache TTL values or cache size');
+      recommendations.push(
+        'Consider increasing cache TTL values or cache size'
+      );
     } else if (hitRate > 90) {
-      recommendations.push('Cache performance is excellent - consider this configuration for other environments');
+      recommendations.push(
+        'Cache performance is excellent - consider this configuration for other environments'
+      );
     }
 
     // Rate limiter recommendations
-    const totalRejected = Object.values(rateLimiterStats).reduce((sum: number, stat: any) => sum + (stat.rejectedCount || 0), 0);
+    const totalRejected = Object.values(rateLimiterStats).reduce(
+      (sum: number, stat: any) => sum + (stat.rejectedCount || 0),
+      0
+    );
     if (totalRejected > 100) {
-      recommendations.push('High rate limit rejections detected - consider implementing intelligent retry strategies');
+      recommendations.push(
+        'High rate limit rejections detected - consider implementing intelligent retry strategies'
+      );
     }
 
     // Circuit breaker recommendations
-    const openCircuitBreakers = Object.values(errorRecoveryStats).filter((state: any) => state.isOpen).length;
+    const openCircuitBreakers = Object.values(errorRecoveryStats).filter(
+      (state: any) => state.isOpen
+    ).length;
     if (openCircuitBreakers > 0) {
-      recommendations.push('Circuit breakers are open - investigate underlying service issues');
+      recommendations.push(
+        'Circuit breakers are open - investigate underlying service issues'
+      );
     }
 
     if (recommendations.length === 0) {

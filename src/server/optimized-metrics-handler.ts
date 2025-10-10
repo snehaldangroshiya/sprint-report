@@ -7,8 +7,8 @@
  * - Batch processing
  */
 
-import { Issue, SprintData } from '@/types';
 import { EnhancedServerContext } from '@/server/enhanced-mcp-server';
+import { Issue, SprintData } from '@/types';
 
 interface MetricsPerformanceLog {
   operation: string;
@@ -35,7 +35,12 @@ export class OptimizedMetricsHandler {
     args: Record<string, any>,
     context: EnhancedServerContext
   ): Promise<any> {
-    const { sprint_id, include_velocity, include_burndown, velocity_history_count } = args;
+    const {
+      sprint_id,
+      include_velocity,
+      include_burndown,
+      velocity_history_count,
+    } = args;
     const startTime = Date.now();
 
     try {
@@ -47,7 +52,7 @@ export class OptimizedMetricsHandler {
         context.logger.info('Metrics served from cache', {
           sprint_id,
           cache_hit: true,
-          duration: Date.now() - startTime
+          duration: Date.now() - startTime,
         });
         return cachedMetrics;
       }
@@ -73,7 +78,11 @@ export class OptimizedMetricsHandler {
 
       if (include_velocity) {
         additionalDataPromises.push(
-          this.calculateVelocityMetrics(context, sprintData, velocity_history_count || 3)
+          this.calculateVelocityMetrics(
+            context,
+            sprintData,
+            velocity_history_count || 3
+          )
             .then(data => ({ type: 'velocity', data }))
             .catch(error => {
               context.logger.warn('Failed to calculate velocity metrics', {
@@ -103,7 +112,10 @@ export class OptimizedMetricsHandler {
       if (additionalDataPromises.length > 0) {
         const additionalDataStart = Date.now();
         const results = await Promise.all(additionalDataPromises);
-        this.logPerformance('calculate_additional_data_parallel', additionalDataStart);
+        this.logPerformance(
+          'calculate_additional_data_parallel',
+          additionalDataStart
+        );
 
         results.forEach(result => {
           if (result.type === 'velocity') velocityData = result.data;
@@ -136,30 +148,29 @@ export class OptimizedMetricsHandler {
       await context.cacheManager.set(metricsKey, result, { ttl });
 
       const totalDuration = Date.now() - startTime;
-      context.logger.info('Sprint metrics calculated successfully (optimized)', {
-        sprint_id,
-        includes_velocity: !!velocityData,
-        includes_burndown: !!burndownData,
-        total_issues: metrics.totalIssues,
-        completion_rate: metrics.completionRate,
-        total_duration_ms: totalDuration,
-        cache_ttl_minutes: ttl / 60000,
-        performance_breakdown: this.performanceLogs,
-      });
+      context.logger.info(
+        'Sprint metrics calculated successfully (optimized)',
+        {
+          sprint_id,
+          includes_velocity: !!velocityData,
+          includes_burndown: !!burndownData,
+          total_issues: metrics.totalIssues,
+          completion_rate: metrics.completionRate,
+          total_duration_ms: totalDuration,
+          cache_ttl_minutes: ttl / 60000,
+          performance_breakdown: this.performanceLogs,
+        }
+      );
 
       return result;
     } catch (error) {
-      context.logger.logError(
-        error as Error,
-        'getOptimizedSprintMetrics',
-        {
-          sprint_id,
-          include_velocity,
-          include_burndown,
-          total_duration_ms: Date.now() - startTime,
-          performance_logs: this.performanceLogs
-        }
-      );
+      context.logger.logError(error as Error, 'getOptimizedSprintMetrics', {
+        sprint_id,
+        include_velocity,
+        include_burndown,
+        total_duration_ms: Date.now() - startTime,
+        performance_logs: this.performanceLogs,
+      });
 
       throw error;
     }
@@ -186,7 +197,11 @@ export class OptimizedMetricsHandler {
 
     // Fetch fresh issues (this will use JiraClient's internal cache)
     const fetchStart = Date.now();
-    const issues = await context.jiraClient.getSprintIssues(sprintId, undefined, 100);
+    const issues = await context.jiraClient.getSprintIssues(
+      sprintId,
+      undefined,
+      100
+    );
     const fetchDuration = Date.now() - fetchStart;
 
     context.logger.info('Sprint issues fetched from Jira', {
@@ -197,7 +212,8 @@ export class OptimizedMetricsHandler {
 
     // Cache with long TTL (issues don't change often, especially for closed sprints)
     const sprint = await context.jiraClient.getSprintData(sprintId);
-    const cacheTTL = sprint.state === 'CLOSED' ? 30 * 24 * 60 * 60 * 1000 : 5 * 60 * 1000; // 30 days vs 5 min
+    const cacheTTL =
+      sprint.state === 'CLOSED' ? 30 * 24 * 60 * 60 * 1000 : 5 * 60 * 1000; // 30 days vs 5 min
 
     await context.cacheManager.set(issuesCacheKey, issues, { ttl: cacheTTL });
 
@@ -213,7 +229,9 @@ export class OptimizedMetricsHandler {
       ['Done', 'Closed', 'Resolved'].includes(issue.status)
     ).length;
     const inProgressIssues = issues.filter(issue =>
-      ['In Progress', 'In Review', 'Code Review', 'Testing'].includes(issue.status)
+      ['In Progress', 'In Review', 'Code Review', 'Testing'].includes(
+        issue.status
+      )
     ).length;
     const todoIssues = issues.filter(issue =>
       ['To Do', 'Open', 'New', 'Backlog'].includes(issue.status)
@@ -228,36 +246,52 @@ export class OptimizedMetricsHandler {
       .map(issue => issue.storyPoints || 0)
       .reduce((sum, points) => sum + points, 0);
 
-    const issueTypeBreakdown = issues.reduce((acc, issue) => {
-      acc[issue.issueType] = (acc[issue.issueType] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const issueTypeBreakdown = issues.reduce(
+      (acc, issue) => {
+        acc[issue.issueType] = (acc[issue.issueType] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
-    const priorityBreakdown = issues.reduce((acc, issue) => {
-      acc[issue.priority] = (acc[issue.priority] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const priorityBreakdown = issues.reduce(
+      (acc, issue) => {
+        acc[issue.priority] = (acc[issue.priority] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
-    const assigneeBreakdown = issues.reduce((acc, issue) => {
-      const assignee = issue.assignee || 'Unassigned';
-      acc[assignee] = (acc[assignee] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const assigneeBreakdown = issues.reduce(
+      (acc, issue) => {
+        const assignee = issue.assignee || 'Unassigned';
+        acc[assignee] = (acc[assignee] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     return {
       totalIssues,
       completedIssues,
       inProgressIssues,
       todoIssues,
-      completionRate: totalIssues > 0 ? Math.round((completedIssues / totalIssues) * 100) : 0,
+      completionRate:
+        totalIssues > 0 ? Math.round((completedIssues / totalIssues) * 100) : 0,
       totalStoryPoints,
       completedStoryPoints,
-      storyPointsCompletionRate: totalStoryPoints > 0 ? Math.round((completedStoryPoints / totalStoryPoints) * 100) : 0,
+      storyPointsCompletionRate:
+        totalStoryPoints > 0
+          ? Math.round((completedStoryPoints / totalStoryPoints) * 100)
+          : 0,
       velocity: completedStoryPoints, // Add velocity directly to metrics
       issueTypeBreakdown,
       priorityBreakdown,
       assigneeBreakdown,
-      averageStoryPointsPerIssue: totalIssues > 0 ? Math.round((totalStoryPoints / totalIssues) * 10) / 10 : 0,
+      averageStoryPointsPerIssue:
+        totalIssues > 0
+          ? Math.round((totalStoryPoints / totalIssues) * 10) / 10
+          : 0,
     };
   }
 

@@ -58,14 +58,22 @@ export class CacheKeyBuilder {
    */
   static jira = {
     boards: () => CacheNamespace.JIRA_BOARDS,
-    sprints: (boardId: string) => CacheKeyBuilder.build(CacheNamespace.JIRA_SPRINTS, boardId),
-    sprint: (sprintId: string) => CacheKeyBuilder.build(CacheNamespace.JIRA_SPRINT, sprintId),
-    issues: (sprintId: string) => CacheKeyBuilder.build(CacheNamespace.JIRA_ISSUES, sprintId),
+    sprints: (boardId: string) =>
+      CacheKeyBuilder.build(CacheNamespace.JIRA_SPRINTS, boardId),
+    sprint: (sprintId: string) =>
+      CacheKeyBuilder.build(CacheNamespace.JIRA_SPRINT, sprintId),
+    issues: (sprintId: string) =>
+      CacheKeyBuilder.build(CacheNamespace.JIRA_ISSUES, sprintId),
     velocity: (boardId: string, sprintCount: number) =>
       CacheKeyBuilder.build(CacheNamespace.JIRA_VELOCITY, boardId, sprintCount),
-    burndown: (sprintId: string) => CacheKeyBuilder.build(CacheNamespace.JIRA_BURNDOWN, sprintId),
+    burndown: (sprintId: string) =>
+      CacheKeyBuilder.build(CacheNamespace.JIRA_BURNDOWN, sprintId),
     teamPerformance: (boardId: string, sprintCount: number) =>
-      CacheKeyBuilder.build(CacheNamespace.JIRA_TEAM_PERFORMANCE, boardId, sprintCount),
+      CacheKeyBuilder.build(
+        CacheNamespace.JIRA_TEAM_PERFORMANCE,
+        boardId,
+        sprintCount
+      ),
     enhancedIssues: (sprintId: string) =>
       CacheKeyBuilder.build(CacheNamespace.JIRA_ENHANCED_ISSUES, sprintId),
   };
@@ -74,12 +82,40 @@ export class CacheKeyBuilder {
    * GitHub cache keys
    */
   static github = {
-    commits: (owner: string, repo: string, startDate: string, endDate: string) =>
-      CacheKeyBuilder.build(CacheNamespace.GITHUB_COMMITS, owner, repo, startDate, endDate),
+    commits: (
+      owner: string,
+      repo: string,
+      startDate: string,
+      endDate: string
+    ) =>
+      CacheKeyBuilder.build(
+        CacheNamespace.GITHUB_COMMITS,
+        owner,
+        repo,
+        startDate,
+        endDate
+      ),
     prs: (owner: string, repo: string, startDate: string, endDate: string) =>
-      CacheKeyBuilder.build(CacheNamespace.GITHUB_PRS, owner, repo, startDate, endDate),
-    enhancedPrs: (owner: string, repo: string, startDate: string, endDate: string) =>
-      CacheKeyBuilder.build(CacheNamespace.GITHUB_ENHANCED_PRS, owner, repo, startDate, endDate),
+      CacheKeyBuilder.build(
+        CacheNamespace.GITHUB_PRS,
+        owner,
+        repo,
+        startDate,
+        endDate
+      ),
+    enhancedPrs: (
+      owner: string,
+      repo: string,
+      startDate: string,
+      endDate: string
+    ) =>
+      CacheKeyBuilder.build(
+        CacheNamespace.GITHUB_ENHANCED_PRS,
+        owner,
+        repo,
+        startDate,
+        endDate
+      ),
   };
 
   /**
@@ -87,13 +123,31 @@ export class CacheKeyBuilder {
    */
   static analytics = {
     commitTrends: (owner: string, repo: string, period: string) =>
-      CacheKeyBuilder.build(CacheNamespace.ANALYTICS_COMMIT_TRENDS, owner, repo, period),
+      CacheKeyBuilder.build(
+        CacheNamespace.ANALYTICS_COMMIT_TRENDS,
+        owner,
+        repo,
+        period
+      ),
     githubMetrics: (owner: string, repo: string, period: string) =>
-      CacheKeyBuilder.build(CacheNamespace.ANALYTICS_GITHUB_METRICS, owner, repo, period),
+      CacheKeyBuilder.build(
+        CacheNamespace.ANALYTICS_GITHUB_METRICS,
+        owner,
+        repo,
+        period
+      ),
     teamPerformance: (boardId: string, sprintCount: number) =>
-      CacheKeyBuilder.build(CacheNamespace.ANALYTICS_TEAM_PERFORMANCE, boardId, sprintCount),
+      CacheKeyBuilder.build(
+        CacheNamespace.ANALYTICS_TEAM_PERFORMANCE,
+        boardId,
+        sprintCount
+      ),
     issueTypes: (boardId: string, sprintCount: number) =>
-      CacheKeyBuilder.build(CacheNamespace.ANALYTICS_ISSUE_TYPES, boardId, sprintCount),
+      CacheKeyBuilder.build(
+        CacheNamespace.ANALYTICS_ISSUE_TYPES,
+        boardId,
+        sprintCount
+      ),
   };
 
   /**
@@ -113,7 +167,10 @@ export class CacheKeyBuilder {
    */
   static health = {
     check: (timestamp?: number) =>
-      CacheKeyBuilder.build(CacheNamespace.HEALTH_CHECK, timestamp || Date.now()),
+      CacheKeyBuilder.build(
+        CacheNamespace.HEALTH_CHECK,
+        timestamp || Date.now()
+      ),
   };
 
   /**
@@ -121,7 +178,11 @@ export class CacheKeyBuilder {
    */
   static circuitBreaker = {
     state: (toolName: string, operationName: string) =>
-      CacheKeyBuilder.build(CacheNamespace.CIRCUIT_BREAKER, toolName, operationName),
+      CacheKeyBuilder.build(
+        CacheNamespace.CIRCUIT_BREAKER,
+        toolName,
+        operationName
+      ),
   };
 
   /**
@@ -140,6 +201,6 @@ export class CacheKeyBuilder {
    */
   static getNamespace(key: string): string {
     const parts = key.split(':');
-    return parts.length >= 2 ? `${parts[0]}:${parts[1]}` : (parts[0] || '');
+    return parts.length >= 2 ? `${parts[0]}:${parts[1]}` : parts[0] || '';
   }
 }

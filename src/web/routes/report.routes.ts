@@ -1,5 +1,6 @@
 // Report generation and export routes
 import { Router } from 'express';
+
 import { PDFGenerator } from '@/utils/pdf-generator';
 
 /**
@@ -25,7 +26,7 @@ export function createReportRouter(
         include_prs = false,
         include_velocity = false,
         include_burndown = false,
-        theme = 'default'
+        theme = 'default',
       } = req.body;
 
       if (!sprint_id) {
@@ -41,7 +42,7 @@ export function createReportRouter(
         include_prs,
         include_velocity,
         include_burndown,
-        theme
+        theme,
       });
 
       // Set appropriate content type
@@ -49,7 +50,10 @@ export function createReportRouter(
         res.set('Content-Type', 'text/html');
       } else if (format === 'csv') {
         res.set('Content-Type', 'text/csv');
-        res.set('Content-Disposition', `attachment; filename="sprint-${sprint_id}.csv"`);
+        res.set(
+          'Content-Disposition',
+          `attachment; filename="sprint-${sprint_id}.csv"`
+        );
       } else if (format === 'json') {
         res.set('Content-Type', 'application/json');
       } else {
@@ -72,19 +76,20 @@ export function createReportRouter(
         return;
       }
 
-      const pdfBuffer = await pdfGenerator.generateSprintReportPDF(reportData, options);
+      const pdfBuffer = await pdfGenerator.generateSprintReportPDF(
+        reportData,
+        options
+      );
 
       res.set({
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="sprint-report-${reportData.sprint?.name || 'unknown'}.pdf"`,
-        'Content-Length': pdfBuffer.length.toString()
+        'Content-Length': pdfBuffer.length.toString(),
       });
 
       res.send(pdfBuffer);
-      return;
     } catch (error) {
       handleAPIError(error, res, 'Failed to generate PDF report');
-      return;
     }
   });
 
@@ -98,19 +103,20 @@ export function createReportRouter(
         return;
       }
 
-      const pdfBuffer = await pdfGenerator.generateAnalyticsPDF(analyticsData, options);
+      const pdfBuffer = await pdfGenerator.generateAnalyticsPDF(
+        analyticsData,
+        options
+      );
 
       res.set({
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'attachment; filename="analytics-report.pdf"',
-        'Content-Length': pdfBuffer.length.toString()
+        'Content-Length': pdfBuffer.length.toString(),
       });
 
       res.send(pdfBuffer);
-      return;
     } catch (error) {
       handleAPIError(error, res, 'Failed to generate analytics PDF');
-      return;
     }
   });
 

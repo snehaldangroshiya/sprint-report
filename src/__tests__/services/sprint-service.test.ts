@@ -51,7 +51,11 @@ describe('SprintService', () => {
 
       expect(result).toEqual(mockBoards);
       expect(mockJiraClient.getBoards).toHaveBeenCalled();
-      expect(mockCacheManager.set).toHaveBeenCalledWith('jira:boards', mockBoards, 300);
+      expect(mockCacheManager.set).toHaveBeenCalledWith(
+        'jira:boards',
+        mockBoards,
+        300
+      );
     });
   });
 
@@ -64,7 +68,9 @@ describe('SprintService', () => {
       const result = await sprintService.getSprints(boardId);
 
       expect(result).toEqual(mockSprints);
-      expect(mockCacheManager.get).toHaveBeenCalledWith(`jira:sprints:${boardId}`);
+      expect(mockCacheManager.get).toHaveBeenCalledWith(
+        `jira:sprints:${boardId}`
+      );
       expect(mockJiraClient.getSprints).not.toHaveBeenCalled();
     });
 
@@ -78,7 +84,11 @@ describe('SprintService', () => {
 
       expect(result).toEqual(mockSprints);
       expect(mockJiraClient.getSprints).toHaveBeenCalledWith(boardId);
-      expect(mockCacheManager.set).toHaveBeenCalledWith(`jira:sprints:${boardId}`, mockSprints, 300);
+      expect(mockCacheManager.set).toHaveBeenCalledWith(
+        `jira:sprints:${boardId}`,
+        mockSprints,
+        300
+      );
     });
   });
 
@@ -91,14 +101,16 @@ describe('SprintService', () => {
         state: 'active',
         startDate: '2024-01-01',
         endDate: '2024-01-14',
-        issues: []
+        issues: [],
       };
       mockCacheManager.get.mockResolvedValue(mockSprint);
 
       const result = await sprintService.getSprintDetails(sprintId);
 
       expect(result).toEqual(mockSprint);
-      expect(mockCacheManager.get).toHaveBeenCalledWith(`jira:sprint:${sprintId}`);
+      expect(mockCacheManager.get).toHaveBeenCalledWith(
+        `jira:sprint:${sprintId}`
+      );
       expect(mockJiraClient.getSprintDetails).not.toHaveBeenCalled();
     });
 
@@ -110,7 +122,7 @@ describe('SprintService', () => {
         state: 'active',
         startDate: '2024-01-01',
         endDate: '2024-01-14',
-        issues: []
+        issues: [],
       };
       mockCacheManager.get.mockResolvedValue(null);
       mockJiraClient.getSprintDetails.mockResolvedValue(mockSprint);
@@ -119,7 +131,11 @@ describe('SprintService', () => {
 
       expect(result).toEqual(mockSprint);
       expect(mockJiraClient.getSprintDetails).toHaveBeenCalledWith(sprintId);
-      expect(mockCacheManager.set).toHaveBeenCalledWith(`jira:sprint:${sprintId}`, mockSprint, 180);
+      expect(mockCacheManager.set).toHaveBeenCalledWith(
+        `jira:sprint:${sprintId}`,
+        mockSprint,
+        180
+      );
     });
   });
 
@@ -134,7 +150,7 @@ describe('SprintService', () => {
         include_burndown: true,
         theme: 'default' as const,
         github_owner: 'test-owner',
-        github_repo: 'test-repo'
+        github_repo: 'test-repo',
       };
 
       const mockSprint = {
@@ -150,9 +166,9 @@ describe('SprintService', () => {
             summary: 'Test issue',
             status: 'Done',
             storyPoints: 5,
-            issueType: 'Story'
-          }
-        ]
+            issueType: 'Story',
+          },
+        ],
       };
 
       const mockCommits = [
@@ -160,8 +176,8 @@ describe('SprintService', () => {
           sha: 'abc123',
           message: 'Fix bug',
           author: 'developer',
-          date: '2024-01-05T12:00:00Z'
-        }
+          date: '2024-01-05T12:00:00Z',
+        },
       ];
 
       const mockPullRequests = [
@@ -170,8 +186,8 @@ describe('SprintService', () => {
           title: 'Feature implementation',
           author: 'developer',
           state: 'merged',
-          created_at: '2024-01-03T10:00:00Z'
-        }
+          created_at: '2024-01-03T10:00:00Z',
+        },
       ];
 
       // Mock all required method calls
@@ -202,13 +218,17 @@ describe('SprintService', () => {
         include_prs: false,
         include_velocity: false,
         include_burndown: false,
-        theme: 'default' as const
+        theme: 'default' as const,
       };
 
       mockCacheManager.get.mockResolvedValue(null);
-      mockJiraClient.getSprintDetails.mockRejectedValue(new Error('Jira API error'));
+      mockJiraClient.getSprintDetails.mockRejectedValue(
+        new Error('Jira API error')
+      );
 
-      await expect(sprintService.generateSprintReport(mockRequest)).rejects.toThrow('Jira API error');
+      await expect(
+        sprintService.generateSprintReport(mockRequest)
+      ).rejects.toThrow('Jira API error');
     });
   });
 
@@ -217,7 +237,7 @@ describe('SprintService', () => {
       const boardId = '123';
       const mockSprints = [
         { id: '1', name: 'Sprint 1', state: 'closed' },
-        { id: '2', name: 'Sprint 2', state: 'closed' }
+        { id: '2', name: 'Sprint 2', state: 'closed' },
       ];
 
       const mockSprintDetails = [
@@ -226,17 +246,17 @@ describe('SprintService', () => {
           name: 'Sprint 1',
           issues: [
             { status: 'Done', storyPoints: 5 },
-            { status: 'Done', storyPoints: 3 }
-          ]
+            { status: 'Done', storyPoints: 3 },
+          ],
         },
         {
           id: '2',
           name: 'Sprint 2',
           issues: [
             { status: 'Done', storyPoints: 8 },
-            { status: 'In Progress', storyPoints: 2 }
-          ]
-        }
+            { status: 'In Progress', storyPoints: 2 },
+          ],
+        },
       ];
 
       mockCacheManager.get

@@ -21,7 +21,7 @@ describe('JiraTools', () => {
     it('should return boards from Jira client', async () => {
       const mockBoards = [
         { id: '1', name: 'Development Board', type: 'scrum' },
-        { id: '2', name: 'Support Board', type: 'kanban' }
+        { id: '2', name: 'Support Board', type: 'kanban' },
       ];
 
       mockJiraClient.getBoards.mockResolvedValue(mockBoards);
@@ -45,7 +45,7 @@ describe('JiraTools', () => {
       const boardId = '123';
       const mockSprints = [
         { id: '1', name: 'Sprint 1', state: 'active' },
-        { id: '2', name: 'Sprint 2', state: 'closed' }
+        { id: '2', name: 'Sprint 2', state: 'closed' },
       ];
 
       mockJiraClient.getSprints.mockResolvedValue(mockSprints);
@@ -70,9 +70,7 @@ describe('JiraTools', () => {
         state: 'active',
         startDate: '2024-01-01',
         endDate: '2024-01-14',
-        issues: [
-          { key: 'TEST-1', summary: 'Test issue', status: 'Done' }
-        ]
+        issues: [{ key: 'TEST-1', summary: 'Test issue', status: 'Done' }],
       };
 
       mockJiraClient.getSprintDetails.mockResolvedValue(mockSprint);
@@ -88,12 +86,10 @@ describe('JiraTools', () => {
     it('should search issues with JQL', async () => {
       const jql = 'project = TEST AND status = Done';
       const mockResult = {
-        issues: [
-          { key: 'TEST-1', fields: { summary: 'Test issue' } }
-        ],
+        issues: [{ key: 'TEST-1', fields: { summary: 'Test issue' } }],
         total: 1,
         startAt: 0,
-        maxResults: 50
+        maxResults: 50,
       };
 
       mockJiraClient.searchIssues.mockResolvedValue(mockResult);
@@ -101,7 +97,12 @@ describe('JiraTools', () => {
       const result = await jiraTools.searchIssues({ jql });
 
       expect(result).toEqual(mockResult);
-      expect(mockJiraClient.searchIssues).toHaveBeenCalledWith(jql, undefined, undefined, undefined);
+      expect(mockJiraClient.searchIssues).toHaveBeenCalledWith(
+        jql,
+        undefined,
+        undefined,
+        undefined
+      );
     });
 
     it('should pass optional parameters', async () => {
@@ -114,17 +115,22 @@ describe('JiraTools', () => {
         issues: [],
         total: 0,
         startAt: 0,
-        maxResults: 10
+        maxResults: 10,
       });
 
       await jiraTools.searchIssues({
         jql,
         fields,
         max_results: maxResults,
-        start_at: startAt
+        start_at: startAt,
       });
 
-      expect(mockJiraClient.searchIssues).toHaveBeenCalledWith(jql, fields, maxResults, startAt);
+      expect(mockJiraClient.searchIssues).toHaveBeenCalledWith(
+        jql,
+        fields,
+        maxResults,
+        startAt
+      );
     });
   });
 
@@ -135,8 +141,8 @@ describe('JiraTools', () => {
         key: issueKey,
         fields: {
           summary: 'Test issue',
-          status: { name: 'Done' }
-        }
+          status: { name: 'Done' },
+        },
       };
 
       mockJiraClient.getIssue.mockResolvedValue(mockIssue);
@@ -153,7 +159,7 @@ describe('JiraTools', () => {
       const boardId = '123';
       const mockSprints = [
         { id: '1', name: 'Sprint 1', state: 'closed' },
-        { id: '2', name: 'Sprint 2', state: 'closed' }
+        { id: '2', name: 'Sprint 2', state: 'closed' },
       ];
 
       const mockSprintDetails = [
@@ -162,17 +168,17 @@ describe('JiraTools', () => {
           name: 'Sprint 1',
           issues: [
             { status: 'Done', storyPoints: 5 },
-            { status: 'Done', storyPoints: 3 }
-          ]
+            { status: 'Done', storyPoints: 3 },
+          ],
         },
         {
           id: '2',
           name: 'Sprint 2',
           issues: [
             { status: 'Done', storyPoints: 8 },
-            { status: 'In Progress', storyPoints: 2 }
-          ]
-        }
+            { status: 'In Progress', storyPoints: 2 },
+          ],
+        },
       ];
 
       mockJiraClient.getSprints.mockResolvedValue(mockSprints);
@@ -192,14 +198,12 @@ describe('JiraTools', () => {
 
     it('should handle sprints with no issues', async () => {
       const boardId = '123';
-      const mockSprints = [
-        { id: '1', name: 'Sprint 1', state: 'closed' }
-      ];
+      const mockSprints = [{ id: '1', name: 'Sprint 1', state: 'closed' }];
 
       const mockSprintDetails = {
         id: '1',
         name: 'Sprint 1',
-        issues: []
+        issues: [],
       };
 
       mockJiraClient.getSprints.mockResolvedValue(mockSprints);
@@ -221,11 +225,7 @@ describe('JiraTools', () => {
         name: 'Sprint 1',
         startDate: '2024-01-01T00:00:00Z',
         endDate: '2024-01-14T23:59:59Z',
-        issues: [
-          { storyPoints: 5 },
-          { storyPoints: 3 },
-          { storyPoints: 2 }
-        ]
+        issues: [{ storyPoints: 5 }, { storyPoints: 3 }, { storyPoints: 2 }],
       };
 
       mockJiraClient.getSprintDetails.mockResolvedValue(mockSprint);
@@ -246,13 +246,14 @@ describe('JiraTools', () => {
         name: 'Sprint 1',
         startDate: null,
         endDate: null,
-        issues: []
+        issues: [],
       };
 
       mockJiraClient.getSprintDetails.mockResolvedValue(mockSprint);
 
-      await expect(jiraTools.getBurndownData({ sprint_id: sprintId }))
-        .rejects.toThrow('Sprint must have start and end dates');
+      await expect(
+        jiraTools.getBurndownData({ sprint_id: sprintId })
+      ).rejects.toThrow('Sprint must have start and end dates');
     });
   });
 
