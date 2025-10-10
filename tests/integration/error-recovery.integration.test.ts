@@ -173,7 +173,7 @@ describe('Error Recovery Integration Tests', () => {
       expect(result).toHaveProperty('error', true);
       expect(result).toHaveProperty('message', 'Report generation partially failed');
       expect(result).toHaveProperty('partialData', true);
-      
+
       expect(mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Attempting graceful degradation'),
         expect.any(Object)

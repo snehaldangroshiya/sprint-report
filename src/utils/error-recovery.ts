@@ -105,10 +105,10 @@ export class ErrorRecoveryManager {
       this.recordFailure(circuitBreakerKey);
 
       const enhancedError = this.enhanceError(error as Error, context);
-      
+
       // Track error analytics
       this.trackError(enhancedError, context);
-      
+
       // Call cleanup function if provided
       if (context.cleanup) {
         try {
