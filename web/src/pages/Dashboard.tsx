@@ -89,28 +89,22 @@ export function Dashboard() {
         {sprintsLoading ? (
           <Skeleton className="h-32 w-full" />
         ) : (
-          <Card className="bg-white border border-blue-100 hover:border-blue-300 transition-all duration-200 hover:shadow-lg overflow-hidden">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-blue-50 rounded-xl">
-                    <Calendar className="h-7 w-7 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Active Sprint</p>
-                    <p className="text-2xl font-bold text-gray-900 truncate max-w-[180px]">
-                      {activeSprints && activeSprints.length > 0
-                        ? activeSprints[0].name
-                        : 'None'}
-                    </p>
-                    {activeSprints && activeSprints.length > 0 && (
-                      <p className="text-xs text-blue-600 font-medium mt-1">
-                        {activeSprints[0].state.toLowerCase() === 'active' ? 'In Progress' : 'Upcoming'}
-                      </p>
-                    )}
-                  </div>
-                </div>
+          <Card className="bg-white border border-blue-100 hover:border-blue-300 transition-all duration-200 hover:shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Active Sprint</CardTitle>
+              <Calendar className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-gray-900 truncate">
+                {activeSprints && activeSprints.length > 0
+                  ? activeSprints[0].name
+                  : 'None'}
               </div>
+              {activeSprints && activeSprints.length > 0 && (
+                <p className="text-xs text-blue-600 font-medium mt-1">
+                  {activeSprints[0].state.toLowerCase() === 'active' ? 'In Progress' : 'Upcoming'}
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
@@ -119,20 +113,14 @@ export function Dashboard() {
         {velocityLoading ? (
           <Skeleton className="h-32 w-full" />
         ) : (
-          <Card className="bg-white border border-emerald-100 hover:border-emerald-300 transition-all duration-200 hover:shadow-lg overflow-hidden">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-emerald-50 rounded-xl">
-                    <TrendingUp className="h-7 w-7 text-emerald-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Average Velocity</p>
-                    <p className="text-3xl font-bold text-gray-900">{velocityData?.average?.toFixed(1) || '0'}</p>
-                    <p className="text-xs text-emerald-600 font-medium mt-1">Story points/sprint</p>
-                  </div>
-                </div>
-              </div>
+          <Card className="bg-white border border-emerald-100 hover:border-emerald-300 transition-all duration-200 hover:shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Average Velocity</CardTitle>
+              <TrendingUp className="h-4 w-4 text-emerald-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900">{velocityData?.average?.toFixed(1) || '0'}</div>
+              <p className="text-xs text-emerald-600 font-medium">Story points/sprint</p>
             </CardContent>
           </Card>
         )}
@@ -141,28 +129,22 @@ export function Dashboard() {
         {velocityLoading ? (
           <Skeleton className="h-32 w-full" />
         ) : (
-          <Card className="bg-white border border-violet-100 hover:border-violet-300 transition-all duration-200 hover:shadow-lg overflow-hidden">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-violet-50 rounded-xl">
-                    <Target className="h-7 w-7 text-violet-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Completion Rate</p>
-                    <p className="text-3xl font-bold text-gray-900">
-                      {velocityData?.sprints && velocityData.sprints.length > 0
-                        ? (() => {
-                            const total = velocityData.sprints.reduce((sum, s) => sum + s.commitment, 0);
-                            const completed = velocityData.sprints.reduce((sum, s) => sum + s.completed, 0);
-                            return total > 0 ? Math.round((completed / total) * 100) : 0;
-                          })()
-                        : 0}%
-                    </p>
-                    <p className="text-xs text-violet-600 font-medium mt-1">Last 5 sprints</p>
-                  </div>
-                </div>
+          <Card className="bg-white border border-violet-100 hover:border-violet-300 transition-all duration-200 hover:shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Completion Rate</CardTitle>
+              <Target className="h-4 w-4 text-violet-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900">
+                {velocityData?.sprints && velocityData.sprints.length > 0
+                  ? (() => {
+                      const total = velocityData.sprints.reduce((sum, s) => sum + s.commitment, 0);
+                      const completed = velocityData.sprints.reduce((sum, s) => sum + s.completed, 0);
+                      return total > 0 ? Math.round((completed / total) * 100) : 0;
+                    })()
+                  : 0}%
               </div>
+              <p className="text-xs text-violet-600 font-medium">Last 5 sprints</p>
             </CardContent>
           </Card>
         )}
@@ -171,20 +153,14 @@ export function Dashboard() {
         {sprintsLoading ? (
           <Skeleton className="h-32 w-full" />
         ) : (
-          <Card className="bg-white border border-amber-100 hover:border-amber-300 transition-all duration-200 hover:shadow-lg overflow-hidden">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-amber-50 rounded-xl">
-                    <Database className="h-7 w-7 text-amber-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Sprints Tracked</p>
-                    <p className="text-3xl font-bold text-gray-900">{recentSprints?.length || 0}</p>
-                    <p className="text-xs text-amber-600 font-medium mt-1">Recent sprints</p>
-                  </div>
-                </div>
-              </div>
+          <Card className="bg-white border border-amber-100 hover:border-amber-300 transition-all duration-200 hover:shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Sprints Tracked</CardTitle>
+              <Database className="h-4 w-4 text-amber-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900">{recentSprints?.length || 0}</div>
+              <p className="text-xs text-amber-600 font-medium">Recent sprints</p>
             </CardContent>
           </Card>
         )}
