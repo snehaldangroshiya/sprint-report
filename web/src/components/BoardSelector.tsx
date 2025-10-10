@@ -28,9 +28,10 @@ interface BoardSelectorProps {
   value: string;
   onChange: (boardId: string, boardName: string) => void;
   disabled?: boolean;
+  initialBoardName?: string;
 }
 
-export function BoardSelector({ value, onChange, disabled }: BoardSelectorProps) {
+export function BoardSelector({ value, onChange, disabled, initialBoardName }: BoardSelectorProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBoardCache, setSelectedBoardCache] = useState<{
@@ -66,9 +67,27 @@ export function BoardSelector({ value, onChange, disabled }: BoardSelectorProps)
   const isLoading = searchQuery.length > 0 ? searchLoading : defaultLoading;
 
   // Find selected board - check cache first, then current boards, then fetched data
-  const selectedBoard = selectedBoardCache || 
-    boards?.find(b => b.id === value) || 
-    selectedBoardData?.[0];
+  // If nothing found but we have initialBoardName, create a minimal board object for display
+  const selectedBoard = selectedBoardCache ||
+    boards?.find(b => b.id === value) ||
+    selectedBoardData?.[0] ||
+    (value && initialBoardName ? { id: value, name: initialBoardName, type: 'scrum' } : null);
+
+  // Initialize cache when component mounts or value changes
+  useEffect(() => {
+    if (value) {
+      // Check if we already have this board cached
+      if (selectedBoardCache && selectedBoardCache.id === value) {
+        return; // Already cached, no need to update
+      }
+      
+      // Try to find board in default boards first
+      const boardInDefaults = defaultBoards?.find(b => b.id === value);
+      if (boardInDefaults) {
+        setSelectedBoardCache(boardInDefaults);
+      }
+    }
+  }, [value, defaultBoards]);
 
   // Update cache when selected board is found in any source
   useEffect(() => {

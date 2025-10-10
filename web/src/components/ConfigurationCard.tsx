@@ -86,6 +86,7 @@ export function ConfigurationCard() {
             <Label htmlFor="boardSelector">Board</Label>
             <BoardSelector
               value={localConfig.jira.boardId}
+              initialBoardName={localConfig.jira.boardName}
               onChange={(boardId, boardName) => {
                 setLocalConfig({
                   ...localConfig,

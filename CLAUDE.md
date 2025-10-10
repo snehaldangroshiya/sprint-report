@@ -298,6 +298,12 @@ cd web && npm run dev
 - **[docs/CACHE_MANAGEMENT.md](./docs/CACHE_MANAGEMENT.md)** - 🆕 Cache management, Redis operations, troubleshooting
 - **[docs/ANALYTICS_PAGE_IMPROVEMENTS.md](./docs/ANALYTICS_PAGE_IMPROVEMENTS.md)** - 🆕 Analytics page enhancements and real data integration
 
+### Configuration & Design System (October 10, 2025)
+- **[.claude/CLAUDE_CONFIGURATION_SYSTEM.md](./.claude/CLAUDE_CONFIGURATION_SYSTEM.md)** - 🆕 ⭐ Flexible board/GitHub configuration architecture
+- **[.claude/CLAUDE_CARD_DESIGN_PATTERNS.md](./.claude/CLAUDE_CARD_DESIGN_PATTERNS.md)** - 🆕 ⭐ shadcn/ui Card component design patterns and standards
+- **[docs/FLEXIBLE_CONFIGURATION_BRAINSTORM.md](./docs/FLEXIBLE_CONFIGURATION_BRAINSTORM.md)** - Configuration system brainstorming and analysis
+- **[docs/QUICK_STATS_CARD_REDESIGN.md](./docs/QUICK_STATS_CARD_REDESIGN.md)** - Quick Stats card structure fix documentation
+
 ### Historical Documentation & Optimization Reports
 - **[docs/OCTOBER_3_2025_IMPROVEMENTS.md](./docs/OCTOBER_3_2025_IMPROVEMENTS.md)** - 🆕 Sprint sorting & analytics improvements
 - **[docs/PERFORMANCE_IMPROVEMENTS_OCT2025.md](./docs/PERFORMANCE_IMPROVEMENTS_OCT2025.md)** - Performance optimization summary
@@ -492,21 +498,44 @@ When making changes:
 4. Test both MCP and web API modes
 5. Verify CORS configuration for web integration
 
-## 🔑 Key Learnings (October 3, 2025)
+## 🔑 Key Learnings
 
-### Sprint Sorting Architecture
+### October 10, 2025 - Configuration & Card Design
+
+#### Flexible Configuration System
+1. **Cross-Board Sprint Viewing** - Sprint data from metrics endpoint works without board dependency
+2. **Efficient Data Fetching** - Eliminated need to fetch all sprints just to find one sprint
+3. **Configuration Context** - React Context provides global state for board/GitHub config
+4. **localStorage Persistence** - Configuration persists across sessions without backend
+
+#### shadcn/ui Card Architecture
+1. **Semantic HTML** - Use CardHeader with CardTitle (generates <h3>) for accessibility
+2. **No Manual Padding** - Don't use pt-6 on CardContent, use proper CardHeader instead
+3. **Icon Sizing** - Use h-4 w-4 for card header icons (not h-7 w-7)
+4. **Consistent Patterns** - SprintDetails was the reference implementation for Dashboard fix
+5. **Code Reduction** - Proper structure = 28% less code (70 lines removed)
+
+#### Cross-Board Data Architecture
+1. **Metrics Endpoint is Board-Agnostic** - `/api/sprints/:id/metrics` works for any sprint
+2. **No Board Search Required** - Don't fetch all board sprints to find one sprint
+3. **More Efficient** - One API call instead of fetching hundreds of sprints
+4. **Better UX** - Users can view any sprint via direct URL
+
+### October 3, 2025 - Sprint Sorting & Analytics
+
+#### Sprint Sorting Architecture
 1. **Always sort before slice** - API endpoints must sort sprints by start date BEFORE limiting results
 2. **Centralized utilities** - Use `web/src/lib/sprint-utils.ts` for consistent sorting across all pages
 3. **Display order** - Newest → Oldest (descending by start date) is the global standard
 4. **Active vs Closed** - Dashboard shows both, all other pages show closed only
 
-### Cache Management Best Practices
+#### Cache Management Best Practices
 1. **TTL Strategy** - Different data types need different cache durations (1-30 minutes)
 2. **Redis Commands** - Use `--scan --pattern` instead of `KEYS` for production
 3. **Clear on Changes** - Always clear cache when sprint sorting logic changes
 4. **Verification** - Check cache is empty after clearing: `wc -l` should return 0
 
-### Analytics Integration
+#### Analytics Integration
 1. **Real Data First** - Replace mock data with actual API endpoints
 2. **Environment Variables** - Use `VITE_*` prefix for frontend env vars
 3. **Optional Features** - GitHub integration should degrade gracefully when not configured
@@ -517,9 +546,12 @@ When making changes:
 2. ❌ Different sort orders per page → Confusing UX
 3. ❌ Hardcoded test values in health checks → Error log pollution
 4. ❌ Forgetting to clear cache → Changes don't appear
+5. ❌ Using CardContent without CardHeader → Missing semantic structure
+6. ❌ Manual pt-6 padding → Workaround for improper structure
+7. ❌ Fetching all sprints to find one → Inefficient when metrics endpoint available
 
 ---
 
-**Last Updated**: October 3, 2025
+**Last Updated**: October 10, 2025
 **Status**: ✅ Production Ready
 **Maintainer**: Development Team
