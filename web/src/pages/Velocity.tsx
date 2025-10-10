@@ -1,19 +1,22 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { TrendingUp, TrendingDown, Minus, BarChart3, Target } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, BarChart3, Target, Settings } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { api } from '../lib/api';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useConfiguration } from '../contexts/ConfigurationContext';
 
 export function Velocity() {
-  const [boardId, setBoardId] = useState('6306');
+  // Get configuration from context
+  const { config } = useConfiguration();
   const [sprintCount, setSprintCount] = useState(5);
 
   const { data: velocityData, isLoading } = useQuery({
-    queryKey: ['velocity', boardId, sprintCount],
-    queryFn: () => api.getVelocityData(boardId, sprintCount),
-    enabled: !!boardId,
+    queryKey: ['velocity', config.jira.boardId, sprintCount],
+    queryFn: () => api.getVelocityData(config.jira.boardId, sprintCount),
+    enabled: !!config.jira.boardId,
   });
 
   const getTrendIcon = (trend: string) => {
@@ -44,34 +47,46 @@ export function Velocity() {
 
       {/* Configuration */}
       <div className="bg-white shadow rounded-lg p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <label htmlFor="boardId" className="block text-sm font-medium text-gray-700 mb-1">
-              Jira Board ID
-            </label>
-            <Input
-              type="text"
-              value={boardId}
-              onChange={(value) => setBoardId(value as any)}
-              className='w-full mb-0 sm'
-            />
+            <h2 className="text-sm font-medium text-gray-900">Current Configuration</h2>
+            <p className="text-xs text-gray-500 mt-1">
+              Using board: <span className="font-semibold">{config.jira.boardName}</span> (ID: {config.jira.boardId})
+            </p>
           </div>
-          <div>
-            <label htmlFor="sprintCount" className="block text-sm font-medium text-gray-700 mb-1">
-              Number of Sprints
-            </label>
+          <Link to="/" className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700">
+            <Settings className="h-4 w-4" />
+            Change Board
+          </Link>
+        </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500">Jira Board</p>
+                <p className="text-sm font-semibold text-gray-900 mt-1">{config.jira.boardName}</p>
+              </div>
+              <Badge variant="secondary">ID: {config.jira.boardId}</Badge>
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="sprintCount" className="block text-sm font-medium text-gray-700 mb-2">
+              Number of Sprints to Analyze
+            </label>
             <Select
               value={sprintCount.toString()}
               onValueChange={(e:any) => setSprintCount(parseInt(e, 10))}
             >
-                                <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select format" />
-                  </SelectTrigger>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select sprint count" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="3">Last 3 Sprints</SelectItem>
                 <SelectItem value="5">Last 5 Sprints</SelectItem>
                 <SelectItem value="10">Last 10 Sprints</SelectItem>
+                <SelectItem value="15">Last 15 Sprints</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -231,9 +246,14 @@ export function Velocity() {
         </div>
       )}
 
-      {!isLoading && !velocityData && boardId && (
+      {!isLoading && !velocityData && config.jira.boardId && (
         <div className="bg-white shadow rounded-lg p-12 text-center">
-          <p className="text-gray-500">No velocity data available for board {boardId}</p>
+          <p className="text-gray-500">
+            No velocity data available for board <span className="font-semibold">{config.jira.boardName}</span> (ID: {config.jira.boardId})
+          </p>
+          <p className="text-xs text-gray-400 mt-2">
+            Try selecting a different board or check if the board has completed sprints
+          </p>
         </div>
       )}
     </div>

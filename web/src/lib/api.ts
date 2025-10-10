@@ -103,7 +103,12 @@ export const getMetrics = () =>
 
 // Sprint management
 export const getBoards = () =>
-  apiRequest<Array<{ id: string; name: string; type: string }>>('/boards');
+  apiRequest<Array<{ id: string; name: string; type: string; projectKey?: string; projectName?: string }>>('/boards');
+
+export const searchBoards = (query: string, limit = 20) =>
+  apiRequest<Array<{ id: string; name: string; type: string; projectKey?: string; projectName?: string }>>(
+    `/boards?q=${encodeURIComponent(query)}&limit=${limit}`
+  );
 
 export const getSprints = (boardId: string, state?: string) =>
   apiRequest<Array<{
@@ -427,6 +432,7 @@ export const api = {
   getSystemStatus,
   getMetrics,
   getBoards,
+  searchBoards,
   getSprints,
   getSprintIssues,
   getSprintIssuesPaginated,

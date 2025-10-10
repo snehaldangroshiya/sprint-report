@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { GitBranch, GitCommit, GitPullRequest, Calendar, User, ExternalLink, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,11 +18,21 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { api } from '../lib/api';
+import { useConfiguration } from '../contexts/ConfigurationContext';
 
 export function GitHub() {
-  // Set default repository from environment (Sage/sage-connect)
-  const [owner, setOwner] = useState('Sage');
-  const [repo, setRepo] = useState('sage-connect');
+  // Get configuration from context
+  const { config } = useConfiguration();
+
+  // Use configuration for owner/repo, sync with local state for this page
+  const [owner, setOwner] = useState(config.github.owner);
+  const [repo, setRepo] = useState(config.github.repo);
+
+  // Sync with configuration changes
+  useEffect(() => {
+    setOwner(config.github.owner);
+    setRepo(config.github.repo);
+  }, [config.github.owner, config.github.repo]);
   const [prState, setPrState] = useState<'open' | 'closed' | 'all'>('all');
   const [since, setSince] = useState('');
   const [until, setUntil] = useState('');

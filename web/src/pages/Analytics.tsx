@@ -3,23 +3,21 @@ import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, BarChart3, PieChart as PieChartIcon, Calendar, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { api } from '../lib/api';
-import { Select, SelectTrigger, SelectContent,SelectItem, SelectValue } from '@/components/ui/select';
+import { useConfiguration } from '../contexts/ConfigurationContext';
 
 export function Analytics() {
-  const [selectedBoard, setSelectedBoard] = useState('6306');
+  // Get configuration from context
+  const { config } = useConfiguration();
   const [dateRange, setDateRange] = useState('3months');
-  // GitHub integration - editable inputs with better defaults
-  // Use useMemo to prevent re-initialization on every render
-  const defaultGithubOwner = import.meta.env.VITE_GITHUB_OWNER || 'Sage';
-  const defaultGithubRepo = import.meta.env.VITE_GITHUB_REPO || 'sage-connect';
-  const [githubOwner, setGithubOwner] = useState(defaultGithubOwner);
-  const [githubRepo, setGithubRepo] = useState(defaultGithubRepo);
+
+  // Use configuration for board and GitHub, but allow local overrides for view-specific changes
+  const selectedBoard = config.jira.boardId;
+  const githubOwner = config.github.owner;
+  const githubRepo = config.github.repo;
 
   // Calculate sprint count based on time period
   const getSprintCount = (period: string): number => {
@@ -33,12 +31,6 @@ export function Analytics() {
   };
 
   const sprintCount = getSprintCount(dateRange);
-
-  // Fetch boards for selection
-  const { data: boards } = useQuery({
-    queryKey: ['boards'],
-    queryFn: api.getBoards,
-  });
 
   // Fetch velocity data - now based on sprint count from time period
   const { data: velocityData, isLoading: velocityLoading } = useQuery({
@@ -154,63 +146,28 @@ export function Analytics() {
       {/* Controls */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="board">Board</Label>
-              <Select
-                value={selectedBoard}
-                onValueChange={(e) => setSelectedBoard(e)}
-              >
-                <SelectTrigger id="board" className="w-full">
-                  <SelectValue placeholder="Select a board" />
-                </SelectTrigger>
-                <SelectContent>
-                  {boards?.map((board) => (
-                    <SelectItem key={board.id} value={board.id}>
-                      {board.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="text-sm font-medium text-gray-700">Current Configuration</div>
+              <div className="text-sm text-gray-600">
+                <p>Board: <span className="font-semibold">{config.jira.boardName} ({config.jira.boardId})</span></p>
+                <p>GitHub: <span className="font-semibold">{config.github.owner}/{config.github.repo}</span></p>
+                <p className="text-xs text-gray-500 mt-1">Configure these settings from the Dashboard</p>
+              </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dateRange">Time Period</Label>
-              <Select
+              <label htmlFor="dateRange" className="text-sm font-medium text-gray-700">Time Period</label>
+              <select
+                id="dateRange"
                 value={dateRange}
-                onValueChange={(e) => setDateRange(e)}
+                onChange={(e) => setDateRange(e.target.value)}
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                <SelectTrigger id="dateRange" className="w-full">
-                  <SelectValue placeholder="Select period" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1month">Last Month</SelectItem>
-                  <SelectItem value="3months">Last 3 Months</SelectItem>
-                  <SelectItem value="6months">Last 6 Months</SelectItem>
-                  <SelectItem value="1year">Last Year</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="githubOwner">GitHub Owner</Label>
-              <Input
-                id="githubOwner"
-                type="text"
-                value={githubOwner}
-                onChange={(e) => setGithubOwner(e.target.value)}
-                placeholder="e.g., Sage"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="githubRepo">GitHub Repo</Label>
-              <Input
-                id="githubRepo"
-                type="text"
-                value={githubRepo}
-                onChange={(e) => setGithubRepo(e.target.value)}
-                placeholder="e.g., sage-connect"
-              />
+                <option value="1month">Last Month</option>
+                <option value="3months">Last 3 Months</option>
+                <option value="6months">Last 6 Months</option>
+                <option value="1year">Last Year</option>
+              </select>
             </div>
           </div>
         </CardContent>

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { BarChart3, Activity, CheckCircle, TrendingUp, Target, Calendar, Database, Github, Zap, AlertTriangle, ArrowUp, ArrowDown, Minus, Lightbulb } from 'lucide-react';
 import { api } from '../lib/api';
 import { combineAndSortSprints } from '../lib/sprint-utils';
+import { useConfiguration } from '../contexts/ConfigurationContext';
+import { ConfigurationCard } from '../components/ConfigurationCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
@@ -20,6 +22,9 @@ export function Dashboard() {
   // State for number of sprints to show
   const [sprintCount, setSprintCount] = useState(5);
 
+  // Get configuration from context
+  const { config } = useConfiguration();
+
   const { data: metrics } = useQuery({
     queryKey: ['metrics'],
     queryFn: api.getMetrics,
@@ -33,36 +38,33 @@ export function Dashboard() {
     refetchInterval: 30000, // Check every 30 seconds
   });
 
-  // Fetch boards for recent activity
-  const { data: boards, isLoading: boardsLoading } = useQuery({
-    queryKey: ['boards'],
-    queryFn: api.getBoards,
-  });
+  // Use configured board ID instead of fetching all boards
+  const boardId = config.jira.boardId;
 
-  // Fetch active sprint
+  // Fetch active sprint using configured board
   const { data: activeSprints } = useQuery({
-    queryKey: ['active-sprints', boards?.[0]?.id],
-    queryFn: () => api.getSprints(boards![0].id, 'active'),
-    enabled: !!boards && boards.length > 0,
+    queryKey: ['active-sprints', boardId],
+    queryFn: () => api.getSprints(boardId, 'active'),
+    enabled: !!boardId,
   });
 
-  // Fetch recent closed sprints
+  // Fetch recent closed sprints using configured board
   const { data: closedSprints } = useQuery({
-    queryKey: ['closed-sprints', boards?.[0]?.id],
-    queryFn: () => api.getSprints(boards![0].id, 'closed'),
-    enabled: !!boards && boards.length > 0,
+    queryKey: ['closed-sprints', boardId],
+    queryFn: () => api.getSprints(boardId, 'closed'),
+    enabled: !!boardId,
   });
 
   // Combine active and closed sprints, sorted by start date descending (newest first)
   const recentSprints = combineAndSortSprints(activeSprints, closedSprints, sprintCount);
 
-  const sprintsLoading = !boards || boards.length === 0;
+  const sprintsLoading = !boardId;
 
   // Fetch velocity data for quick stats
   const { data: velocityData, isLoading: velocityLoading } = useQuery({
-    queryKey: ['velocity-stats', boards?.[0]?.id],
-    queryFn: () => api.getVelocityData(boards![0].id, 5),
-    enabled: !!boards && boards.length > 0,
+    queryKey: ['velocity-stats', boardId],
+    queryFn: () => api.getVelocityData(boardId, 5),
+    enabled: !!boardId,
   });
 
 
@@ -75,6 +77,11 @@ export function Dashboard() {
           Monitor sprint reporting system status and generate reports
         </p>
       </div>
+
+      {/* Configuration Card */}
+      <ConfigurationCard />
+
+      <Separator className="my-6" />
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -161,7 +168,7 @@ export function Dashboard() {
         )}
 
         {/* Total Sprints Tracked */}
-        {boardsLoading ? (
+        {sprintsLoading ? (
           <Skeleton className="h-32 w-full" />
         ) : (
           <Card className="bg-white border border-amber-100 hover:border-amber-300 transition-all duration-200 hover:shadow-lg overflow-hidden">

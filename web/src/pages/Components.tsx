@@ -191,7 +191,7 @@ export function Components() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Board</label>
                 <Select>
-                  <option>SCNT Board</option>
+                  <option>Sage Connect</option>
                   <option>Team Board</option>
                   <option>Product Board</option>
                 </Select>

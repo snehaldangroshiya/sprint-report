@@ -2,6 +2,8 @@
 import { Router } from 'express';
 
 import { EnhancedServerContext } from '@/server/enhanced-mcp-server';
+import { BoardLookup } from '@/utils/board-mappings';
+import { logger } from 'handlebars';
 
 /**
  * Create sprint management routes
@@ -24,18 +26,45 @@ export function createSprintRouter(
 ): Router {
   const router = Router();
 
-  // Get boards
-  router.get('/boards', (_req, res) => {
+  // Get boards - with search support
+  router.get('/boards', (req, res) => {
     try {
-      // Return hardcoded board
-      // Note: Full board listing requires Jira Admin API access
-      res.json([
-        {
-          id: '6306',
-          name: 'SCNT Board',
-          type: 'scrum',
-        },
-      ]);
+      const { q, limit = '3000' } = req.query;
+      const maxLimit = Math.min(parseInt(limit as string), 3000);
+
+      let boards = [];
+
+      if (q && typeof q === 'string') {
+        // Search boards by name/project
+        boards = BoardLookup.searchBoardsByName(q).slice(0, maxLimit);
+      } else {
+        // Return default/popular boards
+        // SCNT Board (6306) as primary default
+        const scntBoard = BoardLookup.getBoardByName('SCNT Board');
+        if (scntBoard) {
+          boards.push(scntBoard);
+        }
+
+        // Add other commonly used scrum boards
+        const additionalBoards = BoardLookup.searchBoardsByName('scrum')
+          .filter(board => board.id !== 6306)
+          .slice(0, maxLimit - 1);
+
+        boards.push(...additionalBoards);
+      }
+
+      // Transform to API format
+      const response = boards.map(board => ({
+        id: board.id.toString(),
+        name: board.name,
+        type: board.type,
+        projectKey: board.projectKey,
+        projectName: board.projectName,
+      }));
+
+      console.log('Boards fetched', { query: q, count: response });
+
+      res.json(response);
     } catch (error) {
       handleAPIError(error, res, 'Failed to get boards');
     }
