@@ -1,7 +1,7 @@
 # Memory Usage Widget UX Fix - Context-Aware Colors
 
-**Date:** October 10, 2025  
-**Issue:** Memory "decreasing" trend showing in green was semantically confusing  
+**Date:** October 10, 2025
+**Issue:** Memory "decreasing" trend showing in green was semantically confusing
 **Status:** ✅ FIXED
 
 ---

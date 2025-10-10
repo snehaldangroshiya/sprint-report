@@ -421,6 +421,12 @@ The MCP stdio transport has **strict requirements** that cause "unable to start 
 - **Simplified**: `server.ts` and `web-server.ts` now use server-runner
 - **Result**: 34% code reduction (115 → 76 lines), eliminated duplicate error handling
 
+### UI Improvements (January 2025)
+- **Memory Usage Widget UX Fix**: Fixed misleading color semantics (green now means "stable" not "decreasing")
+  - See: [MEMORY_USAGE_WIDGET_UX_FIX.md](./docs/MEMORY_USAGE_WIDGET_UX_FIX.md)
+- **Dashboard shadcn/ui Refactoring**: Refactored Quick Actions and Recent Sprint Activity sections to use proper shadcn/ui Card components
+  - See: [DASHBOARD_SHADCN_REFACTORING.md](./docs/DASHBOARD_SHADCN_REFACTORING.md)
+
 ### Jira Integration
 - **API Version**: Must use v2 (not v3)
 - **Authentication**: Bearer Token (not Basic Auth)
