@@ -3,7 +3,6 @@ import { Router } from 'express';
 
 import { EnhancedServerContext } from '@/server/enhanced-mcp-server';
 import { BoardLookup } from '@/utils/board-mappings';
-import { logger } from 'handlebars';
 
 /**
  * Create sprint management routes

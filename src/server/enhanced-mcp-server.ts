@@ -587,18 +587,32 @@ export class EnhancedMCPServer {
   }
 }
 
-// Process signal handlers
+// Graceful shutdown handling
 process.on('SIGINT', async () => {
-  console.log('\nReceived SIGINT, shutting down gracefully...');
+  console.error('\nReceived SIGINT, shutting down gracefully...');
   if (global.mcpServer) {
-    await global.mcpServer.shutdown();
+    await global.mcpServer
+      .shutdown()
+      .catch((error: Error) => {
+        console.error('Error during shutdown:', error);
+        process.exit(1);
+      });
+  } else {
+    process.exit(0);
   }
 });
 
 process.on('SIGTERM', async () => {
-  console.log('\nReceived SIGTERM, shutting down gracefully...');
+  console.error('\nReceived SIGTERM, shutting down gracefully...');
   if (global.mcpServer) {
-    await global.mcpServer.shutdown();
+    await global.mcpServer
+      .shutdown()
+      .catch((error: Error) => {
+        console.error('Error during shutdown:', error);
+        process.exit(1);
+      });
+  } else {
+    process.exit(0);
   }
 });
 

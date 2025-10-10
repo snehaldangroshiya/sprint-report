@@ -188,10 +188,12 @@ export abstract class BaseAPIClient {
         const delay = this.calculateRetryDelay(attempt);
         await this.delay(delay);
 
-        // Log retry attempt
-        console.log(
-          `Retrying request to ${endpoint}, attempt ${attempt + 1}/${this.retryConfig.maxRetries}`
-        );
+        // Log retry attempt (skip in stdio mode to avoid protocol interference)
+        if (process.stdin.isTTY !== false || process.stdout.isTTY !== false) {
+          console.error(
+            `Retrying request to ${endpoint}, attempt ${attempt + 1}/${this.retryConfig.maxRetries}`
+          );
+        }
       }
     }
 
@@ -416,7 +418,13 @@ export abstract class BaseAPIClient {
     const config = response.config;
     const duration = Date.now() - (config.metadata?.startTime || Date.now());
 
-    console.log({
+    // Don't log in stdio mode - console output interferes with JSON-RPC protocol
+    // Even console.error with objects gets converted to MCP notifications
+    if (process.stdin.isTTY === false && process.stdout.isTTY === false) {
+      return;
+    }
+
+    console.error({
       service: this.serviceName,
       method: config.method?.toUpperCase(),
       url: config.url,
@@ -433,6 +441,11 @@ export abstract class BaseAPIClient {
     const duration = config?.metadata?.startTime
       ? Date.now() - config.metadata.startTime
       : 0;
+
+    // Don't log in stdio mode - console output interferes with JSON-RPC protocol
+    if (process.stdin.isTTY === false && process.stdout.isTTY === false) {
+      return;
+    }
 
     console.error({
       service: this.serviceName,

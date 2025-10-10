@@ -575,7 +575,9 @@ function zodToMCPSchema(zodSchema: z.ZodObject<any>): {
 
   for (const [key, value] of Object.entries(shape)) {
     const zodField = value as z.ZodTypeAny;
-    properties[key] = { type: 'string' }; // Simplified - MCP will validate with Zod anyway
+    
+    // Convert Zod type to JSON Schema type
+    properties[key] = zodTypeToJsonSchema(zodField);
 
     // Check if field is optional
     if (!zodField.isOptional()) {
@@ -588,6 +590,58 @@ function zodToMCPSchema(zodSchema: z.ZodObject<any>): {
     properties,
     ...(required.length > 0 ? { required } : {}),
   };
+}
+
+// Helper function to convert Zod types to JSON Schema types
+function zodTypeToJsonSchema(zodType: z.ZodTypeAny): any {
+  // Unwrap optional and default
+  let type = zodType;
+  while (type instanceof z.ZodOptional || type instanceof z.ZodDefault) {
+    type = type._def.innerType;
+  }
+
+  // Handle different Zod types
+  if (type instanceof z.ZodString) {
+    return { type: 'string' };
+  } else if (type instanceof z.ZodNumber) {
+    const schema: any = { type: 'number' };
+    // Add constraints if available
+    const checks = (type as any)._def.checks || [];
+    for (const check of checks) {
+      if (check.kind === 'min') schema.minimum = check.value;
+      if (check.kind === 'max') schema.maximum = check.value;
+      if (check.kind === 'int') schema.type = 'integer';
+    }
+    return schema;
+  } else if (type instanceof z.ZodBoolean) {
+    return { type: 'boolean' };
+  } else if (type instanceof z.ZodArray) {
+    return {
+      type: 'array',
+      items: zodTypeToJsonSchema(type._def.type),
+    };
+  } else if (type instanceof z.ZodObject) {
+    return zodToMCPSchema(type);
+  } else if (type instanceof z.ZodEnum) {
+    return {
+      type: 'string',
+      enum: type._def.values,
+    };
+  } else if (type instanceof z.ZodLiteral) {
+    return {
+      type: typeof type._def.value,
+      const: type._def.value,
+    };
+  } else if (type instanceof z.ZodUnion) {
+    // For unions, try to extract the types
+    const options = type._def.options.map((opt: z.ZodTypeAny) =>
+      zodTypeToJsonSchema(opt)
+    );
+    return { anyOf: options };
+  } else {
+    // Fallback to string for unknown types
+    return { type: 'string' };
+  }
 }
 
 // Convert all schemas to MCP format

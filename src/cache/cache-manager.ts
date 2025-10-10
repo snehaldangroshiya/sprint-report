@@ -81,6 +81,9 @@ export class CacheManager {
         enableReadyCheck: false,
         maxRetriesPerRequest: 3,
         lazyConnect: true,
+        showFriendlyErrorStack: false, // Disable verbose error stacks
+        // Disable all redis internal logging
+        retryStrategy: () => null, // Disable reconnection attempts
       };
 
       if (this.options.redis.password) {
@@ -90,7 +93,7 @@ export class CacheManager {
       this.redisClient = new Redis(redisConfig);
 
       this.redisClient.on('connect', () => {
-        console.log('Redis cache connected');
+        console.error('Redis cache connected');
       });
 
       this.redisClient.on('error', (error: Error) => {
@@ -100,7 +103,7 @@ export class CacheManager {
       });
 
       this.redisClient.on('close', () => {
-        console.log('Redis cache connection closed');
+        console.error('Redis cache connection closed');
       });
 
       // Test connection
@@ -806,7 +809,7 @@ export class CacheWarmer {
 
       await Promise.allSettled(operations.map(op => op()));
 
-      console.log(`Cache warmed for sprint ${sprintId}`);
+      console.error(`Cache warmed for sprint ${sprintId}`);
     } catch (error) {
       console.warn(`Failed to warm cache for sprint ${sprintId}:`, error);
     }
@@ -833,7 +836,7 @@ export class CacheWarmer {
 
       await Promise.allSettled(operations.map(op => op()));
 
-      console.log(`Cache warmed for repository ${owner}/${repo}`);
+      console.error(`Cache warmed for repository ${owner}/${repo}`);
     } catch (error) {
       console.warn(
         `Failed to warm cache for repository ${owner}/${repo}:`,

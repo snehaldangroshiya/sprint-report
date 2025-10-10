@@ -73,13 +73,17 @@ export class Logger {
     this.error(error, operation, data);
   }
 
-  // Performance logging
-  time(label: string): void {
-    console.time(`${this.service ? `[${this.service}] ` : ''}${label}`);
+  // Performance logging (disabled for stdio transport compatibility)
+  time(_label: string): void {
+    // console.time writes to stdout which breaks stdio MCP protocol
+    // Use logger.debug() instead for timing measurements
+    // console.time(`${this.service ? `[${this.service}] ` : ''}${label}`);
   }
 
-  timeEnd(label: string): void {
-    console.timeEnd(`${this.service ? `[${this.service}] ` : ''}${label}`);
+  timeEnd(_label: string): void {
+    // console.timeEnd writes to stdout which breaks stdio MCP protocol
+    // Use logger.debug() instead for timing measurements
+    // console.timeEnd(`${this.service ? `[${this.service}] ` : ''}${label}`);
   }
 
   // Create child logger with additional context
