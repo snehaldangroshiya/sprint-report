@@ -88,10 +88,10 @@ export function useSprintDetails({
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Find current sprint from all sprints
+  // Get sprint from metrics API (which doesn't require board ID)
   const sprint = useMemo(() => {
-    return sprintData?.allSprints?.find(s => s.id === sprintId);
-  }, [sprintData?.allSprints, sprintId]);
+    return sprintData?.metrics?.sprint;
+  }, [sprintData?.metrics]);
 
   // Find previous sprint ID for comparison
   const previousSprintId = useMemo(() => {

@@ -42,11 +42,15 @@ import { useSprintDetails } from '@/hooks/useSprintDetails';
 import { useIssueGroups } from '@/hooks/useIssueGroups';
 import { parseCommitMessage, formatCommitBody } from '@/utils/commit-utils.tsx';
 import { SPRINT_CONSTANTS } from '@/constants/sprint';
+import { useConfiguration } from '@/contexts/ConfigurationContext';
 
 export function SprintDetails() {
   const { sprintId } = useParams<{ sprintId: string }>();
   const [apiPage, setApiPage] = useState(1);
   const [commitsPage, setCommitsPage] = useState(1);
+
+  // Get configuration from context
+  const { config } = useConfiguration();
 
   // Single aggregated hook for all data (replaces 7 separate queries)
   const {
@@ -64,11 +68,11 @@ export function SprintDetails() {
     error,
   } = useSprintDetails({
     sprintId: sprintId!,
-    boardId: SPRINT_CONSTANTS.DEFAULT_BOARD_ID,
+    boardId: config.jira.boardId,       // ✅ FROM CONFIG
     apiPage,
     apiPerPage: SPRINT_CONSTANTS.PAGINATION.API_PAGE_SIZE,
-    githubOwner: SPRINT_CONSTANTS.DEFAULT_GITHUB.owner,
-    githubRepo: SPRINT_CONSTANTS.DEFAULT_GITHUB.repo,
+    githubOwner: config.github.owner,   // ✅ FROM CONFIG
+    githubRepo: config.github.repo,     // ✅ FROM CONFIG
     ...SPRINT_CONSTANTS.REPORT_DEFAULTS,
   });
 
