@@ -5,7 +5,7 @@ import { BarChart3, Activity, CheckCircle, TrendingUp, Target, Calendar, Databas
 import { api } from '../lib/api';
 import { combineAndSortSprints } from '../lib/sprint-utils';
 import { useConfiguration } from '../contexts/ConfigurationContext';
-import { ConfigurationCard } from '../components/ConfigurationCard';
+import { ConfigurationWidget } from '../components/ConfigurationWidget';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
@@ -79,7 +79,7 @@ export function Dashboard() {
       </div>
 
       {/* Configuration Card */}
-      <ConfigurationCard />
+      <ConfigurationWidget />
 
       <Separator className="my-6" />
 

@@ -302,6 +302,8 @@ cd web && npm run dev
 ### Configuration & Design System (October 10, 2025)
 - **[.claude/CLAUDE_CONFIGURATION_SYSTEM.md](./.claude/CLAUDE_CONFIGURATION_SYSTEM.md)** - 🆕 ⭐ Flexible board/GitHub configuration architecture
 - **[.claude/CLAUDE_CARD_DESIGN_PATTERNS.md](./.claude/CLAUDE_CARD_DESIGN_PATTERNS.md)** - 🆕 ⭐ shadcn/ui Card component design patterns and standards
+- **[docs/CONFIGURATION_WIDGET_UX_ENHANCEMENT.md](./docs/CONFIGURATION_WIDGET_UX_ENHANCEMENT.md)** - 🆕 Configuration widget UX enhancement (compact widget + dialog)
+- **[docs/DASHBOARD_SHADCN_REFACTORING.md](./docs/DASHBOARD_SHADCN_REFACTORING.md)** - 🆕 Dashboard shadcn/ui Card components refactoring
 - **[docs/BOARD_SELECTOR_PERSISTENCE_FIX.md](./docs/BOARD_SELECTOR_PERSISTENCE_FIX.md)** - 🆕 Board selector persistence fix (v3 with initialBoardName)
 - **[docs/MEMORY_USAGE_WIDGET_UX_FIX.md](./docs/MEMORY_USAGE_WIDGET_UX_FIX.md)** - 🆕 Memory usage widget context-aware colors (UX improvement)
 - **[docs/FLEXIBLE_CONFIGURATION_BRAINSTORM.md](./docs/FLEXIBLE_CONFIGURATION_BRAINSTORM.md)** - Configuration system brainstorming and analysis
@@ -424,8 +426,10 @@ The MCP stdio transport has **strict requirements** that cause "unable to start 
 ### UI Improvements (January 2025)
 - **Memory Usage Widget UX Fix**: Fixed misleading color semantics (green now means "stable" not "decreasing")
   - See: [MEMORY_USAGE_WIDGET_UX_FIX.md](./docs/MEMORY_USAGE_WIDGET_UX_FIX.md)
-- **Dashboard shadcn/ui Refactoring**: Refactored Quick Actions and Recent Sprint Activity sections to use proper shadcn/ui Card components
+- **Dashboard shadcn/ui Refactoring**: Refactored Dashboard to use proper shadcn/ui Card components consistently
   - See: [DASHBOARD_SHADCN_REFACTORING.md](./docs/DASHBOARD_SHADCN_REFACTORING.md)
+- **Configuration Widget Enhancement**: Replaced large ConfigurationCard with compact widget + dialog editor
+  - See: [CONFIGURATION_WIDGET_UX_ENHANCEMENT.md](./docs/CONFIGURATION_WIDGET_UX_ENHANCEMENT.md)
 
 ### Jira Integration
 - **API Version**: Must use v2 (not v3)
@@ -543,6 +547,13 @@ When making changes:
 3. **Industry Standards** - Matches Grafana, Datadog, AWS CloudWatch color conventions
 4. **Clear Messages** - Neutral tone for decreasing, positive for stable, warning for increasing
 5. **Accessibility** - Not color-only (icons + text labels + descriptions)
+
+#### Configuration Widget Enhancement
+1. **Compact Design** - Small widget showing Board + Repository status with edit button
+2. **Dialog Pattern** - Edit button opens modal with full form (Board selector, Owner, Repo)
+3. **Status Badges** - Green "Active" when configured, Yellow "Default" when using defaults
+4. **Configuration Preview** - Shows selected values before saving in success-styled panel
+5. **Separation of Concerns** - Display logic separated from editing logic
 
 ### October 3, 2025 - Sprint Sorting & Analytics
 
