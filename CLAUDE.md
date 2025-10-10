@@ -269,6 +269,7 @@ cd web && npm run dev
 
 ### Quick Start & Reference
 - **[docs/QUICK_REFERENCE.md](./docs/QUICK_REFERENCE.md)** - ⚡ Quick reference card for common operations
+- **[docs/UI_COMPONENT_PATTERNS_QUICK_REFERENCE.md](./docs/UI_COMPONENT_PATTERNS_QUICK_REFERENCE.md)** - 🆕 ⚡ UI patterns and configuration quick reference
 - **[docs/QUICKSTART.md](./docs/QUICKSTART.md)** - 5-minute setup guide
 - **[docs/USAGE_GUIDE.md](./docs/USAGE_GUIDE.md)** - Complete usage instructions
 - **[docs/WEB_INTEGRATION_GUIDE.md](./docs/WEB_INTEGRATION_GUIDE.md)** - Web app integration
@@ -301,6 +302,7 @@ cd web && npm run dev
 ### Configuration & Design System (October 10, 2025)
 - **[.claude/CLAUDE_CONFIGURATION_SYSTEM.md](./.claude/CLAUDE_CONFIGURATION_SYSTEM.md)** - 🆕 ⭐ Flexible board/GitHub configuration architecture
 - **[.claude/CLAUDE_CARD_DESIGN_PATTERNS.md](./.claude/CLAUDE_CARD_DESIGN_PATTERNS.md)** - 🆕 ⭐ shadcn/ui Card component design patterns and standards
+- **[docs/BOARD_SELECTOR_PERSISTENCE_FIX.md](./docs/BOARD_SELECTOR_PERSISTENCE_FIX.md)** - 🆕 Board selector persistence fix (v3 with initialBoardName)
 - **[docs/FLEXIBLE_CONFIGURATION_BRAINSTORM.md](./docs/FLEXIBLE_CONFIGURATION_BRAINSTORM.md)** - Configuration system brainstorming and analysis
 - **[docs/QUICK_STATS_CARD_REDESIGN.md](./docs/QUICK_STATS_CARD_REDESIGN.md)** - Quick Stats card structure fix documentation
 
@@ -521,6 +523,13 @@ When making changes:
 3. **More Efficient** - One API call instead of fetching hundreds of sprints
 4. **Better UX** - Users can view any sprint via direct URL
 
+#### Board Selector Persistence (v3)
+1. **initialBoardName Prop** - Provides fallback display using persisted config
+2. **Zero-Delay Display** - Shows board name immediately on mount (no query wait)
+3. **Reliable Fallback Chain** - cache → query → fetched → initialBoardName
+4. **Navigation Persistence** - Board name survives Dashboard → Analytics → Dashboard
+5. **Minimal Code Change** - Only 3 lines modified for complete fix
+
 ### October 3, 2025 - Sprint Sorting & Analytics
 
 #### Sprint Sorting Architecture
@@ -549,6 +558,7 @@ When making changes:
 5. ❌ Using CardContent without CardHeader → Missing semantic structure
 6. ❌ Manual pt-6 padding → Workaround for improper structure
 7. ❌ Fetching all sprints to find one → Inefficient when metrics endpoint available
+8. ❌ BoardSelector without initialBoardName → Display resets on navigation
 
 ---
 
