@@ -303,6 +303,7 @@ cd web && npm run dev
 - **[.claude/CLAUDE_CONFIGURATION_SYSTEM.md](./.claude/CLAUDE_CONFIGURATION_SYSTEM.md)** - 🆕 ⭐ Flexible board/GitHub configuration architecture
 - **[.claude/CLAUDE_CARD_DESIGN_PATTERNS.md](./.claude/CLAUDE_CARD_DESIGN_PATTERNS.md)** - 🆕 ⭐ shadcn/ui Card component design patterns and standards
 - **[docs/BOARD_SELECTOR_PERSISTENCE_FIX.md](./docs/BOARD_SELECTOR_PERSISTENCE_FIX.md)** - 🆕 Board selector persistence fix (v3 with initialBoardName)
+- **[docs/MEMORY_USAGE_WIDGET_UX_FIX.md](./docs/MEMORY_USAGE_WIDGET_UX_FIX.md)** - 🆕 Memory usage widget context-aware colors (UX improvement)
 - **[docs/FLEXIBLE_CONFIGURATION_BRAINSTORM.md](./docs/FLEXIBLE_CONFIGURATION_BRAINSTORM.md)** - Configuration system brainstorming and analysis
 - **[docs/QUICK_STATS_CARD_REDESIGN.md](./docs/QUICK_STATS_CARD_REDESIGN.md)** - Quick Stats card structure fix documentation
 
@@ -529,6 +530,13 @@ When making changes:
 3. **Reliable Fallback Chain** - cache → query → fetched → initialBoardName
 4. **Navigation Persistence** - Board name survives Dashboard → Analytics → Dashboard
 5. **Minimal Code Change** - Only 3 lines modified for complete fix
+
+#### Memory Usage Widget UX Fix
+1. **Context-Aware Colors** - Green=Stable (optimal), Yellow=Increasing (warning), Blue=Decreasing (info)
+2. **Semantic Correctness** - "Decreasing" no longer shows as green (was misleading)
+3. **Industry Standards** - Matches Grafana, Datadog, AWS CloudWatch color conventions
+4. **Clear Messages** - Neutral tone for decreasing, positive for stable, warning for increasing
+5. **Accessibility** - Not color-only (icons + text labels + descriptions)
 
 ### October 3, 2025 - Sprint Sorting & Analytics
 

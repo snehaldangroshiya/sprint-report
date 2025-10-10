@@ -474,50 +474,51 @@ export function Dashboard() {
                 </div>
               )}
 
-              {/* Memory Trend */}
+              {/* Memory Trend - Context-aware colors: Green=Stable, Yellow=Increasing, Blue=Decreasing */}
               {metrics.summary && metrics.summary.memoryTrend && (
                 <div className={`border-2 rounded-lg p-4 transition-all hover:shadow-md ${
-                  metrics.summary.memoryTrend === 'increasing' ? 'border-red-100' :
-                  metrics.summary.memoryTrend === 'decreasing' ? 'border-green-100' :
-                  'border-gray-100'
+                  metrics.summary.memoryTrend === 'stable' ? 'border-green-100' :
+                  metrics.summary.memoryTrend === 'increasing' ? 'border-yellow-100' :
+                  'border-blue-100'
                 }`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center">
                       <div className={`p-2 rounded-lg ${
-                        metrics.summary.memoryTrend === 'increasing' ? 'bg-red-100' :
-                        metrics.summary.memoryTrend === 'decreasing' ? 'bg-green-100' : 'bg-gray-100'
+                        metrics.summary.memoryTrend === 'stable' ? 'bg-green-100' :
+                        metrics.summary.memoryTrend === 'increasing' ? 'bg-yellow-100' : 'bg-blue-100'
                       }`}>
                         {metrics.summary.memoryTrend === 'increasing' ? (
-                          <ArrowUp className="h-5 w-5 text-red-600" />
+                          <ArrowUp className="h-5 w-5 text-yellow-600" />
                         ) : metrics.summary.memoryTrend === 'decreasing' ? (
-                          <ArrowDown className="h-5 w-5 text-green-600" />
+                          <ArrowDown className="h-5 w-5 text-blue-600" />
                         ) : (
-                          <Minus className="h-5 w-5 text-gray-600" />
+                          <Minus className="h-5 w-5 text-green-600" />
                         )}
                       </div>
                       <h4 className="ml-3 text-lg font-semibold text-gray-900">Memory Usage</h4>
                     </div>
                     <Badge
                       variant={
-                        metrics.summary.memoryTrend === 'decreasing' ? 'default' :
-                        metrics.summary.memoryTrend === 'stable' ? 'secondary' :
-                        'destructive'
+                        metrics.summary.memoryTrend === 'stable' ? 'default' :
+                        metrics.summary.memoryTrend === 'increasing' ? 'secondary' :
+                        'outline'
                       }
                       className={
-                        metrics.summary.memoryTrend === 'decreasing' ? 'bg-green-500' :
-                        metrics.summary.memoryTrend === 'stable' ? '' : ''
+                        metrics.summary.memoryTrend === 'stable' ? 'bg-green-500' :
+                        metrics.summary.memoryTrend === 'increasing' ? 'bg-yellow-500' :
+                        'bg-blue-500 text-white border-blue-500'
                       }
                     >
                       {metrics.summary.memoryTrend === 'increasing' ? 'Increasing' :
-                       metrics.summary.memoryTrend === 'decreasing' ? 'Optimizing' : 'Stable'}
+                       metrics.summary.memoryTrend === 'decreasing' ? 'Decreasing' : 'Stable'}
                     </Badge>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-gray-600">
                       Trend: <span className={`capitalize font-semibold ${
-                        metrics.summary.memoryTrend === 'increasing' ? 'text-red-600' :
-                        metrics.summary.memoryTrend === 'decreasing' ? 'text-green-600' :
-                        'text-gray-600'
+                        metrics.summary.memoryTrend === 'stable' ? 'text-green-600' :
+                        metrics.summary.memoryTrend === 'increasing' ? 'text-yellow-600' :
+                        'text-blue-600'
                       }`}>
                         {metrics.summary.memoryTrend}
                       </span>
@@ -526,8 +527,8 @@ export function Dashboard() {
                       {metrics.summary.memoryTrend === 'increasing' ?
                         '⚠️ Memory usage is growing. Monitor for potential leaks.' :
                        metrics.summary.memoryTrend === 'decreasing' ?
-                        '✓ Memory is being freed efficiently.' :
-                        'ℹ️ Memory usage remains consistent.'}
+                        'ℹ️ Memory is decreasing. This could indicate cleanup or reduced load.' :
+                        '✓ Memory usage is stable and healthy.'}
                     </p>
                   </div>
                 </div>
