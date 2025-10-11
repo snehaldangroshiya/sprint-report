@@ -1,9 +1,15 @@
 // Advanced caching system with in-memory and Redis support
 
 import NodeCache from 'node-cache';
+import { gzip, gunzip } from 'zlib';
+import { promisify } from 'util';
 
 import { CacheStats } from '@/types';
 import { CacheError } from '@/utils/errors';
+
+// Promisify zlib functions for async/await
+const gzipAsync = promisify(gzip);
+const gunzipAsync = promisify(gunzip);
 
 export interface CacheManagerOptions {
   memory: {
@@ -28,6 +34,9 @@ export interface CacheSetOptions {
   tags?: string[];
 }
 
+// Compression threshold: compress entries larger than 50KB
+const COMPRESSION_THRESHOLD = 50 * 1024; // 50KB in bytes
+
 export class CacheManager {
   private memoryCache: NodeCache;
   private redisClient: any = null;
@@ -37,6 +46,8 @@ export class CacheManager {
     sets: 0,
     deletes: 0,
     errors: 0,
+    compressionSaves: 0, // Bytes saved by compression
+    compressionCount: 0, // Number of compressed entries
   };
 
   constructor(private options: CacheManagerOptions) {
@@ -127,12 +138,12 @@ export class CacheManager {
         return memoryResult;
       }
 
-      // L2: Redis cache (distributed)
+      // L2: Redis cache (distributed) with decompression
       if (this.redisClient) {
         try {
           const redisResult = await this.redisClient.get(key);
           if (redisResult !== null) {
-            const parsed = JSON.parse(redisResult);
+            const parsed = await this.decompressValue<T>(redisResult);
 
             // Populate L1 cache with shorter TTL
             const l1Ttl = Math.min(options.ttl || this.options.memory.ttl, 300);
@@ -212,11 +223,11 @@ export class CacheManager {
         this.stats.errors++;
       }
 
-      // L2: Redis cache
+      // L2: Redis cache with compression for large entries
       if (this.redisClient) {
         try {
-          const serialized = JSON.stringify(value);
-          await this.redisClient.setex(key, ttl, serialized);
+          const { data: compressedData } = await this.compressValue(value);
+          await this.redisClient.setex(key, ttl, compressedData);
         } catch (error) {
           console.warn(`Redis set error for key ${key}:`, error);
           this.stats.errors++;
@@ -271,15 +282,22 @@ export class CacheManager {
         }
       }
 
-      // L2: Redis cache (pipeline for batch operation)
+      // L2: Redis cache (pipeline for batch operation) with compression
       if (this.redisClient) {
         try {
           const pipeline = this.redisClient.pipeline();
 
-          for (const entry of entries) {
+          // Compress all entries in parallel
+          const compressionPromises = entries.map(async entry => {
+            const { data } = await this.compressValue(entry.value);
+            return { key: entry.key, data, ttl: entry.ttl };
+          });
+
+          const compressedEntries = await Promise.all(compressionPromises);
+
+          for (const entry of compressedEntries) {
             const ttl = entry.ttl || this.options.memory.ttl;
-            const serialized = JSON.stringify(entry.value);
-            pipeline.setex(entry.key, ttl, serialized);
+            pipeline.setex(entry.key, ttl, entry.data);
           }
 
           // Execute all commands in a single round trip
@@ -360,7 +378,7 @@ export class CacheManager {
                 results.set(key, null);
               } else if (value !== null) {
                 try {
-                  const parsed = JSON.parse(value as string);
+                  const parsed = await this.decompressValue<T>(value as string);
                   results.set(key, parsed);
 
                   // Populate L1 cache
@@ -369,7 +387,7 @@ export class CacheManager {
 
                   this.stats.hits++;
                 } catch (parseError) {
-                  console.warn(`JSON parse error for key ${key}:`, parseError);
+                  console.warn(`Decompression/parse error for key ${key}:`, parseError);
                   results.set(key, null);
                 }
               } else {
@@ -584,6 +602,8 @@ export class CacheManager {
         sets: 0,
         deletes: 0,
         errors: 0,
+        compressionSaves: 0,
+        compressionCount: 0,
       };
     } catch (error) {
       console.error('Cache clear error:', error);
@@ -624,16 +644,30 @@ export class CacheManager {
       sets: number;
       deletes: number;
       errors: number;
+      compressionSaves: number;
+      compressionCount: number;
+      compressionRatio?: number;
     };
   }> {
     const memoryStats = this.memoryCache.getStats();
+
+    // Calculate compression ratio (percentage saved)
+    const compressionRatio =
+      this.stats.compressionCount > 0
+        ? (this.stats.compressionSaves /
+           (this.stats.compressionSaves + this.stats.compressionCount * COMPRESSION_THRESHOLD)) * 100
+        : 0;
+
     const info: any = {
       memory: {
         keys: memoryStats.keys,
         size: this.getMemoryUsage(),
         maxSize: this.options.memory.maxSize,
       },
-      stats: { ...this.stats },
+      stats: {
+        ...this.stats,
+        compressionRatio: Number(compressionRatio.toFixed(2))
+      },
     };
 
     if (this.redisClient) {
@@ -697,6 +731,83 @@ export class CacheManager {
         latency: Date.now() - startTime,
         error: error instanceof Error ? error.message : 'Unknown error',
       };
+    }
+  }
+
+  // Compression utilities
+  private async compressValue(value: any): Promise<{
+    data: string;
+    compressed: boolean;
+    originalSize: number;
+    compressedSize: number;
+  }> {
+    try {
+      const serialized = JSON.stringify(value);
+      const originalSize = Buffer.byteLength(serialized, 'utf8');
+
+      // Only compress if larger than threshold
+      if (originalSize < COMPRESSION_THRESHOLD) {
+        return {
+          data: serialized,
+          compressed: false,
+          originalSize,
+          compressedSize: originalSize,
+        };
+      }
+
+      // Compress using gzip
+      const buffer = Buffer.from(serialized, 'utf8');
+      const compressed = await gzipAsync(buffer);
+      const compressedSize = compressed.length;
+
+      // Base64 encode the compressed buffer and add compression marker
+      const compressedData = `GZIP:${compressed.toString('base64')}`;
+
+      // Track compression stats
+      const savings = originalSize - compressedSize;
+      this.stats.compressionSaves += savings;
+      this.stats.compressionCount++;
+
+      return {
+        data: compressedData,
+        compressed: true,
+        originalSize,
+        compressedSize,
+      };
+    } catch (error) {
+      console.warn('Compression error, using uncompressed data:', error);
+      const serialized = JSON.stringify(value);
+      return {
+        data: serialized,
+        compressed: false,
+        originalSize: Buffer.byteLength(serialized, 'utf8'),
+        compressedSize: Buffer.byteLength(serialized, 'utf8'),
+      };
+    }
+  }
+
+  private async decompressValue<T>(data: string): Promise<T> {
+    try {
+      // Check for compression marker
+      if (!data.startsWith('GZIP:')) {
+        // Uncompressed data, parse directly
+        return JSON.parse(data);
+      }
+
+      // Extract base64 compressed data
+      const base64Data = data.substring(5); // Remove 'GZIP:' prefix
+      const compressed = Buffer.from(base64Data, 'base64');
+
+      // Decompress
+      const decompressed = await gunzipAsync(compressed);
+      const decompressedString = decompressed.toString('utf8');
+
+      // Parse and return
+      return JSON.parse(decompressedString);
+    } catch (error) {
+      console.warn('Decompression error, attempting direct parse:', error);
+      // Fallback: try parsing directly (might be uncompressed legacy data)
+      return JSON.parse(data);
     }
   }
 

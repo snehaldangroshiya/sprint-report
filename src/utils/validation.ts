@@ -575,7 +575,7 @@ function zodToMCPSchema(zodSchema: z.ZodObject<any>): {
 
   for (const [key, value] of Object.entries(shape)) {
     const zodField = value as z.ZodTypeAny;
-    
+
     // Convert Zod type to JSON Schema type
     properties[key] = zodTypeToJsonSchema(zodField);
 

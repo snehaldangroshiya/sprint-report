@@ -37,7 +37,8 @@ export class WebAPIServer {
 
   constructor() {
     this.app = express();
-    this.mcpServer = new EnhancedMCPServer();
+    // HTTP mode: use frequent health checks (30 seconds) for web API monitoring
+    this.mcpServer = new EnhancedMCPServer({ healthCheckIntervalMs: 30 * 1000 });
     this.config = createAppConfig();
     this.logger = getLogger(this.config.logging);
     this.pdfGenerator = new PDFGenerator();

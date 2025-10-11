@@ -378,32 +378,14 @@ export class ToolRegistry {
     context: EnhancedServerContext
   ): Promise<any> {
     try {
-      console.error(
-        '[TOOL-REGISTRY] handleGenerateSprintReport called with format:',
-        args.format
-      );
-
       // Delegate to reportTools which has full tier analytics implementation
       const result = await context.reportTools.generateSprintReport(args);
 
-      console.error('[TOOL-REGISTRY] Result from reportTools:', {
-        contentType: result.contentType,
-        contentIsString: typeof result.content === 'string',
-        contentLength:
-          typeof result.content === 'string' ? result.content.length : 'N/A',
-        contentPreview:
-          typeof result.content === 'string'
-            ? result.content.substring(0, 100)
-            : 'object',
-      });
-
       // Return the report content - if format is JSON, parse the string to return object
       if (args.format === 'json' && typeof result.content === 'string') {
-        console.error('[TOOL-REGISTRY] Parsing JSON content');
         return JSON.parse(result.content);
       }
 
-      console.error('[TOOL-REGISTRY] Returning content as-is');
       return result.content;
     } catch (error) {
       context.logger.logError(error as Error, 'generateSprintReport', { args });
