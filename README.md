@@ -64,25 +64,45 @@ NODE_ENV=development
 
 ### Running the Application
 
+NextReleaseMCP supports **four server modes**:
+
+1. **MCP Server (stdio)** - For Claude Desktop and MCP clients
+2. **Web API Server** - REST API for web/mobile apps (Port 3000)
+3. **HTTP/StreamableHttp Server** - MCP over HTTP with bidirectional streaming (Port 3001)
+4. **SSE Server** - MCP over Server-Sent Events for browser clients (Port 3002)
+
 **Development Mode** (Recommended):
 ```bash
-# Terminal 1: MCP + API Server
-npm run dev:web
+# MCP stdio mode (Claude Desktop)
+npm run dev
 
-# Terminal 2: Web Application
+# Web API + UI
+npm run dev:web
 cd web && npm run dev
+
+# HTTP/StreamableHttp MCP server
+npm run dev:http
+
+# SSE MCP server (NEW!)
+npm run dev:sse
 ```
 
 **Access the Application**:
-- Web UI: http://localhost:3002
+- Web UI: http://localhost:5173 (dev)
 - API: http://localhost:3000/api
-- Health Check: http://localhost:3000/api/health
+- HTTP MCP: http://localhost:3001/mcp
+- SSE MCP: http://localhost:3002/sse
+- Health Checks: `/health` on each server
+
+> 📖 **See [docs/SERVER_MODES.md](./docs/SERVER_MODES.md)** for detailed comparison and usage
 
 ## 📚 Documentation
 
 - **[CLAUDE.md](./CLAUDE.md)** - Complete project overview and architecture
 - **[docs/QUICKSTART.md](./docs/QUICKSTART.md)** - 5-minute setup guide
 - **[docs/USAGE_GUIDE.md](./docs/USAGE_GUIDE.md)** - Complete usage instructions
+- **[docs/SERVER_MODES.md](./docs/SERVER_MODES.md)** - Server modes comparison (stdio, Web API, HTTP, SSE)
+- **[docs/SSE_SERVER_GUIDE.md](./docs/SSE_SERVER_GUIDE.md)** - SSE server complete guide
 - **[docs/API_WORKING_EXAMPLES.md](./docs/API_WORKING_EXAMPLES.md)** - API examples with real data
 - **[docs/QUICK_REFERENCE.md](./docs/QUICK_REFERENCE.md)** - Quick reference card
 

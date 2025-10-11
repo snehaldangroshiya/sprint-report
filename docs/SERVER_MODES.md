@@ -1,6 +1,6 @@
 # NextReleaseMCP - Server Modes
 
-The NextReleaseMCP server supports three different modes of operation:
+The NextReleaseMCP server supports **four** different modes of operation:
 
 ## 1. MCP Server (stdio) - Default Mode
 
@@ -55,11 +55,11 @@ npm run start:web  # Production (port 3000)
 
 ---
 
-## 3. MCP Server (HTTP/SSE) - **NEW**
+## 3. MCP Server (HTTP/StreamableHttp)
 
-**Purpose**: MCP protocol over HTTP with Server-Sent Events transport
+**Purpose**: MCP protocol over HTTP with StreamableHttp transport
 
-**Use Case**: HTTP-based MCP clients, web-based AI assistants, remote MCP access
+**Use Case**: HTTP-based MCP clients with bidirectional streaming
 
 **Start Command**:
 ```bash
@@ -67,34 +67,77 @@ npm run dev:http    # Development (port 3001)
 npm run start:http  # Production (port 3001)
 ```
 
-**Connection**: HTTP/SSE at `http://localhost:3001`
+**Connection**: HTTP/StreamableHttp at `http://localhost:3001`
 
 **Key Endpoints**:
 - `GET /health` - Health check
-- `GET /sse` - MCP SSE endpoint (main connection)
-- `POST /message` - MCP message handler
+- `GET /mcp` - MCP StreamableHttp endpoint (establishes session)
+- `POST /mcp` - MCP message handler (requires session ID header)
 
 **Features**:
 - Full MCP protocol support via HTTP
-- Server-Sent Events for real-time updates
+- Bidirectional streaming
+- Session management
 - Same tool set as stdio mode
 - CORS enabled for web access
-- No long-polling required
+
+---
+
+## 4. MCP Server (SSE) - **NEW**
+
+**Purpose**: MCP protocol over HTTP with Server-Sent Events transport
+
+**Use Case**: HTTP-based MCP clients, web-based AI assistants, real-time updates
+
+**Start Command**:
+```bash
+npm run dev:sse     # Development (port 3002)
+npm run start:sse   # Production (port 3002)
+```
+
+**Connection**: HTTP/SSE at `http://localhost:3002`
+
+**Key Endpoints**:
+- `GET /health` - Health check
+- `GET /sse` - MCP SSE endpoint (establishes SSE stream)
+- `POST /message?sessionId=<id>` - Send messages to server
+- `GET /sessions` - List active sessions (debugging)
+
+**Features**:
+- Full MCP protocol support via HTTP
+- Server-Sent Events for real-time server → client streaming
+- HTTP POST for client → server communication
+- Native browser EventSource support
+- Auto-reconnection capabilities
+- Same tool set as stdio mode
+- CORS enabled for web access
 
 **Connection Example**:
 ```javascript
-// Connect to MCP over HTTP
-const eventSource = new EventSource('http://localhost:3001/sse');
+// Connect to MCP over SSE
+const eventSource = new EventSource('http://localhost:3002/sse');
 
-eventSource.onmessage = (event) => {
-  console.log('MCP Message:', event.data);
-};
+let sessionId = null;
+
+eventSource.addEventListener('message', (event) => {
+  const msg = JSON.parse(event.data);
+  
+  // Get session ID from initialization
+  if (msg.method === 'notifications/initialized') {
+    sessionId = msg.params?.sessionId;
+    console.log('Connected with session:', sessionId);
+  }
+  
+  console.log('MCP Message:', msg);
+});
 
 // Send tool call
-fetch('http://localhost:3001/message', {
+fetch(`http://localhost:3002/message?sessionId=${sessionId}`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
+    jsonrpc: '2.0',
+    id: 1,
     method: 'tools/call',
     params: {
       name: 'jira_get_sprints',
@@ -112,23 +155,26 @@ fetch('http://localhost:3001/message', {
 |------|------|----------|---------|
 | MCP stdio | - | stdio | Claude Desktop, MCP clients |
 | Web API | 3000 | HTTP REST | Web applications |
-| Web App | 3002 | HTTP | React frontend |
-| MCP HTTP | 3001 | HTTP/SSE | HTTP-based MCP clients |
+| MCP HTTP (StreamableHttp) | 3001 | HTTP Streaming | HTTP-based MCP clients |
+| MCP SSE | 3002 | HTTP/SSE | Real-time MCP over SSE |
+| Web App | 5173 | HTTP | React frontend (dev) |
 
 ---
 
 ## Comparison Matrix
 
-| Feature | stdio Mode | Web API Mode | HTTP/SSE Mode |
-|---------|-----------|--------------|---------------|
-| **MCP Protocol** | ✅ Full | ❌ No | ✅ Full |
-| **REST API** | ❌ No | ✅ Yes | ❌ No |
-| **Web Browser Access** | ❌ No | ✅ Yes | ✅ Yes |
-| **Real-time Updates** | ✅ Stream | ❌ Polling | ✅ SSE |
-| **Tool Execution** | ✅ All 12 | ✅ All 12 | ✅ All 12 |
-| **Authentication** | Local | Token-based | Token-based |
-| **Remote Access** | ❌ No | ✅ Yes | ✅ Yes |
-| **Best For** | AI Assistants | Web Apps | HTTP MCP Clients |
+| Feature | stdio Mode | Web API Mode | HTTP/StreamableHttp | SSE Mode |
+|---------|-----------|--------------|---------------------|----------|
+| **MCP Protocol** | ✅ Full | ❌ No | ✅ Full | ✅ Full |
+| **REST API** | ❌ No | ✅ Yes | ❌ No | ❌ No |
+| **Web Browser Access** | ❌ No | ✅ Yes | ⚠️ Limited | ✅ Yes |
+| **Real-time Updates** | ✅ Stream | ❌ Polling | ✅ Stream | ✅ SSE Stream |
+| **Tool Execution** | ✅ All | ✅ All | ✅ All | ✅ All |
+| **Authentication** | Local | Token-based | Session-based | Session-based |
+| **Remote Access** | ❌ No | ✅ Yes | ✅ Yes | ✅ Yes |
+| **Bidirectional** | ✅ Yes | ✅ Yes | ✅ Yes | ⚠️ POST + SSE |
+| **Browser Native** | ❌ No | ✅ Yes | ❌ No | ✅ EventSource |
+| **Best For** | AI Assistants | Web Apps | Advanced Streaming | Real-time Web Apps |
 
 ---
 
@@ -147,35 +193,48 @@ fetch('http://localhost:3001/message', {
 - Third-party integration required
 - Want comprehensive API documentation
 
-### Use **HTTP/SSE Mode** when:
-- MCP client is web-based
-- Need MCP protocol over HTTP
-- Remote access to MCP server required
-- Want real-time updates without WebSocket
-- Building browser-based AI assistant
+### Use **HTTP/StreamableHttp Mode** when:
+- MCP client requires bidirectional streaming
+- Need advanced HTTP-based MCP features
+- Building custom MCP clients
+- Session management is required
+
+### Use **SSE Mode** when:
+- Need real-time server → client updates
+- Using browser-based clients (EventSource)
+- Want automatic reconnection
+- Building web-based AI assistant
+- Simple unidirectional streaming is sufficient
+- Maximum browser compatibility needed
 
 ---
 
 ## Running Multiple Modes Simultaneously
 
-You can run all three modes at the same time:
+You can run all four modes at the same time:
 
 ```bash
 # Terminal 1: MCP stdio server
 npm run dev
 
-# Terminal 2: Web API server + Web app
+# Terminal 2: Web API server
 npm run dev:web
-cd web && npm run dev
 
-# Terminal 3: MCP HTTP server
+# Terminal 3: MCP HTTP (StreamableHttp) server
 npm run dev:http
+
+# Terminal 4: MCP SSE server
+npm run dev:sse
+
+# Terminal 5: Web app (React frontend)
+cd web && npm run dev
 ```
 
 **Active Ports**:
 - Port 3000: Web API (REST)
-- Port 3001: MCP HTTP (SSE)
-- Port 3002: Web App (React)
+- Port 3001: MCP HTTP (StreamableHttp)
+- Port 3002: MCP SSE
+- Port 5173: Web App (React, dev mode)
 
 ---
 
@@ -194,7 +253,8 @@ GITHUB_TOKEN=ghp_your_token
 
 # Optional: Port Customization
 MCP_SERVER_PORT=3000      # Web API port
-MCP_HTTP_PORT=3001        # MCP HTTP port
+MCP_HTTP_PORT=3001        # MCP HTTP (StreamableHttp) port
+MCP_SSE_PORT=3002         # MCP SSE port
 # Web app port configured in web/vite.config.ts
 ```
 
@@ -202,7 +262,7 @@ MCP_HTTP_PORT=3001        # MCP HTTP port
 
 ## Available Tools (All Modes)
 
-All three modes provide access to the same 14 MCP tools:
+All four modes provide access to the same MCP tools:
 
 **Jira Tools**:
 1. `jira_get_sprints` - Get sprints for a board
@@ -233,23 +293,31 @@ All three modes provide access to the same 14 MCP tools:
 curl http://localhost:3000/api/health | jq '.'
 ```
 
-### MCP HTTP Mode:
+### MCP HTTP (StreamableHttp) Mode:
 ```bash
 curl http://localhost:3001/health | jq '.'
+```
+
+### MCP SSE Mode:
+```bash
+curl http://localhost:3002/health | jq '.'
 ```
 
 **Expected Response**:
 ```json
 {
   "status": "healthy",
-  "mode": "http-sse",
-  "timestamp": "2025-10-01T15:21:42.198Z",
-  "tools": 12
+  "mode": "sse",
+  "timestamp": "2025-10-11T15:21:42.198Z",
+  "tools": 12,
+  "activeSessions": 0
 }
 ```
 
 ---
 
-**Last Updated**: October 1, 2025
+**Last Updated**: October 11, 2025
 **Version**: 2.0.0
-**Status**: All Modes Operational ✅
+**Status**: All Four Modes Operational ✅
+
+For detailed SSE server documentation, see [SSE_SERVER_GUIDE.md](./SSE_SERVER_GUIDE.md)
