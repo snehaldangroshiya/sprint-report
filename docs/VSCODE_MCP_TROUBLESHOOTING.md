@@ -24,7 +24,7 @@ Updated `.vscode/mcp.json` to use the production build with clean output:
         "ENABLE_API_LOGGING": "false"
       },
       "name": "NextRelease MCP Server",
-      "description": "Jira and GitHub sprint reporting with 12 tools"
+      "description": "Jira and GitHub sprint reporting with 14 tools"
     }
   }
 }
@@ -59,7 +59,7 @@ Updated `.vscode/mcp.json` to use the production build with clean output:
 3. **Check MCP Connection**:
    - Open the MCP tools panel in VSCode
    - You should see "NextRelease MCP Server" connected
-   - Verify 12 tools are available
+   - Verify 14 tools are available
 
 ### Testing the Server Manually
 
@@ -127,11 +127,21 @@ VSCode MCP logs can be found:
 When working correctly, you should see:
 1. ✅ No "unable to start" error in VSCode
 2. ✅ "NextRelease MCP Server" shows as connected
-3. ✅ 12 tools listed in MCP panel:
-   - `get_sprints`
-   - `get_sprint_issues`
-   - `get_issue_details`
-   - `create_sprint_report`
+3. ✅ 14 tools listed in MCP panel:
+   - `jira_get_sprints`
+   - `jira_get_sprint_issues`
+   - `jira_get_sprint`
+   - `jira_get_issue_details`
+   - `jira_search_issues`
+   - `github_get_commits`
+   - `github_get_pull_requests`
+   - `github_search_commits_by_message`
+   - `github_search_pull_requests_by_date`
+   - `github_find_commits_with_jira_references`
+   - `generate_sprint_report`
+   - `get_sprint_metrics`
+   - `health_check`
+   - `cache_stats`
    - And 8 more...
 
 ### Still Having Issues?

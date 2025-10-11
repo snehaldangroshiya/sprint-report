@@ -26,7 +26,7 @@ For VSCode/Claude Code integration, **use the stdio mode** which is the standard
       "args": ["run", "dev"],
       "cwd": "/home/sd/data/project-2025/NextReleaseMCP",
       "name": "NextRelease MCP Server",
-      "description": "Jira and GitHub sprint reporting with 12 tools"
+      "description": "Jira and GitHub sprint reporting with 14 tools"
     }
   }
 }

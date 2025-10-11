@@ -2,7 +2,10 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Dashboard Page', () => {
   test.beforeEach(async ({ page }) => {
-    // Mock all API endpoints with realistic data
+    // M  // MCP Tools Status
+  const toolsLink = page.getByRole('link', { name: /MCP Tools Status Monitor 14/i });
+  await expect(toolsLink).toBeVisible();
+  await expect(toolsLink).toHaveAttribute('href', '/tools');
     await page.route('**/api/metrics', async route => {
       const json = {
         summary: {
@@ -137,7 +140,7 @@ test.describe('Dashboard Page', () => {
     await expect(velocityLink).toHaveAttribute('href', '/velocity');
 
     // MCP Tools Status
-    const toolsLink = page.getByRole('link', { name: /MCP Tools Status Monitor 12/i });
+    const toolsLink = page.getByRole('link', { name: /MCP Tools Status Monitor 14/i });
     await expect(toolsLink).toBeVisible();
     await expect(toolsLink).toHaveAttribute('href', '/tools');
   });

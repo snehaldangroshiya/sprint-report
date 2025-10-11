@@ -240,7 +240,7 @@ export function Dashboard() {
                     MCP Tools Status
                   </h3>
                   <p className="text-sm text-gray-600">
-                    Monitor 12 MCP tools & health
+                    Monitor 14 MCP tools & health
                   </p>
                 </div>
               </div>

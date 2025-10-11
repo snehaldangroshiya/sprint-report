@@ -28,25 +28,29 @@ export function ToolsStatus() {
     refetchInterval: 60000,
   });
 
-  // MCP Tools Status (12 total)
+  // MCP Tools Status (14 total - matching backend tool-registry.ts)
   const mcpTools: ToolStatus[] = [
-    // Jira Tools (4)
+    // Jira Tools (5)
     { name: 'jira_get_sprints', category: 'Jira', available: true, description: 'List sprints for board', icon: BarChart3 },
     { name: 'jira_get_sprint_issues', category: 'Jira', available: true, description: 'Get sprint issues', icon: FileText },
+    { name: 'jira_get_sprint', category: 'Jira', available: true, description: 'Get detailed sprint info', icon: BarChart3 },
     { name: 'jira_get_issue_details', category: 'Jira', available: true, description: 'Detailed issue info', icon: FileText },
-    { name: 'jira_get_board_config', category: 'Jira', available: true, description: 'Board configuration', icon: Database },
+    { name: 'jira_search_issues', category: 'Jira', available: true, description: 'Search issues using JQL', icon: Database },
 
-    // GitHub Tools (4)
-    { name: 'github_get_commits', category: 'GitHub', available: true, description: 'List commits', icon: GitBranch },
-    { name: 'github_get_prs', category: 'GitHub', available: true, description: 'List pull requests', icon: GitBranch },
-    { name: 'github_get_commit_details', category: 'GitHub', available: true, description: 'Commit details', icon: GitBranch },
-    { name: 'github_get_pr_details', category: 'GitHub', available: true, description: 'PR details', icon: GitBranch },
+    // GitHub Tools (5)
+    { name: 'github_get_commits', category: 'GitHub', available: true, description: 'Get repository commits', icon: GitBranch },
+    { name: 'github_get_pull_requests', category: 'GitHub', available: true, description: 'Get pull requests', icon: GitBranch },
+    { name: 'github_search_commits_by_message', category: 'GitHub', available: true, description: 'Search commits by message', icon: GitBranch },
+    { name: 'github_search_pull_requests_by_date', category: 'GitHub', available: true, description: 'Search PRs by date range', icon: GitBranch },
+    { name: 'github_find_commits_with_jira_references', category: 'GitHub', available: true, description: 'Find commits with Jira refs', icon: GitBranch },
 
-    // Report Tools (4)
-    { name: 'create_sprint_report', category: 'Reports', available: true, description: 'Generate sprint report', icon: FileText },
-    { name: 'generate_release_notes', category: 'Reports', available: true, description: 'Create release notes', icon: FileText },
-    { name: 'analyze_sprint_velocity', category: 'Analytics', available: true, description: 'Velocity metrics', icon: Zap },
-    { name: 'get_sprint_health', category: 'Analytics', available: true, description: 'Sprint health check', icon: Activity },
+    // Report Tools (2)
+    { name: 'generate_sprint_report', category: 'Reports', available: true, description: 'Generate comprehensive report', icon: FileText },
+    { name: 'get_sprint_metrics', category: 'Reports', available: true, description: 'Calculate sprint metrics', icon: Zap },
+
+    // Utility Tools (2)
+    { name: 'health_check', category: 'Utility', available: true, description: 'Check service health', icon: Activity },
+    { name: 'cache_stats', category: 'Utility', available: true, description: 'Get cache statistics', icon: Database },
   ];
 
   const groupedTools = mcpTools.reduce((acc, tool) => {
@@ -62,7 +66,7 @@ export function ToolsStatus() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">MCP Tools & System Status</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Monitor all 12 MCP tools and system health in real-time
+            Monitor all 14 MCP tools and system health in real-time
           </p>
         </div>
         <Button
@@ -229,7 +233,7 @@ export function ToolsStatus() {
           </div>
           <div className="border rounded-lg p-4">
             <dt className="text-sm font-medium text-gray-500">Total Tools</dt>
-            <dd className="mt-1 text-lg font-semibold text-gray-900">12 MCP Tools</dd>
+            <dd className="mt-1 text-lg font-semibold text-gray-900">14 MCP Tools</dd>
           </div>
           <div className="border rounded-lg p-4">
             <dt className="text-sm font-medium text-gray-500">API Server</dt>

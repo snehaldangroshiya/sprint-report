@@ -202,7 +202,7 @@ MCP_HTTP_PORT=3001        # MCP HTTP port
 
 ## Available Tools (All Modes)
 
-All three modes provide access to the same 12 MCP tools:
+All three modes provide access to the same 14 MCP tools:
 
 **Jira Tools**:
 1. `jira_get_sprints` - Get sprints for a board
