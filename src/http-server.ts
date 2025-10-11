@@ -3,9 +3,10 @@
 // Register module aliases for production build
 import 'module-alias/register';
 
-// MCP Server with HTTP/SSE Transport
+// MCP Server with HTTP/StreamableHttp Transport
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { randomUUID } from 'crypto';
 import cors from 'cors';
 import express, { Request, Response } from 'express';
 
@@ -148,70 +149,111 @@ async function main() {
   app.get('/health', (_req: Request, res: Response) => {
     res.json({
       status: 'healthy',
-      mode: 'http-sse',
+      mode: 'http-streamable',
       timestamp: new Date().toISOString(),
       tools: toolRegistry.getToolDefinitions().length,
     });
   });
 
-  // Store active transports
-  const activeTransports = new Map<string, SSEServerTransport>();
+  // Store active sessions with their server instances and transports
+  const activeSessions = new Map<
+    string,
+    { server: Server; transport: StreamableHTTPServerTransport }
+  >();
 
-  // MCP SSE endpoint - establish SSE connection
-  app.get('/sse', async (req: Request, res: Response) => {
-    const sessionId = Math.random().toString(36).substring(7);
-    logger.info(`New SSE connection established: ${sessionId}`);
+  // Helper to create a new server instance with all handlers
+  const createServerInstance = () => {
+    const newServer = new Server(
+      {
+        name: 'jira-github-sprint-reporter-http',
+        version: '2.0.0',
+      },
+      {
+        capabilities: {
+          tools: {},
+        },
+      }
+    );
 
-    // Create transport with the message endpoint path
-    // SSEServerTransport will set its own headers
-    const transport = new SSEServerTransport('/message', res);
-    activeTransports.set(sessionId, transport);
-
-    // Handle connection close
-    req.on('close', () => {
-      logger.info(`SSE connection closed: ${sessionId}`);
-      activeTransports.delete(sessionId);
-      transport.close?.();
+    // Set up tool handlers
+    newServer.setRequestHandler(ListToolsRequestSchema, async () => {
+      return {
+        tools: toolRegistry.getToolDefinitions(),
+      };
     });
 
-    // Connect server to transport
-    // This will trigger the SSE handshake
-    try {
-      await server.connect(transport);
-      logger.info(`MCP server connected to transport: ${sessionId}`);
-    } catch (error) {
-      logger.error(error as Error, 'Failed to connect transport');
-      activeTransports.delete(sessionId);
-    }
-  });
+    newServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
+      const { name, arguments: args } = request.params;
 
-  // MCP message endpoint - handle incoming messages
-  app.post('/message', async (req: Request, res: Response) => {
-    try {
-      const message =
-        typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      try {
+        return await toolRegistry.executeTool(name, args || {}, context);
+      } catch (error: any) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error executing tool ${name}: ${error.message}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    });
 
-      logger.info('Received MCP message:', {
-        method: message.method,
-        id: message.id,
+    return newServer;
+  };
+
+  // MCP endpoint - handles both GET (SSE) and POST (JSON-RPC messages)
+  app.all('/mcp', async (req: Request, res: Response) => {
+    try {
+      const sessionId = req.headers['mcp-session-id'] as string | undefined;
+      
+      logger.info(`MCP ${req.method} request`, {
+        sessionId,
+        hasBody: !!req.body,
+        method: req.body?.method,
       });
 
-      // Find the appropriate transport (for now, use the first one)
-      // In production, you'd want to track sessions properly
-      const transport = Array.from(activeTransports.values())[0];
+      let sessionServer: Server;
+      let sessionTransport: StreamableHTTPServerTransport;
 
-      if (!transport) {
-        logger.warn('No active transport found for message');
-        res.status(503).json({ error: 'No active connection' });
-        return;
+      if (sessionId && activeSessions.has(sessionId)) {
+        // Reuse existing session
+        const session = activeSessions.get(sessionId)!;
+        sessionServer = session.server;
+        sessionTransport = session.transport;
+      } else {
+        // Create new server and transport for this session
+        sessionServer = createServerInstance();
+        sessionTransport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => randomUUID(),
+          onsessioninitialized: async (sid: string) => {
+            logger.info(`Session initialized: ${sid}`);
+            activeSessions.set(sid, {
+              server: sessionServer,
+              transport: sessionTransport,
+            });
+          },
+          onsessionclosed: async (sid: string) => {
+            logger.info(`Session closed: ${sid}`);
+            activeSessions.delete(sid);
+          },
+        });
+
+        // Connect server to transport
+        await sessionServer.connect(sessionTransport);
       }
 
-      // The transport will handle the message through the connected server
-      // Just acknowledge receipt
-      res.status(202).end();
+      // Let the transport handle the request
+      await sessionTransport.handleRequest(req, res, req.body);
     } catch (error: any) {
-      logger.error('Error handling message:', error);
-      res.status(400).json({ error: error.message });
+      logger.error('Error handling MCP request:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: 'Internal server error',
+          message: error.message,
+        });
+      }
     }
   });
 
@@ -227,29 +269,28 @@ async function main() {
   // Start server
   app.listen(PORT, HOST, () => {
     console.log('\n' + '='.repeat(60));
-    console.log('🚀 MCP Server (HTTP/SSE Mode) Started');
+    console.log('🚀 MCP Server (HTTP/StreamableHttp Mode) Started');
     console.log('='.repeat(60));
     console.log(`📍 URL: http://${HOST}:${PORT}`);
-    console.log(`🔌 MCP SSE Endpoint: http://${HOST}:${PORT}/sse`);
-    console.log(`📨 MCP Message Endpoint: http://${HOST}:${PORT}/message`);
+    console.log(`🔌 MCP Endpoint: http://${HOST}:${PORT}/mcp`);
     console.log(`❤️  Health Check: http://${HOST}:${PORT}/health`);
     console.log(
       `🛠️  Tools Available: ${toolRegistry.getToolDefinitions().length}`
     );
     console.log('='.repeat(60));
     console.log('\nMCP Server is ready to accept HTTP connections');
-    console.log('Connect using: http://localhost:3001/sse\n');
+    console.log('Connect using: http://localhost:3001/mcp\n');
   });
 
   // Graceful shutdown
   const shutdown = () => {
     console.log('\nShutting down MCP HTTP server...');
-    // Close all active transports
-    activeTransports.forEach((transport, sessionId) => {
-      logger.info(`Closing transport: ${sessionId}`);
+    // Close all active sessions
+    activeSessions.forEach(({ transport }, sessionId) => {
+      logger.info(`Closing session: ${sessionId}`);
       transport.close?.();
     });
-    activeTransports.clear();
+    activeSessions.clear();
     process.exit(0);
   };
 
