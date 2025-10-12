@@ -113,15 +113,17 @@ export function ConfigurationWidget() {
                 : 'Not configured'}
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsDialogOpen(true)}
-            className="w-full mt-3"
-          >
-            <Edit2 className="h-3 w-3 mr-2" />
-            Edit Settings
-          </Button>
+          <div className="flex justify-end pt-4">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setIsDialogOpen(true)}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm hover:shadow-md transition-all duration-200 px-6"
+            >
+              <Edit2 className="h-3.5 w-3.5 mr-2" />
+            {isConfigured ? 'Edit' : 'Configure'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
