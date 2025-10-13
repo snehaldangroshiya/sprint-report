@@ -3,7 +3,7 @@
  * Compact dashboard widget for quick configuration overview with dialog editor
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Settings, Save, RotateCcw, CheckCircle, AlertCircle, Edit2, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -28,11 +28,18 @@ export function ConfigurationWidget() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [localConfig, setLocalConfig] = useState(config);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  
+  // Debounced values for GitHub inputs
+  const [githubOwnerInput, setGithubOwnerInput] = useState(config.github.owner);
+  const [githubRepoInput, setGithubRepoInput] = useState(config.github.repo);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sync localConfig when dialog opens or global config changes
   useEffect(() => {
     if (isDialogOpen) {
       setLocalConfig(config);
+      setGithubOwnerInput(config.github.owner);
+      setGithubRepoInput(config.github.repo);
     }
   }, [isDialogOpen, config]);
 
@@ -42,6 +49,41 @@ export function ConfigurationWidget() {
     localConfig.jira.boardName !== config.jira.boardName ||
     localConfig.github.owner !== config.github.owner ||
     localConfig.github.repo !== config.github.repo;
+
+  // Debounced update for GitHub fields
+  const handleGithubChange = useCallback((field: 'owner' | 'repo', value: string) => {
+    // Clear existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Update input immediately for responsive UI
+    if (field === 'owner') {
+      setGithubOwnerInput(value);
+    } else {
+      setGithubRepoInput(value);
+    }
+
+    // Debounce the actual state update
+    debounceTimerRef.current = setTimeout(() => {
+      setLocalConfig((prev) => ({
+        ...prev,
+        github: {
+          ...prev.github,
+          [field]: value,
+        },
+      }));
+    }, 500); // 500ms debounce delay
+  }, []);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleSave = () => {
     try {
@@ -198,14 +240,9 @@ export function ConfigurationWidget() {
                   <Label htmlFor="github-owner">Organization/Owner</Label>
                   <Input
                     id="github-owner"
-                    placeholder="e.g., facebook"
-                    value={localConfig.github.owner}
-                    onChange={(e) =>
-                      setLocalConfig({
-                        ...localConfig,
-                        github: { ...localConfig.github, owner: e.target.value },
-                      })
-                    }
+                    placeholder="e.g., sage connect"
+                    value={githubOwnerInput}
+                    onChange={(e) => handleGithubChange('owner', e.target.value)}
                   />
                 </div>
 
@@ -214,13 +251,8 @@ export function ConfigurationWidget() {
                   <Input
                     id="github-repo"
                     placeholder="e.g., react"
-                    value={localConfig.github.repo}
-                    onChange={(e) =>
-                      setLocalConfig({
-                        ...localConfig,
-                        github: { ...localConfig.github, repo: e.target.value },
-                      })
-                    }
+                    value={githubRepoInput}
+                    onChange={(e) => handleGithubChange('repo', e.target.value)}
                   />
                 </div>
               </div>

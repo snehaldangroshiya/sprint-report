@@ -3,7 +3,7 @@
  * Searchable dropdown for Jira board selection
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, Check } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
@@ -34,6 +34,8 @@ interface BoardSelectorProps {
 export function BoardSelector({ value, onChange, disabled, initialBoardName }: BoardSelectorProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedBoardCache, setSelectedBoardCache] = useState<{
     id: string;
     name: string;
@@ -41,6 +43,23 @@ export function BoardSelector({ value, onChange, disabled, initialBoardName }: B
     projectName?: string;
     type: string;
   } | null>(null);
+
+  // Debounce search query to reduce API calls
+  useEffect(() => {
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+    }
+
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300); // 300ms debounce for search (faster than form inputs)
+
+    return () => {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
+      }
+    };
+  }, [searchQuery]);
 
   // Fetch default boards
   const { data: defaultBoards, isLoading: defaultLoading } = useQuery({
@@ -50,9 +69,9 @@ export function BoardSelector({ value, onChange, disabled, initialBoardName }: B
 
   // Fetch search results
   const { data: searchResults, isLoading: searchLoading } = useQuery({
-    queryKey: ['boards-search', searchQuery],
-    queryFn: () => api.searchBoards(searchQuery, 20),
-    enabled: searchQuery.length > 0,
+    queryKey: ['boards-search', debouncedSearchQuery],
+    queryFn: () => api.searchBoards(debouncedSearchQuery, 20),
+    enabled: debouncedSearchQuery.length > 0,
   });
 
   // Fetch selected board by ID if not found in current results
@@ -63,8 +82,8 @@ export function BoardSelector({ value, onChange, disabled, initialBoardName }: B
   });
 
   // Determine which boards to display
-  const boards = searchQuery.length > 0 ? searchResults : defaultBoards;
-  const isLoading = searchQuery.length > 0 ? searchLoading : defaultLoading;
+  const boards = debouncedSearchQuery.length > 0 ? searchResults : defaultBoards;
+  const isLoading = debouncedSearchQuery.length > 0 ? searchLoading : defaultLoading;
 
   // Find selected board - check cache first, then current boards, then fetched data
   // If nothing found but we have initialBoardName, create a minimal board object for display

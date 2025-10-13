@@ -3,7 +3,7 @@
  * Dashboard card for managing application configuration
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Settings, Save, RotateCcw, CheckCircle, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -19,11 +19,50 @@ export function ConfigurationCard() {
   const { config, updateConfig, resetConfig, isLoading } = useConfiguration();
   const [localConfig, setLocalConfig] = useState(config);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  
+  // Debounced input state for GitHub configuration
+  const [githubOwnerInput, setGithubOwnerInput] = useState(config.github.owner);
+  const [githubRepoInput, setGithubRepoInput] = useState(config.github.repo);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sync localConfig when global config changes (e.g., after reset)
   useEffect(() => {
     setLocalConfig(config);
+    setGithubOwnerInput(config.github.owner);
+    setGithubRepoInput(config.github.repo);
   }, [config]);
+
+  // Debounced handler for GitHub configuration changes
+  const handleGithubChange = useCallback((field: 'owner' | 'repo', value: string) => {
+    // Clear existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Update input state immediately for responsive UI
+    if (field === 'owner') {
+      setGithubOwnerInput(value);
+    } else {
+      setGithubRepoInput(value);
+    }
+
+    // Debounce the actual config update
+    debounceTimerRef.current = setTimeout(() => {
+      setLocalConfig((prev) => ({
+        ...prev,
+        github: { ...prev.github, [field]: value },
+      }));
+    }, 500);
+  }, []);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   const hasChanges =
     localConfig.jira.boardId !== config.jira.boardId ||
@@ -117,13 +156,8 @@ export function ConfigurationCard() {
               <Label htmlFor="githubOwner">Organization/Owner</Label>
               <Input
                 id="githubOwner"
-                value={localConfig.github.owner}
-                onChange={(e) =>
-                  setLocalConfig({
-                    ...localConfig,
-                    github: { ...localConfig.github, owner: e.target.value },
-                  })
-                }
+                value={githubOwnerInput}
+                onChange={(e) => handleGithubChange('owner', e.target.value)}
                 placeholder="Sage"
                 disabled={isLoading}
               />
@@ -133,13 +167,8 @@ export function ConfigurationCard() {
               <Label htmlFor="githubRepo">Repository</Label>
               <Input
                 id="githubRepo"
-                value={localConfig.github.repo}
-                onChange={(e) =>
-                  setLocalConfig({
-                    ...localConfig,
-                    github: { ...localConfig.github, repo: e.target.value },
-                  })
-                }
+                value={githubRepoInput}
+                onChange={(e) => handleGithubChange('repo', e.target.value)}
                 placeholder="sage-connect"
                 disabled={isLoading}
               />
