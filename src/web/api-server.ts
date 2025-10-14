@@ -147,7 +147,7 @@ export class WebAPIServer {
     const healthRouter = createHealthRouter(getContext, getMCPServer);
     this.app.use('/api', healthRouter);
 
-    // Cache routes (/api/cache/stats, /api/cache/warm, /api/cache/warm-sprint/:id, /api/webhooks/jira/*, /api/cache/optimize)
+    // Cache routes (/api/cache/stats, /api/cache/warm, /api/cache/warm-sprint/:id, /api/cache/webhooks/jira/*, /api/cache/optimize)
     const cacheRouter = createCacheRouter(
       getContext,
       getMCPServer,

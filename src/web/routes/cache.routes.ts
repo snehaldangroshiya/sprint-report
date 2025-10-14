@@ -20,7 +20,7 @@ export function createCacheRouter(
   const router = Router();
 
   // Cache statistics endpoint
-  router.get('/stats', async (_req, res) => {
+  router.get('/cache/stats', async (_req, res) => {
     let logger: any;
     try {
       const context = getContext();
@@ -79,7 +79,7 @@ export function createCacheRouter(
   });
 
   // Cache warming
-  router.post('/warm', async (req, res) => {
+  router.post('/cache/warm', async (req, res) => {
     let logger: any;
     try {
       logger = getContext().logger;
@@ -98,7 +98,7 @@ export function createCacheRouter(
   });
 
   // Cache warming on sprint completion (manually trigger)
-  router.post('/warm-sprint/:sprintId', async (req, res) => {
+  router.post('/cache/warm-sprint/:sprintId', async (req, res) => {
     let logger: any;
     try {
       logger = getContext().logger;
@@ -125,7 +125,7 @@ export function createCacheRouter(
   });
 
   // Cache optimization
-  router.post('/optimize', async (_, res) => {
+  router.post('/cache/optimize', async (_, res) => {
     let logger: any;
     try {
       logger = getContext().logger;
@@ -141,7 +141,7 @@ export function createCacheRouter(
   });
 
   // Webhook endpoint for cache invalidation (Jira webhooks)
-  router.post('/webhooks/jira/issue-updated', async (req, res) => {
+  router.post('/cache/webhooks/jira/issue-updated', async (req, res) => {
     let logger: any;
     try {
       logger = getContext().logger;
@@ -169,7 +169,7 @@ export function createCacheRouter(
   });
 
   // Webhook endpoint for sprint state changes
-  router.post('/webhooks/jira/sprint-updated', async (req, res) => {
+  router.post('/cache/webhooks/jira/sprint-updated', async (req, res) => {
     let logger: any;
     try {
       logger = getContext().logger;
