@@ -322,38 +322,143 @@ export function SprintDetails() {
           <TabsTrigger value="metrics">Detailed Metrics</TabsTrigger>
         </TabsList>
 
-        {/* Sprint Deliverables Tab */}
+        {/* Sprint Deliverables Tab - Unified View */}
         <TabsContent value="deliverables" className="space-y-4">
-          {/* Completed Issues */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                Completed Issues ({issueGroups.completed.length})
-              </CardTitle>
+              <CardTitle>Sprint Issues</CardTitle>
               <CardDescription>
-                Showing {issueGroups.completed.length} completed issues from page {apiPage} of {issuesPagination?.total_pages || 1}
-                {issuesPagination && ` (${issuesPagination.total_issues} total issues in sprint)`}
+                {issues.length} issues from page {apiPage} of {issuesPagination?.total_pages || 1}
+                {issuesPagination && ` (${issuesPagination.total_issues} total in sprint)`}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {issueGroups.completed.map(issue => (
-                  <IssueCard
-                    key={issue.id}
-                    issue={issue}
-                    variant="completed"
-                    jiraBaseUrl={SPRINT_CONSTANTS.JIRA_BASE_URL}
-                  />
-                ))}
-                {issueGroups.completed.length === 0 && (
-                  <p className="text-center text-gray-500 py-8">No completed issues yet</p>
+              {/* Summary Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 p-4 bg-muted/30 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <div>
+                    <p className="text-sm font-medium">{issueGroups.completed.length}</p>
+                    <p className="text-xs text-muted-foreground">Completed</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-blue-600" />
+                  <div>
+                    <p className="text-sm font-medium">{issueGroups.inProgress.length}</p>
+                    <p className="text-xs text-muted-foreground">In Progress</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-gray-600" />
+                  <div>
+                    <p className="text-sm font-medium">{issueGroups.todo.length}</p>
+                    <p className="text-xs text-muted-foreground">To Do</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <div>
+                    <p className="text-sm font-medium">{issueGroups.discarded.length}</p>
+                    <p className="text-xs text-muted-foreground">Discarded</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Unified Issue List */}
+              <div className="space-y-4">
+                {/* Completed Section */}
+                {issueGroups.completed.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 px-1">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <h3 className="text-sm font-semibold text-green-700">Completed ({issueGroups.completed.length})</h3>
+                    </div>
+                    <div className="space-y-2 pl-6 border-l-2 border-green-200">
+                      {issueGroups.completed.map(issue => (
+                        <IssueCard
+                          key={issue.id}
+                          issue={issue}
+                          variant="completed"
+                          jiraBaseUrl={SPRINT_CONSTANTS.JIRA_BASE_URL}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* In Progress Section */}
+                {issueGroups.inProgress.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 px-1">
+                      <Clock className="h-4 w-4 text-blue-600" />
+                      <h3 className="text-sm font-semibold text-blue-700">In Progress ({issueGroups.inProgress.length})</h3>
+                    </div>
+                    <div className="space-y-2 pl-6 border-l-2 border-blue-200">
+                      {issueGroups.inProgress.map(issue => (
+                        <IssueCard
+                          key={issue.id}
+                          issue={issue}
+                          variant="in-progress"
+                          jiraBaseUrl={SPRINT_CONSTANTS.JIRA_BASE_URL}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* To Do Section */}
+                {issueGroups.todo.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 px-1">
+                      <AlertCircle className="h-4 w-4 text-gray-600" />
+                      <h3 className="text-sm font-semibold text-gray-700">To Do ({issueGroups.todo.length})</h3>
+                    </div>
+                    <div className="space-y-2 pl-6 border-l-2 border-gray-200">
+                      {issueGroups.todo.map(issue => (
+                        <IssueCard
+                          key={issue.id}
+                          issue={issue}
+                          variant="todo"
+                          jiraBaseUrl={SPRINT_CONSTANTS.JIRA_BASE_URL}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Discarded Section */}
+                {issueGroups.discarded.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 px-1">
+                      <AlertCircle className="h-4 w-4 text-red-600" />
+                      <h3 className="text-sm font-semibold text-red-700">Discarded ({issueGroups.discarded.length})</h3>
+                    </div>
+                    <div className="space-y-2 pl-6 border-l-2 border-red-200">
+                      {issueGroups.discarded.map(issue => (
+                        <IssueCard
+                          key={issue.id}
+                          issue={issue}
+                          variant="discarded"
+                          jiraBaseUrl={SPRINT_CONSTANTS.JIRA_BASE_URL}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Empty State */}
+                {issues.length === 0 && (
+                  <div className="text-center py-12">
+                    <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">No issues found for this sprint page</p>
+                  </div>
                 )}
               </div>
 
-              {/* API Pagination for Issues */}
+              {/* API Pagination */}
               {issuesPagination && issuesPagination.total_pages > 1 && (
-                <div className="mt-6 pt-4 border-t">
+                <div className="mt-6 pt-6 border-t">
                   <Pagination>
                     <PaginationContent>
                       <PaginationItem>
@@ -365,7 +470,6 @@ export function SprintDetails() {
 
                       {Array.from({ length: issuesPagination.total_pages }).map((_, i) => {
                         const pageNum = i + 1;
-                        // Show first page, last page, current page, and pages around current
                         if (
                           pageNum === 1 ||
                           pageNum === issuesPagination.total_pages ||
@@ -403,81 +507,6 @@ export function SprintDetails() {
               )}
             </CardContent>
           </Card>
-
-          {/* In Progress Issues */}
-          {issueGroups.inProgress.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-blue-600" />
-                  In Progress ({issueGroups.inProgress.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {issueGroups.inProgress.map(issue => (
-                    <IssueCard
-                      key={issue.id}
-                      issue={issue}
-                      variant="in-progress"
-                      jiraBaseUrl={SPRINT_CONSTANTS.JIRA_BASE_URL}
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* To Do Issues */}
-          {issueGroups.todo.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-gray-600" />
-                  To Do ({issueGroups.todo.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {issueGroups.todo.map(issue => (
-                    <IssueCard
-                      key={issue.id}
-                      issue={issue}
-                      variant="todo"
-                      jiraBaseUrl={SPRINT_CONSTANTS.JIRA_BASE_URL}
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Discarded/Cancelled Issues */}
-          {issueGroups.discarded.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-red-600" />
-                  Discarded ({issueGroups.discarded.length})
-                </CardTitle>
-                <CardDescription>
-                  Issues that were cancelled or removed from the sprint
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {issueGroups.discarded.map(issue => (
-                    <IssueCard
-                      key={issue.id}
-                      issue={issue}
-                      variant="discarded"
-                      jiraBaseUrl={SPRINT_CONSTANTS.JIRA_BASE_URL}
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
         {/* Commits Tab */}
