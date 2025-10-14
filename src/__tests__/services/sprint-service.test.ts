@@ -54,7 +54,7 @@ describe('SprintService', () => {
       expect(mockCacheManager.set).toHaveBeenCalledWith(
         'jira:boards',
         mockBoards,
-        300
+        { ttl: 300 }
       );
     });
   });
@@ -87,7 +87,7 @@ describe('SprintService', () => {
       expect(mockCacheManager.set).toHaveBeenCalledWith(
         `jira:sprints:${boardId}`,
         mockSprints,
-        300
+        { ttl: 300 }
       );
     });
   });
@@ -111,7 +111,7 @@ describe('SprintService', () => {
       expect(mockCacheManager.get).toHaveBeenCalledWith(
         `jira:sprint:${sprintId}`
       );
-      expect(mockJiraClient.getSprintDetails).not.toHaveBeenCalled();
+      expect(mockJiraClient.getSprintData).not.toHaveBeenCalled();
     });
 
     it('should fetch sprint details from Jira client if not cached', async () => {
@@ -125,16 +125,16 @@ describe('SprintService', () => {
         issues: [],
       };
       mockCacheManager.get.mockResolvedValue(null);
-      mockJiraClient.getSprintDetails.mockResolvedValue(mockSprint);
+      mockJiraClient.getSprintData.mockResolvedValue(mockSprint);
 
       const result = await sprintService.getSprintDetails(sprintId);
 
       expect(result).toEqual(mockSprint);
-      expect(mockJiraClient.getSprintDetails).toHaveBeenCalledWith(sprintId);
+      expect(mockJiraClient.getSprintData).toHaveBeenCalledWith(sprintId);
       expect(mockCacheManager.set).toHaveBeenCalledWith(
         `jira:sprint:${sprintId}`,
         mockSprint,
-        180
+        { ttl: 180 }
       );
     });
   });
@@ -192,7 +192,7 @@ describe('SprintService', () => {
 
       // Mock all required method calls
       mockCacheManager.get.mockResolvedValue(null);
-      mockJiraClient.getSprintDetails.mockResolvedValue(mockSprint);
+      mockJiraClient.getSprintData.mockResolvedValue(mockSprint);
       mockGitHubClient.getCommits.mockResolvedValue(mockCommits);
       mockGitHubClient.getPullRequests.mockResolvedValue(mockPullRequests);
       mockJiraClient.getSprints.mockResolvedValue([mockSprint]);
@@ -222,7 +222,7 @@ describe('SprintService', () => {
       };
 
       mockCacheManager.get.mockResolvedValue(null);
-      mockJiraClient.getSprintDetails.mockRejectedValue(
+      mockJiraClient.getSprintData.mockRejectedValue(
         new Error('Jira API error')
       );
 
