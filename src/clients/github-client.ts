@@ -332,7 +332,7 @@ export class GitHubClient extends BaseAPIClient {
           per_page: 100,
         },
         headers: {
-          Accept: 'application/vnd.github.cloak-preview+json', // Required for commit search
+          Accept: 'application/vnd.github.v3+json', // Commit search is now stable in v3
         },
       },
       { ttl: 300000 } // 5 minutes cache

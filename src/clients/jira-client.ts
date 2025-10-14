@@ -221,7 +221,7 @@ export class JiraClient extends BaseAPIClient {
     }
 
     const response = await this.makeRequest<any>(
-      `/rest/api/3/issue/${params.issue_key}`,
+      `/rest/api/2/issue/${params.issue_key}`,
       {
         method: 'GET',
         params: queryParams,
@@ -265,7 +265,7 @@ export class JiraClient extends BaseAPIClient {
       requestBody.startAt = startAt;
 
       const response = await this.makeRequest<JiraIssueResponse>(
-        '/rest/api/3/search',
+        '/rest/api/2/search',
         {
           method: 'POST',
           data: requestBody,
@@ -788,7 +788,7 @@ export class JiraClient extends BaseAPIClient {
     serverTitle: string;
   }> {
     const response = await this.makeRequest<any>(
-      '/rest/api/3/serverInfo',
+      '/rest/api/2/serverInfo',
       { method: 'GET' },
       { ttl: 3600000 } // 1 hour cache
     );
