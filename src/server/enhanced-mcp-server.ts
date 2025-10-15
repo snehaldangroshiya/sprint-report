@@ -20,6 +20,7 @@ import { ToolRegistry } from './tool-registry';
 import { CacheManager } from '@/cache/cache-manager';
 import { CacheOptimizer } from '@/cache/cache-optimizer';
 import { GitHubClient } from '@/clients/github-client';
+import { GitHubGraphQLClient } from '@/clients/github-graphql-client';
 import { JiraClient } from '@/clients/jira-client';
 import { createAppConfig } from '@/config/environment';
 import { ReportGenerator } from '@/reporting/report-generator';
@@ -36,6 +37,7 @@ export interface EnhancedServerContext {
   config: AppConfig;
   jiraClient: JiraClient;
   githubClient: GitHubClient;
+  githubGraphQLClient?: GitHubGraphQLClient;
   cacheManager: CacheManager;
   cacheOptimizer: CacheOptimizer;
   rateLimiter: ServiceRateLimiter;
@@ -863,6 +865,13 @@ Keep it concise (max 1 page). Use metrics to support insights. Highlight decisio
       const jiraClient = new JiraClient(config, cacheManager);
       const githubClient = new GitHubClient(config, cacheManager);
 
+      // Initialize GraphQL client for improved GitHub operations
+      const githubGraphQLClient = new GitHubGraphQLClient(config.github.token, {
+        cacheManager,
+        enableCache: true,
+        defaultCacheTTL: 300000, // 5 minutes
+      });
+
       // Initialize cache optimizer
       const cacheOptimizer = new CacheOptimizer(
         cacheManager,
@@ -874,7 +883,8 @@ Keep it concise (max 1 page). Use metrics to support insights. Highlight decisio
       const sprintService = new SprintService(
         jiraClient,
         githubClient,
-        cacheManager
+        cacheManager,
+        config.github.token  // Pass GitHub token for GraphQL client
       );
       const analyticsService = (sprintService as any).analyticsService; // Access internal instance
       const exportService = new ExportService();
@@ -891,6 +901,7 @@ Keep it concise (max 1 page). Use metrics to support insights. Highlight decisio
         config,
         jiraClient,
         githubClient,
+        githubGraphQLClient,
         cacheManager,
         cacheOptimizer,
         rateLimiter,

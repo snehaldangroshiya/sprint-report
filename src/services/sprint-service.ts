@@ -1,5 +1,6 @@
 import { CacheManager } from '../cache/cache-manager.js';
 import { GitHubClient } from '../clients/github-client.js';
+import { GitHubGraphQLClient } from '../clients/github-graphql-client.js';
 import { JiraClient } from '../clients/jira-client.js';
 import {
   Sprint,
@@ -21,11 +22,13 @@ import { AnalyticsService } from './analytics-service.js';
 export class SprintService {
   private logger: Logger;
   private analyticsService: AnalyticsService;
+  private githubGraphQLClient: GitHubGraphQLClient | null = null;
 
   constructor(
     private jiraClient: JiraClient,
     private githubClient: GitHubClient,
-    private cache: CacheManager
+    private cache: CacheManager,
+    githubToken?: string
   ) {
     if (!cache) {
       throw new Error(
@@ -33,6 +36,13 @@ export class SprintService {
       );
     }
     this.logger = new Logger('SprintService');
+    
+    // Initialize GraphQL client if token provided
+    if (githubToken) {
+      this.githubGraphQLClient = new GitHubGraphQLClient(githubToken);
+      this.logger.info('GitHub GraphQL client initialized for SprintService');
+    }
+    
     this.analyticsService = new AnalyticsService(
       this.githubClient,
       this,
@@ -151,21 +161,31 @@ export class SprintService {
           : Promise.resolve(undefined),
 
         // Get pull requests if requested (independent)
-        request.include_prs && request.github_owner && request.github_repo
-          ? request.include_enhanced_github
-            ? this.getEnhancedSprintPullRequests(
-                request.github_owner,
-                request.github_repo,
-                sprint.startDate,
-                sprint.endDate
-              )
-            : this.getSprintPullRequests(
-                request.github_owner,
-                request.github_repo,
-                sprint.startDate,
-                sprint.endDate
-              )
-          : Promise.resolve(undefined),
+        (() => {
+          this.logger.info('[PR FETCH DEBUG]', {
+            include_prs: request.include_prs,
+            github_owner: request.github_owner,
+            github_repo: request.github_repo,
+            include_enhanced_github: request.include_enhanced_github,
+            willFetchPRs: !!(request.include_prs && request.github_owner && request.github_repo),
+          });
+          
+          return request.include_prs && request.github_owner && request.github_repo
+            ? request.include_enhanced_github
+              ? this.getEnhancedSprintPullRequests(
+                  request.github_owner,
+                  request.github_repo,
+                  sprint.startDate,
+                  sprint.endDate
+                )
+              : this.getSprintPullRequests(
+                  request.github_owner,
+                  request.github_repo,
+                  sprint.startDate,
+                  sprint.endDate
+                )
+            : Promise.resolve(undefined);
+        })(),
 
         // Get velocity data if requested (independent)
         request.include_velocity
@@ -492,29 +512,21 @@ export class SprintService {
       try {
         const start = new Date(startDate);
         const end = new Date(endDate);
-        const now = new Date();
-        const threeMonthsAgo = new Date(
-          now.getTime() - 90 * 24 * 60 * 60 * 1000
-        );
 
-        // For historical sprints (older than 3 months), use GitHub Search API
-        // which allows direct date-range queries instead of paginating through all PRs
-        const isHistoricalSprint = end < threeMonthsAgo;
+        this.logger.info('Fetching PRs for sprint date range', {
+          owner,
+          repo,
+          startDate,
+          endDate,
+          hasGraphQLClient: !!this.githubGraphQLClient,
+        });
 
         let allPRs: any[];
 
-        if (isHistoricalSprint) {
-          this.logger.info('Using GitHub Search API for historical sprint', {
-            owner,
-            repo,
-            startDate,
-            endDate,
-            sprintEndDate: end.toISOString(),
-            threeMonthsAgo: threeMonthsAgo.toISOString(),
-          });
-
-          // Use Search API with date range filters
-          allPRs = await this.githubClient.searchPullRequestsByDateRange(
+        // PRIORITY 1: Use GitHub GraphQL API v4 if available (most efficient)
+        if (this.githubGraphQLClient) {
+          this.logger.info('Using GitHub GraphQL v4 API for PR search');
+          allPRs = await this.githubGraphQLClient.searchPullRequestsByDateRange(
             owner,
             repo,
             startDate,
@@ -522,18 +534,23 @@ export class SprintService {
             'all'
           );
         } else {
-          // For recent sprints, use standard REST API
-          allPRs = await this.githubClient.getPullRequests(owner, repo, {
-            state: 'all',
-          });
+          // FALLBACK: Use GitHub Search API (REST v3)
+          this.logger.info('Using GitHub REST API Search (GraphQL client not available)');
+          allPRs = await this.githubClient.searchPullRequestsByDateRange(
+            owner,
+            repo,
+            startDate,
+            endDate,
+            'all'
+          );
         }
 
-        // Filter by date range (Search API filters by created date, but we also check updated/merged dates)
+        // Filter by date range to include PRs with any activity during sprint
         pullRequests = allPRs.filter((pr: any) => {
-          const createdAt = new Date(pr.created_at);
-          const updatedAt = new Date(pr.updated_at);
-          const mergedAt = pr.merged_at ? new Date(pr.merged_at) : null;
-          const closedAt = pr.closed_at ? new Date(pr.closed_at) : null;
+          const createdAt = new Date(pr.createdAt || pr.created_at);
+          const updatedAt = new Date(pr.updatedAt || pr.updated_at);
+          const mergedAt = (pr.mergedAt || pr.merged_at) ? new Date(pr.mergedAt || pr.merged_at) : null;
+          const closedAt = (pr.closedAt || pr.closed_at) ? new Date(pr.closedAt || pr.closed_at) : null;
 
           // Include PR if any of its activity dates fall within the sprint
           return (
@@ -542,6 +559,14 @@ export class SprintService {
             (mergedAt && mergedAt >= start && mergedAt <= end) ||
             (closedAt && closedAt >= start && closedAt <= end)
           );
+        });
+
+        this.logger.info('PRs fetched and filtered', {
+          owner,
+          repo,
+          totalPRs: allPRs.length,
+          filteredPRs: Array.isArray(pullRequests) ? pullRequests.length : 0,
+          dateRange: `${startDate} to ${endDate}`,
         });
 
         await this.cache.set(cacheKey, pullRequests, { ttl: 600 }); // 10 minutes
@@ -739,6 +764,8 @@ export class SprintService {
 
   /**
    * Get enhanced pull requests with review data
+   * Uses GitHub Search API for historical sprints (>3 months old)
+   * to avoid fetching and filtering thousands of PRs
    */
   private async getEnhancedSprintPullRequests(
     owner: string,
@@ -758,15 +785,83 @@ export class SprintService {
 
     if (!enhancedPRs) {
       try {
-        enhancedPRs = await this.githubClient.getEnhancedPullRequests(
+        this.logger.info('Fetching enhanced PRs for sprint date range', {
           owner,
           repo,
-          {
-            since: startDate,
-            until: endDate,
-            state: 'all',
-          }
+          startDate,
+          endDate,
+          hasGraphQLClient: !!this.githubGraphQLClient,
+        });
+
+        let basicPRs: any[];
+        let enhancedPRsList: PullRequest[] = [];
+
+        // PRIORITY 1: Use GitHub GraphQL API v4 if available (most efficient for all sprints)
+        if (this.githubGraphQLClient) {
+          this.logger.info('Using GitHub GraphQL v4 API for enhanced PR search');
+          
+          // GraphQL returns all PRs with all necessary data in one query
+          const graphqlPRs = await this.githubGraphQLClient.searchPullRequestsByDateRange(
+            owner,
+            repo,
+            startDate,
+            endDate,
+            'all'
+          );
+
+          // GraphQL PRs are already enhanced with review data
+          await this.cache.set(cacheKey, graphqlPRs, { ttl: 600 }); // 10 minutes
+          return graphqlPRs as PullRequest[];
+        }
+
+        // FALLBACK: Use GitHub REST API Search for historical sprints or when GraphQL unavailable
+        this.logger.info('Using GitHub REST API Search for enhanced PRs (GraphQL not available)', {
+          owner,
+          repo,
+          startDate,
+          endDate,
+        });
+
+        // Use Search API with date range filters for efficient retrieval
+        basicPRs = await this.githubClient.searchPullRequestsByDateRange(
+          owner,
+          repo,
+          startDate,
+          endDate,
+          'all'
         );
+
+        // We have basic PRs from Search API
+        // Now enhance them with review data (limit to first 50 to avoid rate limits)
+        const prsToEnhance = basicPRs.slice(0, 50);
+
+        for (let i = 0; i < prsToEnhance.length; i++) {
+          const pr = prsToEnhance[i];
+          if (!pr) continue;
+
+          try {
+            const enhanced = await this.githubClient.getEnhancedPullRequest(
+              owner,
+              repo,
+              pr.number
+            );
+            enhancedPRsList.push(enhanced);
+
+            // Rate limiting: delay every 5 requests
+            if ((i + 1) % 5 === 0) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          } catch (error) {
+            this.logger.warn(`Failed to enhance PR ${pr.number}`, {
+              error: error instanceof Error ? error.message : String(error),
+            });
+            // Use basic PR data if enhancement fails
+            enhancedPRsList.push(pr);
+          }
+        }
+
+        enhancedPRs = enhancedPRsList;
+
         await this.cache.set(cacheKey, enhancedPRs, { ttl: 600 }); // 10 minutes
       } catch (error) {
         this.logger.warn(

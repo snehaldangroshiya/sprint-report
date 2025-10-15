@@ -1,16 +1,31 @@
 import { GitHubClient } from '../clients/github-client.js';
+import { GitHubGraphQLClient } from '../clients/github-graphql-client.js';
 import { Logger } from '../utils/logger.js';
 import { ValidationUtils, MCPToolSchemas } from '../utils/validation.js';
 
+export interface GitHubToolsOptions {
+  useGraphQL?: boolean; // Feature flag to enable GraphQL operations
+  preferGraphQL?: boolean; // Prefer GraphQL when both are available
+}
+
 export class GitHubTools {
   private logger: Logger;
+  private useGraphQL: boolean;
+  private preferGraphQL: boolean;
 
-  constructor(private githubClient: GitHubClient) {
+  constructor(
+    private githubClient: GitHubClient,
+    private githubGraphQLClient?: GitHubGraphQLClient,
+    options: GitHubToolsOptions = {}
+  ) {
     this.logger = new Logger('GitHubTools');
+    this.useGraphQL = options.useGraphQL ?? true; // GraphQL enabled by default
+    this.preferGraphQL = options.preferGraphQL ?? true; // Prefer GraphQL when available
   }
 
   /**
    * Get commits from repository
+   * Uses GraphQL for better performance when stats are needed
    */
   async getCommits(args: {
     owner: string;
@@ -30,9 +45,39 @@ export class GitHubTools {
       repo: params.repo,
       since: params.since,
       until: params.until,
+      method: this.shouldUseGraphQL() ? 'graphql' : 'rest',
     });
 
     try {
+      // Use GraphQL if available and no author filter (GraphQL doesn't support author filter yet)
+      if (this.shouldUseGraphQL() && !params.author) {
+        const options: {
+          since?: string;
+          until?: string;
+          limit?: number;
+        } = {
+          limit: params.per_page || 100,
+        };
+
+        if (params.since) options.since = params.since;
+        if (params.until) options.until = params.until;
+
+        const commits = await this.githubGraphQLClient!.getCommits(
+          params.owner,
+          params.repo,
+          options
+        );
+
+        this.logger.info('Successfully retrieved commits via GraphQL', {
+          owner: params.owner,
+          repo: params.repo,
+          count: commits.length,
+        });
+
+        return commits;
+      }
+
+      // Fallback to REST
       const options: {
         since?: string;
         until?: string;
@@ -53,7 +98,7 @@ export class GitHubTools {
         options
       );
 
-      this.logger.info('Successfully retrieved commits', {
+      this.logger.info('Successfully retrieved commits via REST', {
         owner: params.owner,
         repo: params.repo,
         count: commits.length,
@@ -67,6 +112,13 @@ export class GitHubTools {
       });
       throw error;
     }
+  }
+
+  /**
+   * Check if GraphQL should be used
+   */
+  private shouldUseGraphQL(): boolean {
+    return this.useGraphQL && this.preferGraphQL && !!this.githubGraphQLClient;
   }
 
   /**
@@ -124,6 +176,7 @@ export class GitHubTools {
 
   /**
    * Get repository information
+   * Prefers GraphQL for better performance
    */
   async getRepository(args: { owner: string; repo: string }): Promise<any> {
     const params = ValidationUtils.validateAndParse(
@@ -133,15 +186,33 @@ export class GitHubTools {
     this.logger.info('Getting GitHub repository', {
       owner: params.owner,
       repo: params.repo,
+      method: this.shouldUseGraphQL() ? 'graphql' : 'rest',
     });
 
     try {
+      // Use GraphQL for repository info
+      if (this.shouldUseGraphQL()) {
+        const repository = await this.githubGraphQLClient!.getRepositoryInfo(
+          params.owner,
+          params.repo
+        );
+
+        this.logger.info('Successfully retrieved repository via GraphQL', {
+          owner: params.owner,
+          repo: params.repo,
+          defaultBranch: repository.defaultBranch,
+        });
+
+        return repository;
+      }
+
+      // Fallback to REST
       const repository = await this.githubClient.getRepositoryInfo(
         params.owner,
         params.repo
       );
 
-      this.logger.info('Successfully retrieved repository', {
+      this.logger.info('Successfully retrieved repository via REST', {
         owner: params.owner,
         repo: params.repo,
         defaultBranch: repository.defaultBranch,
@@ -159,6 +230,7 @@ export class GitHubTools {
 
   /**
    * Search commits by message
+   * Uses GraphQL for better performance
    */
   async searchCommitsByMessage(args: {
     owner: string;
@@ -177,9 +249,31 @@ export class GitHubTools {
       owner: params.owner,
       repo: params.repo,
       query: params.query,
+      method: this.shouldUseGraphQL() ? 'graphql' : 'rest',
     });
 
     try {
+      // Use GraphQL for commit search
+      if (this.shouldUseGraphQL()) {
+        const commits = await this.githubGraphQLClient!.searchCommitsByMessage(
+          params.owner,
+          params.repo,
+          params.query,
+          params.since,
+          params.until
+        );
+
+        this.logger.info('Successfully searched commits via GraphQL', {
+          owner: params.owner,
+          repo: params.repo,
+          query: params.query,
+          count: commits.length,
+        });
+
+        return commits;
+      }
+
+      // Fallback to REST
       const commits = await this.githubClient.searchCommitsByMessage(
         params.owner,
         params.repo,
@@ -188,7 +282,7 @@ export class GitHubTools {
         params.until
       );
 
-      this.logger.info('Successfully searched commits', {
+      this.logger.info('Successfully searched commits via REST', {
         owner: params.owner,
         repo: params.repo,
         query: params.query,

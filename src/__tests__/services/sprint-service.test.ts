@@ -22,7 +22,8 @@ describe('SprintService', () => {
     sprintService = new SprintService(
       mockJiraClient,
       mockGitHubClient,
-      mockCacheManager
+      mockCacheManager,
+      'test-github-token'  // Pass test token for GraphQL client
     );
   });
 

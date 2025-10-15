@@ -237,6 +237,7 @@ export function createSprintRouter(
         include_tier3 = 'true',
         include_forward_looking = 'true',
         include_enhanced_github = 'true',
+        nocache = 'false',
       } = req.query;
 
       const toolParams = {
@@ -260,7 +261,8 @@ export function createSprintRouter(
       const cacheKey = `comprehensive:${sprintId}:${github_owner}:${github_repo}:${include_tier1}:${include_tier2}:${include_tier3}:${include_forward_looking}:${include_enhanced_github}`;
       const { cacheManager, logger } = getContext();
 
-      const cachedData = await cacheManager.get(cacheKey);
+      // Support nocache parameter for debugging
+      const cachedData = nocache === 'true' ? null : await cacheManager.get(cacheKey);
       if (cachedData) {
         logger.info('Comprehensive sprint report served from cache', {
           sprintId,
