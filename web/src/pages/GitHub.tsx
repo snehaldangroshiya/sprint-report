@@ -8,7 +8,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import {
   Pagination,
   PaginationContent,
@@ -92,8 +91,8 @@ export function GitHub() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">GitHub Integration</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-3xl font-bold tracking-tight">GitHub Integration</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           View commits and pull requests from your GitHub repositories
         </p>
       </div>
@@ -101,16 +100,16 @@ export function GitHub() {
       {/* Configuration */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <GitBranch className="h-5 w-5 mr-2 text-blue-600" />
+          <CardTitle className="flex items-center gap-2">
+            <GitBranch className="h-5 w-5" />
             Repository Configuration
           </CardTitle>
           <CardDescription>
             Configure the GitHub repository and date range to fetch data
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="owner">Owner/Organization</Label>
               <Input
@@ -135,7 +134,7 @@ export function GitHub() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="since">Since Date</Label>
               <Input
@@ -180,19 +179,15 @@ export function GitHub() {
         </CardContent>
       </Card>
 
-      <Separator />
-
-      <Separator />
-
       {/* Commits */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center">
-              <GitCommit className="h-5 w-5 mr-2 text-purple-600" />
+            <div className="flex items-center gap-2">
+              <GitCommit className="h-5 w-5" />
               Recent Commits
             </div>
-            <Badge variant="secondary">{commits?.length || 0} commits</Badge>
+            <Badge variant="secondary">{commits?.length || 0}</Badge>
           </CardTitle>
           <CardDescription>
             {owner && repo ? `Viewing commits from ${owner}/${repo}` : 'Select a repository to view commits'}
@@ -208,37 +203,43 @@ export function GitHub() {
           )}
 
           {!owner || !repo ? (
-            <div className="text-center py-8">
-              <GitCommit className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-              <p className="text-sm text-gray-500">Enter repository details and click "Fetch Data" to view commits</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <GitCommit className="h-12 w-12 text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">
+                Enter repository details and click "Fetch Data" to view commits
+              </p>
             </div>
           ) : commits && commits.length > 0 ? (
             <>
               <div className="space-y-3">
                 {commits.map((commit: any) => (
-                  <div key={commit.sha} className="border-2 rounded-lg p-4 hover:border-purple-300 transition-all hover:shadow-md">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-gray-900 mb-2">{commit.message.split('\n')[0]}</p>
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
-                          <Badge variant="outline" className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
+                  <div 
+                    key={commit.sha} 
+                    className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium leading-none mb-3">
+                          {commit.message.split('\n')[0]}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline" className="font-normal">
+                            <User className="h-3 w-3 mr-1" />
                             {typeof commit.author === 'string' ? commit.author : commit.author.name}
                           </Badge>
-                          <Badge variant="outline" className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
+                          <Badge variant="outline" className="font-normal">
+                            <Calendar className="h-3 w-3 mr-1" />
                             {new Date(commit.date).toLocaleString()}
                           </Badge>
-                          <Badge variant="secondary" className="font-mono">
+                          <Badge variant="secondary" className="font-mono text-xs">
                             {commit.sha.substring(0, 7)}
                           </Badge>
                         </div>
                       </div>
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         asChild
-                        className="ml-4"
                       >
                         <a
                           href={commit.url}
@@ -246,6 +247,7 @@ export function GitHub() {
                           rel="noopener noreferrer"
                         >
                           <ExternalLink className="h-4 w-4" />
+                          <span className="sr-only">View commit</span>
                         </a>
                       </Button>
                     </div>
@@ -299,9 +301,11 @@ export function GitHub() {
             </>
           ) : (
             !commitsLoading && owner && repo && (
-              <div className="text-center py-8">
-                <GitCommit className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                <p className="text-sm text-gray-500">No commits found for the selected period</p>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <GitCommit className="h-12 w-12 text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  No commits found for the selected period
+                </p>
               </div>
             )
           )}
@@ -312,11 +316,11 @@ export function GitHub() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center">
-              <GitPullRequest className="h-5 w-5 mr-2 text-green-600" />
+            <div className="flex items-center gap-2">
+              <GitPullRequest className="h-5 w-5" />
               Pull Requests
             </div>
-            <Badge variant="secondary">{prs?.length || 0} PRs</Badge>
+            <Badge variant="secondary">{prs?.length || 0}</Badge>
           </CardTitle>
           <CardDescription>
             {owner && repo ? `Viewing ${prState} pull requests from ${owner}/${repo}` : 'Select a repository to view pull requests'}
@@ -332,40 +336,45 @@ export function GitHub() {
           )}
 
           {!owner || !repo ? (
-            <div className="text-center py-8">
-              <GitPullRequest className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-              <p className="text-sm text-gray-500">Enter repository details and click "Fetch Data" to view pull requests</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <GitPullRequest className="h-12 w-12 text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">
+                Enter repository details and click "Fetch Data" to view pull requests
+              </p>
             </div>
           ) : prs && prs.length > 0 ? (
             <>
               <div className="space-y-3">
                 {prs.map((pr: any) => (
-                  <div key={pr.number} className="border-2 rounded-lg p-4 hover:border-green-300 transition-all hover:shadow-md">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant={pr.state === 'open' ? 'default' : 'secondary'} className={
-                            pr.state === 'open'
-                              ? 'bg-green-500 hover:bg-green-600'
-                              : 'bg-purple-500 hover:bg-purple-600'
-                          }>
+                  <div 
+                    key={pr.number} 
+                    className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Badge variant={pr.state === 'open' ? 'default' : 'secondary'}>
                             {pr.state}
                           </Badge>
-                          <span className="text-sm font-semibold text-gray-600">#{pr.number}</span>
+                          <span className="text-sm font-medium text-muted-foreground">
+                            #{pr.number}
+                          </span>
                         </div>
-                        <p className="text-sm font-semibold text-gray-900 mb-2">{pr.title}</p>
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
-                          <Badge variant="outline" className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
+                        <p className="text-sm font-medium leading-none mb-3">
+                          {pr.title}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline" className="font-normal">
+                            <User className="h-3 w-3 mr-1" />
                             {pr.author}
                           </Badge>
-                          <Badge variant="outline" className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
+                          <Badge variant="outline" className="font-normal">
+                            <Calendar className="h-3 w-3 mr-1" />
                             Created: {new Date(pr.createdAt).toLocaleDateString()}
                           </Badge>
                           {pr.mergedAt && (
-                            <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 flex items-center gap-1">
-                              <GitBranch className="h-3 w-3" />
+                            <Badge variant="secondary" className="font-normal">
+                              <GitBranch className="h-3 w-3 mr-1" />
                               Merged: {new Date(pr.mergedAt).toLocaleDateString()}
                             </Badge>
                           )}
@@ -373,9 +382,8 @@ export function GitHub() {
                       </div>
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         asChild
-                        className="ml-4"
                       >
                         <a
                           href={pr.url}
@@ -383,6 +391,7 @@ export function GitHub() {
                           rel="noopener noreferrer"
                         >
                           <ExternalLink className="h-4 w-4" />
+                          <span className="sr-only">View pull request</span>
                         </a>
                       </Button>
                     </div>
@@ -436,9 +445,11 @@ export function GitHub() {
             </>
           ) : (
             !prsLoading && owner && repo && (
-              <div className="text-center py-8">
-                <GitPullRequest className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                <p className="text-sm text-gray-500">No pull requests found</p>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <GitPullRequest className="h-12 w-12 text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  No pull requests found
+                </p>
               </div>
             )
           )}

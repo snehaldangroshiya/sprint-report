@@ -19,5 +19,6 @@
                 "copilot/o3-mini"
             ]
         }
-    }
+    },
+    "window.zoomLevel": 1
 }
