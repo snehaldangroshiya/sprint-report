@@ -119,52 +119,56 @@ export function ConfigurationWidget() {
       {/* Collapsible Configuration Widget */}
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
         <Card className="border bg-card transition-all duration-200 hover:shadow-md">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div className="flex-1 min-w-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground mb-1">
-                Configuration
-              </CardTitle>
-              {/* Show key details when collapsed */}
-              {isCollapsed && (
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1.5">
-                  <span className="truncate">
-                    <span className="font-medium">Board:</span> {config.jira.boardName || 'Not configured'}
-                  </span>
-                  <span className="hidden sm:inline">•</span>
-                  <span className="truncate">
-                    <span className="font-medium">Repo:</span>{' '}
-                    {config.github.owner && config.github.repo
-                      ? `${config.github.owner}/${config.github.repo}`
-                      : 'Not configured'}
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-              <Settings className="h-4 w-4" />
-              <Badge variant={isConfigured ? 'default' : 'secondary'}>
-                {isConfigured ? (
-                  <>
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Active
-                  </>
-                ) : (
-                  <>
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    Default
-                  </>
-                )}
-              </Badge>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  {isCollapsed ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronUp className="h-4 w-4" />
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2 mb-1">
+                    <Settings className="h-4 w-4" />
+                    Configuration
+                  </CardTitle>
+                  {/* Show key details when collapsed */}
+                  {isCollapsed && (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1.5">
+                      <span className="truncate">
+                        <span className="font-medium">Board:</span> {config.jira.boardName || 'Not configured'}
+                      </span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="truncate">
+                        <span className="font-medium">Repo:</span>{' '}
+                        {config.github.owner && config.github.repo
+                          ? `${config.github.owner}/${config.github.repo}`
+                          : 'Not configured'}
+                      </span>
+                    </div>
                   )}
-                  <span className="sr-only">Toggle configuration details</span>
-                </Button>
-              </CollapsibleTrigger>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 ml-2">
+                <Badge variant={isConfigured ? 'default' : 'secondary'}>
+                  {isConfigured ? (
+                    <>
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Active
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      Default
+                    </>
+                  )}
+                </Badge>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    {isCollapsed ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronUp className="h-4 w-4" />
+                    )}
+                    <span className="sr-only">Toggle configuration details</span>
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
             </div>
           </CardHeader>
           
