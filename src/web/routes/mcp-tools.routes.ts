@@ -13,7 +13,7 @@ export function createMCPToolsRouter(
   const router = Router();
 
   // List all registered MCP tools
-  router.get('/mcp/tools', async (_req, res) => {
+  router.get('/mcp/tools', async (_req, res): Promise<void> => {
     try {
       const mcpServer = getMCPServer();
       const context = getContext();
@@ -23,14 +23,16 @@ export function createMCPToolsRouter(
       const toolRegistry = (mcpServer as any).toolRegistry;
       
       if (!toolRegistry) {
-        return res.status(500).json({ error: 'Tool registry not available' });
+        res.status(500).json({ error: 'Tool registry not available' });
+        return;
       }
 
       // Access the private tools map via reflection
       const tools = (toolRegistry as any).tools;
       
       if (!tools || !(tools instanceof Map)) {
-        return res.status(500).json({ error: 'Tools map not accessible' });
+        res.status(500).json({ error: 'Tools map not accessible' });
+        return;
       }
 
       // Convert tools map to array
@@ -57,14 +59,15 @@ export function createMCPToolsRouter(
   });
 
   // Clear all cache (Redis + Memory)
-  router.post('/mcp/cache/clear', async (_req, res) => {
+  router.post('/mcp/cache/clear', async (_req, res): Promise<void> => {
     try {
       const context = getContext();
       const logger = context.logger;
       const cacheManager = context.cacheManager;
 
       if (!cacheManager) {
-        return res.status(500).json({ error: 'Cache manager not available' });
+        res.status(500).json({ error: 'Cache manager not available' });
+        return;
       }
 
       logger.info('Clearing all cache (Redis + Memory)');
@@ -89,7 +92,7 @@ export function createMCPToolsRouter(
   });
 
   // Refresh MCP tools list (clears cache and returns fresh tools)
-  router.post('/mcp/tools/refresh', async (_req, res) => {
+  router.post('/mcp/tools/refresh', async (_req, res): Promise<void> => {
     try {
       const mcpServer = getMCPServer();
       const context = getContext();
@@ -108,13 +111,15 @@ export function createMCPToolsRouter(
       const toolRegistry = (mcpServer as any).toolRegistry;
       
       if (!toolRegistry) {
-        return res.status(500).json({ error: 'Tool registry not available' });
+        res.status(500).json({ error: 'Tool registry not available' });
+        return;
       }
 
       const tools = (toolRegistry as any).tools;
       
       if (!tools || !(tools instanceof Map)) {
-        return res.status(500).json({ error: 'Tools map not accessible' });
+        res.status(500).json({ error: 'Tools map not accessible' });
+        return;
       }
 
       const toolsList = Array.from(tools.entries()).map(([name, toolDef]: [string, any]) => ({
