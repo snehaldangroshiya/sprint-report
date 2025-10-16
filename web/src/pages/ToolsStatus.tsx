@@ -30,6 +30,13 @@ export function ToolsStatus() {
     refetchInterval: 60000,
   });
 
+  // Fetch MCP tools from API
+  const { data: mcpToolsData, isLoading: toolsLoading } = useQuery({
+    queryKey: ['mcp-tools'],
+    queryFn: api.getMCPTools,
+    refetchInterval: 60000,
+  });
+
   // Mutation to refresh MCP tools (clears cache and gets fresh data)
   const refreshMutation = useMutation({
     mutationFn: api.refreshMCPTools,
@@ -37,33 +44,41 @@ export function ToolsStatus() {
       // Invalidate and refetch all queries
       queryClient.invalidateQueries({ queryKey: ['health'] });
       queryClient.invalidateQueries({ queryKey: ['metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['mcp-tools'] });
     },
   });
 
-  // MCP Tools Status (14 total - matching backend tool-registry.ts)
-  const mcpTools: ToolStatus[] = [
-    // Jira Tools (5)
-    { name: 'jira_get_sprints', category: 'Jira', available: true, description: 'List sprints for board', icon: BarChart3 },
-    { name: 'jira_get_sprint_issues', category: 'Jira', available: true, description: 'Get sprint issues', icon: FileText },
-    { name: 'jira_get_sprint', category: 'Jira', available: true, description: 'Get detailed sprint info', icon: BarChart3 },
-    { name: 'jira_get_issue_details', category: 'Jira', available: true, description: 'Detailed issue info', icon: FileText },
-    { name: 'jira_search_issues', category: 'Jira', available: true, description: 'Search issues using JQL', icon: Database },
+  // Icon mapping helper
+  const getIconForTool = (name: string): React.ComponentType<{ className?: string }> => {
+    if (name.includes('jira')) {
+      if (name.includes('sprint') && !name.includes('issue')) return BarChart3;
+      if (name.includes('issue') || name.includes('search')) return FileText;
+      return Database;
+    }
+    if (name.includes('github')) return GitBranch;
+    if (name.includes('report')) return FileText;
+    if (name.includes('metrics')) return Zap;
+    if (name.includes('health')) return Activity;
+    if (name.includes('cache')) return Database;
+    return FileText;
+  };
 
-    // GitHub Tools (5)
-    { name: 'github_get_commits', category: 'GitHub', available: true, description: 'Get repository commits', icon: GitBranch },
-    { name: 'github_get_pull_requests', category: 'GitHub', available: true, description: 'Get pull requests', icon: GitBranch },
-    { name: 'github_search_commits_by_message', category: 'GitHub', available: true, description: 'Search commits by message', icon: GitBranch },
-    { name: 'github_search_pull_requests_by_date', category: 'GitHub', available: true, description: 'Search PRs by date range', icon: GitBranch },
-    { name: 'github_find_commits_with_jira_references', category: 'GitHub', available: true, description: 'Find commits with Jira refs', icon: GitBranch },
+  // Category mapping helper
+  const getCategoryForTool = (name: string): string => {
+    if (name.startsWith('jira_')) return 'Jira';
+    if (name.startsWith('github_')) return 'GitHub';
+    if (name.includes('report') || name.includes('metrics')) return 'Reports';
+    return 'Utility';
+  };
 
-    // Report Tools (2)
-    { name: 'generate_sprint_report', category: 'Reports', available: true, description: 'Generate comprehensive report', icon: FileText },
-    { name: 'get_sprint_metrics', category: 'Reports', available: true, description: 'Calculate sprint metrics', icon: Zap },
-
-    // Utility Tools (2)
-    { name: 'health_check', category: 'Utility', available: true, description: 'Check service health', icon: Activity },
-    { name: 'cache_stats', category: 'Utility', available: true, description: 'Get cache statistics', icon: Database },
-  ];
+  // Map API tools to ToolStatus format
+  const mcpTools: ToolStatus[] = mcpToolsData?.tools.map(tool => ({
+    name: tool.name,
+    category: getCategoryForTool(tool.name),
+    available: true,
+    description: tool.description,
+    icon: getIconForTool(tool.name),
+  })) || [];
 
   const groupedTools = mcpTools.reduce((acc, tool) => {
     if (!acc[tool.category]) acc[tool.category] = [];
@@ -78,13 +93,16 @@ export function ToolsStatus() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">MCP Tools & System Status</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Monitor all 14 MCP tools and system health in real-time
+            {toolsLoading 
+              ? 'Loading MCP tools...' 
+              : `Monitor all ${mcpToolsData?.count || 0} MCP tools and system health in real-time`
+            }
           </p>
         </div>
         <Button
           onClick={() => refreshMutation.mutate()}
           variant="outline"
-          disabled={refreshMutation.isPending}
+          disabled={refreshMutation.isPending || toolsLoading}
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
           {refreshMutation.isPending ? 'Refreshing...' : 'Refresh Status'}
