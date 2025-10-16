@@ -4,10 +4,11 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Settings, Save, RotateCcw, CheckCircle, AlertCircle, Edit2, X } from 'lucide-react';
+import { Settings, Save, RotateCcw, CheckCircle, AlertCircle, Edit2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ import { isDefaultConfiguration } from '../lib/config-storage';
 export function ConfigurationWidget() {
   const { config, updateConfig, resetConfig } = useConfiguration();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [localConfig, setLocalConfig] = useState(config);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   
@@ -114,60 +116,107 @@ export function ConfigurationWidget() {
 
   return (
     <>
-      {/* Compact Widget */}
-      <Card className="bg-white border border-indigo-100 hover:border-indigo-300 transition-all duration-200 hover:shadow-lg">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
-              <Settings className="h-4 w-4 mr-2 text-indigo-600" />
-              Configuration
-            </CardTitle>
-            <Badge
-              variant={isConfigured ? 'default' : 'secondary'}
-              className={isConfigured ? 'bg-green-500' : 'bg-yellow-500'}
-            >
-              {isConfigured ? (
-                <>
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Active
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  Default
-                </>
-              )}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="space-y-1">
-            <p className="text-xs text-gray-500">Board</p>
-            <p className="text-sm font-semibold text-gray-900 truncate">
-              {config.jira.boardName || 'Not configured'}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-gray-500">Repository</p>
-            <p className="text-sm font-semibold text-gray-900 truncate">
-              {config.github.owner && config.github.repo
-                ? `${config.github.owner}/${config.github.repo}`
-                : 'Not configured'}
-            </p>
-          </div>
-          <div className="flex justify-end pt-4">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setIsDialogOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm hover:shadow-md transition-all duration-200 px-6"
-            >
-              <Edit2 className="h-3.5 w-3.5 mr-2" />
-            {isConfigured ? 'Edit' : 'Configure'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Collapsible Configuration Widget */}
+      <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
+        <Card className="border bg-card transition-all duration-200 hover:shadow-md">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <Settings className="h-5 w-5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="text-base font-semibold mb-1">Configuration</CardTitle>
+                  {/* Show key details when collapsed */}
+                  {isCollapsed && (
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="truncate">
+                        <span className="font-medium">Board:</span> {config.jira.boardName || 'Not configured'}
+                      </span>
+                      <span className="text-muted-foreground">•</span>
+                      <span className="truncate">
+                        <span className="font-medium">Repo:</span>{' '}
+                        {config.github.owner && config.github.repo
+                          ? `${config.github.owner}/${config.github.repo}`
+                          : 'Not configured'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={isConfigured ? 'default' : 'secondary'}>
+                  {isConfigured ? (
+                    <>
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Active
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      Default
+                    </>
+                  )}
+                </Badge>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    {isCollapsed ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronUp className="h-4 w-4" />
+                    )}
+                    <span className="sr-only">Toggle configuration details</span>
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+            </div>
+          </CardHeader>
+          
+          <CollapsibleContent>
+            <CardContent className="space-y-4 pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Jira Board</p>
+                  <p className="text-sm font-medium">
+                    {config.jira.boardName || 'Not configured'}
+                  </p>
+                  {config.jira.boardId && (
+                    <p className="text-xs text-muted-foreground">ID: {config.jira.boardId}</p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">GitHub Repository</p>
+                  <p className="text-sm font-medium">
+                    {config.github.owner && config.github.repo
+                      ? `${config.github.owner}/${config.github.repo}`
+                      : 'Not configured'}
+                  </p>
+                  {config.github.owner && config.github.repo && (
+                    <a
+                      href={`https://github.com/${config.github.owner}/${config.github.repo}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline"
+                    >
+                      View on GitHub →
+                    </a>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex justify-end pt-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setIsDialogOpen(true)}
+                  className="shadow-sm"
+                >
+                  <Edit2 className="h-3.5 w-3.5 mr-2" />
+                  {isConfigured ? 'Edit Configuration' : 'Configure Now'}
+                </Button>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Configuration Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
