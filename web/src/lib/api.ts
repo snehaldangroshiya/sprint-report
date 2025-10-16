@@ -426,6 +426,38 @@ export const getCacheStats = () =>
     timestamp: string;
   }>('/cache/stats');
 
+// MCP Tools Management
+export const getMCPTools = () =>
+  apiRequest<{
+    tools: Array<{
+      name: string;
+      description: string;
+      inputSchema: any;
+    }>;
+    count: number;
+    timestamp: string;
+  }>('/mcp/tools');
+
+export const clearCache = () =>
+  apiRequest<{
+    success: boolean;
+    message: string;
+    timestamp: string;
+  }>('/mcp/cache/clear', { method: 'POST' });
+
+export const refreshMCPTools = () =>
+  apiRequest<{
+    success: boolean;
+    tools: Array<{
+      name: string;
+      description: string;
+      inputSchema: any;
+    }>;
+    count: number;
+    cacheCleared: boolean;
+    timestamp: string;
+  }>('/mcp/tools/refresh', { method: 'POST' });
+
 // Utility functions
 export const api = {
   getHealth,
@@ -452,6 +484,9 @@ export const api = {
   getIssueTypeDistribution,
   getComprehensiveSprintReport,
   getCacheStats,
+  getMCPTools,
+  clearCache,
+  refreshMCPTools,
 };
 
 export default api;

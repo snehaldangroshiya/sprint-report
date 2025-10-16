@@ -26,6 +26,7 @@ import {
   createAnalyticsRouter,
   createReportRouter,
   createVelocityRouter,
+  createMCPToolsRouter,
 } from './routes';
 
 export class WebAPIServer {
@@ -200,6 +201,10 @@ export class WebAPIServer {
       this.handleAPIError.bind(this)
     );
     this.app.use('/api/velocity', velocityRouter);
+
+    // MCP Tools routes (/api/mcp/tools, /api/mcp/cache/clear, /api/mcp/tools/refresh)
+    const mcpToolsRouter = createMCPToolsRouter(getContext, getMCPServer);
+    this.app.use('/api', mcpToolsRouter);
 
     // Fallback for React Router (SPA) - Express 5 compatible
     // Comment out for now as it causes routing issues

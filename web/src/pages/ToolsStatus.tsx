@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   CheckCircle, XCircle, Clock, Activity, RefreshCw,
   Database, GitBranch, FileText, BarChart3, Zap
@@ -16,7 +16,9 @@ interface ToolStatus {
 }
 
 export function ToolsStatus() {
-  const { data: health, refetch: refetchHealth } = useQuery({
+  const queryClient = useQueryClient();
+
+  const { data: health } = useQuery({
     queryKey: ['health'],
     queryFn: api.getHealth,
     refetchInterval: 30000,
@@ -26,6 +28,16 @@ export function ToolsStatus() {
     queryKey: ['metrics'],
     queryFn: api.getMetrics,
     refetchInterval: 60000,
+  });
+
+  // Mutation to refresh MCP tools (clears cache and gets fresh data)
+  const refreshMutation = useMutation({
+    mutationFn: api.refreshMCPTools,
+    onSuccess: () => {
+      // Invalidate and refetch all queries
+      queryClient.invalidateQueries({ queryKey: ['health'] });
+      queryClient.invalidateQueries({ queryKey: ['metrics'] });
+    },
   });
 
   // MCP Tools Status (14 total - matching backend tool-registry.ts)
@@ -70,11 +82,12 @@ export function ToolsStatus() {
           </p>
         </div>
         <Button
-          onClick={() => refetchHealth()}
+          onClick={() => refreshMutation.mutate()}
           variant="outline"
+          disabled={refreshMutation.isPending}
         >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh Status
+          <RefreshCw className={`h-4 w-4 mr-2 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
+          {refreshMutation.isPending ? 'Refreshing...' : 'Refresh Status'}
         </Button>
       </div>
 

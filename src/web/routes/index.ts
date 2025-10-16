@@ -6,3 +6,4 @@ export { createGitHubRouter } from './github.routes';
 export { createAnalyticsRouter } from './analytics.routes';
 export { createReportRouter } from './report.routes';
 export { createVelocityRouter } from './velocity.routes';
+export { createMCPToolsRouter } from './mcp-tools.routes';
