@@ -37,6 +37,13 @@ export function ToolsStatus() {
     refetchInterval: 60000,
   });
 
+  // Fetch cache stats for system info
+  const { data: cacheStats } = useQuery({
+    queryKey: ['cache-stats'],
+    queryFn: api.getCacheStats,
+    refetchInterval: 30000,
+  });
+
   // Mutation to refresh MCP tools (clears cache and gets fresh data)
   const refreshMutation = useMutation({
     mutationFn: api.refreshMCPTools,
@@ -45,6 +52,7 @@ export function ToolsStatus() {
       queryClient.invalidateQueries({ queryKey: ['health'] });
       queryClient.invalidateQueries({ queryKey: ['metrics'] });
       queryClient.invalidateQueries({ queryKey: ['mcp-tools'] });
+      queryClient.invalidateQueries({ queryKey: ['cache-stats'] });
     },
   });
 
@@ -260,19 +268,69 @@ export function ToolsStatus() {
         <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="border rounded-lg p-4">
             <dt className="text-sm font-medium text-gray-500">MCP Protocol</dt>
-            <dd className="mt-1 text-lg font-semibold text-gray-900">stdio (Standard)</dd>
+            <dd className="mt-1 text-lg font-semibold text-gray-900">
+              stdio (Standard)
+            </dd>
+            <p className="mt-1 text-xs text-gray-500">
+              Model Context Protocol via stdin/stdout
+            </p>
           </div>
           <div className="border rounded-lg p-4">
             <dt className="text-sm font-medium text-gray-500">Total Tools</dt>
-            <dd className="mt-1 text-lg font-semibold text-gray-900">14 MCP Tools</dd>
+            <dd className="mt-1 text-lg font-semibold text-gray-900">
+              {toolsLoading ? 'Loading...' : `${mcpToolsData?.count || 0} MCP Tools`}
+            </dd>
+            <p className="mt-1 text-xs text-gray-500">
+              Registered and available
+            </p>
           </div>
           <div className="border rounded-lg p-4">
             <dt className="text-sm font-medium text-gray-500">API Server</dt>
-            <dd className="mt-1 text-lg font-semibold text-gray-900">http://localhost:3000</dd>
+            <dd className="mt-1 text-lg font-semibold text-gray-900">
+              {typeof window !== 'undefined' 
+                ? window.location.origin.replace(':3001', ':3000')
+                : 'http://localhost:3000'}
+            </dd>
+            <p className="mt-1 text-xs text-gray-500">
+              Backend API endpoint
+            </p>
           </div>
           <div className="border rounded-lg p-4">
             <dt className="text-sm font-medium text-gray-500">Cache Strategy</dt>
-            <dd className="mt-1 text-lg font-semibold text-gray-900">Memory + Redis (optional)</dd>
+            <dd className="mt-1 text-lg font-semibold text-gray-900">
+              {cacheStats?.redis?.connected 
+                ? 'Memory + Redis' 
+                : 'Memory Only'}
+            </dd>
+            <p className="mt-1 text-xs text-gray-500">
+              {cacheStats?.redis?.connected 
+                ? `Redis connected (${cacheStats.redis.keys} keys)` 
+                : 'Redis unavailable, using in-memory cache'}
+            </p>
+          </div>
+          <div className="border rounded-lg p-4">
+            <dt className="text-sm font-medium text-gray-500">Cache Hit Rate</dt>
+            <dd className="mt-1 text-lg font-semibold text-gray-900">
+              {cacheStats?.stats.hitRate !== undefined
+                ? `${cacheStats.stats.hitRate.toFixed(1)}%`
+                : 'N/A'}
+            </dd>
+            <p className="mt-1 text-xs text-gray-500">
+              {cacheStats?.stats.totalRequests 
+                ? `${cacheStats.stats.hits}/${cacheStats.stats.totalRequests} requests`
+                : 'No cache activity yet'}
+            </p>
+          </div>
+          <div className="border rounded-lg p-4">
+            <dt className="text-sm font-medium text-gray-500">System Uptime</dt>
+            <dd className="mt-1 text-lg font-semibold text-gray-900">
+              {health?.uptime 
+                ? `${Math.floor(health.uptime / 3600)}h ${Math.floor((health.uptime % 3600) / 60)}m`
+                : 'N/A'}
+            </dd>
+            <p className="mt-1 text-xs text-gray-500">
+              Server running time
+            </p>
           </div>
         </dl>
       </div>
