@@ -149,6 +149,15 @@ export class ToolRegistry {
 
     this.registerTool({
       definition: {
+        name: 'generate_comprehensive_report',
+        description: 'Generate a comprehensive sprint report with all tiers and enhanced GitHub metrics via GraphQL. Returns full sprint data including tier 1-3 issues, enhanced GitHub stats (PRs, commits, reviews), velocity, and burndown data. Ideal for detailed sprint analysis.',
+        inputSchema: ToolSchemas.generateComprehensiveReport,
+      },
+      handler: this.handleGenerateComprehensiveReport.bind(this),
+    });
+
+    this.registerTool({
+      definition: {
         name: 'get_sprint_metrics',
         description: 'Calculate sprint metrics and statistics',
         inputSchema: ToolSchemas.getSprintMetrics,
@@ -216,6 +225,7 @@ export class ToolRegistry {
         github_find_commits_with_jira_references:
           MCPToolSchemas.githubFindCommitsWithJiraReferences,
         generate_sprint_report: MCPToolSchemas.generateSprintReport,
+        generate_comprehensive_report: MCPToolSchemas.generateComprehensiveReport,
         get_sprint_metrics: MCPToolSchemas.getSprintMetrics,
         health_check: MCPToolSchemas.healthCheck,
         cache_stats: MCPToolSchemas.cacheStats,
@@ -392,6 +402,32 @@ export class ToolRegistry {
 
       // Return a degraded report with available data
       return this.generateFallbackSprintReport(args.sprint_id, error as Error);
+    }
+  }
+
+  private async handleGenerateComprehensiveReport(
+    args: Record<string, any>,
+    context: EnhancedServerContext
+  ): Promise<any> {
+    try {
+      // Delegate to reportTools for comprehensive report generation
+      const result = await context.reportTools.generateComprehensiveReport(args);
+      
+      // Return the full report object (already in JSON format)
+      return result;
+    } catch (error) {
+      context.logger.logError(error as Error, 'generateComprehensiveReport', { args });
+
+      // Return a degraded report with error info
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        sprint_id: args.sprint_id,
+        metadata: {
+          generatedAt: new Date().toISOString(),
+          error: true,
+        },
+      };
     }
   }
 

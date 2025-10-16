@@ -68,6 +68,86 @@ export class ReportTools {
   }
 
   /**
+   * Generate comprehensive sprint report (matches Web API endpoint)
+   * This tool provides direct access to the comprehensive report that includes:
+   * - Sprint details and metrics
+   * - Tier 1, 2, 3 issues (optional)
+   * - Forward-looking analysis (optional)
+   * - Enhanced GitHub metrics with GraphQL (86 PRs for sprint 43577)
+   */
+  async generateComprehensiveReport(args: any): Promise<any> {
+    const params = ValidationUtils.validateAndParse(
+      MCPToolSchemas.generateComprehensiveReport,
+      args
+    );
+
+    this.logger.info('Generating comprehensive sprint report', {
+      sprintId: params.sprint_id,
+      githubRepo: params.github_owner && params.github_repo 
+        ? `${params.github_owner}/${params.github_repo}` 
+        : 'none',
+      includeTier1: params.include_tier1,
+      includeTier2: params.include_tier2,
+      includeTier3: params.include_tier3,
+      includeForwardLooking: params.include_forward_looking,
+      includeEnhancedGitHub: params.include_enhanced_github,
+    });
+
+    try {
+      // Call the sprint service's comprehensive report generator
+      const requestParams: any = {
+        sprint_id: params.sprint_id,
+        format: 'json',
+        include_velocity: true,
+        include_burndown: true,
+        include_tier1: params.include_tier1,
+        include_tier2: params.include_tier2,
+        include_tier3: params.include_tier3,
+        include_forward_looking: params.include_forward_looking,
+        include_enhanced_github: params.include_enhanced_github,
+        theme: 'default',
+      };
+
+      // Only add GitHub params if both are provided
+      if (params.github_owner && params.github_repo) {
+        requestParams.github_owner = params.github_owner;
+        requestParams.github_repo = params.github_repo;
+        requestParams.include_commits = true;
+        requestParams.include_prs = true;
+      }
+
+      const report = await this.sprintService.generateSprintReport(requestParams);
+
+      this.logger.info('Successfully generated comprehensive report', {
+        sprintId: params.sprint_id,
+        pullRequests: report.pullRequests?.length || 0,
+        commits: report.commits?.length || 0,
+        totalIssues: report.metrics?.totalIssues || 0,
+      });
+
+      return {
+        success: true,
+        sprint_id: params.sprint_id,
+        report,
+        metadata: {
+          generatedAt: new Date().toISOString(),
+          includeTier1: params.include_tier1,
+          includeTier2: params.include_tier2,
+          includeTier3: params.include_tier3,
+          includeForwardLooking: params.include_forward_looking,
+          includeEnhancedGitHub: params.include_enhanced_github,
+          github_repo: params.github_owner && params.github_repo 
+            ? `${params.github_owner}/${params.github_repo}` 
+            : null,
+        },
+      };
+    } catch (error) {
+      this.logger.error(error as Error, 'generate_comprehensive_report', { params });
+      throw error;
+    }
+  }
+
+  /**
    * Get stored reports
    */
   async getReports(): Promise<any> {

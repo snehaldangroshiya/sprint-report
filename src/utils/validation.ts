@@ -268,6 +268,19 @@ export const MCPToolSchemas = {
     repo: BaseSchemas.repositoryName,
     period: z.enum(['1month', '3months', '6months', '1year']).optional(),
   }),
+
+  // Comprehensive sprint report (matches Web API endpoint)
+  generateComprehensiveReport: z.object({
+    sprint_id: BaseSchemas.sprintId,
+    github_owner: BaseSchemas.repositoryOwner.optional(),
+    github_repo: BaseSchemas.repositoryName.optional(),
+    include_tier1: z.boolean().default(true),
+    include_tier2: z.boolean().default(true),
+    include_tier3: z.boolean().default(false),
+    include_forward_looking: z.boolean().default(false),
+    include_enhanced_github: z.boolean().default(true),
+    nocache: z.boolean().default(false), // For debugging
+  }),
 } as const;
 
 // JQL security validation
@@ -669,6 +682,7 @@ export const ToolSchemas = {
     MCPToolSchemas.githubFindCommitsWithJiraReferences
   ), // Alias
   generateSprintReport: zodToMCPSchema(MCPToolSchemas.generateSprintReport),
+  generateComprehensiveReport: zodToMCPSchema(MCPToolSchemas.generateComprehensiveReport),
   getSprintMetrics: zodToMCPSchema(MCPToolSchemas.getSprintMetrics),
   getServerHealth: zodToMCPSchema(MCPToolSchemas.healthCheck),
   healthCheck: zodToMCPSchema(MCPToolSchemas.healthCheck), // Alias
