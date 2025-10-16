@@ -122,16 +122,18 @@ export function ConfigurationWidget() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <Settings className="h-5 w-5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <CardTitle className="text-base font-semibold mb-1">Configuration</CardTitle>
+                  <CardTitle className="text-base font-semibold flex items-center gap-2 mb-1">
+                    <Settings className="h-4 w-4" />
+                    Configuration
+                  </CardTitle>
                   {/* Show key details when collapsed */}
                   {isCollapsed && (
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1.5">
                       <span className="truncate">
                         <span className="font-medium">Board:</span> {config.jira.boardName || 'Not configured'}
                       </span>
-                      <span className="text-muted-foreground">•</span>
+                      <span className="hidden sm:inline">•</span>
                       <span className="truncate">
                         <span className="font-medium">Repo:</span>{' '}
                         {config.github.owner && config.github.repo
@@ -142,7 +144,7 @@ export function ConfigurationWidget() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 ml-2">
                 <Badge variant={isConfigured ? 'default' : 'secondary'}>
                   {isConfigured ? (
                     <>
