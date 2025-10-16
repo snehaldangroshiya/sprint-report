@@ -143,11 +143,17 @@ export function ToolsStatus() {
             {/* Jira Service */}
             {health?.services?.jira && (
               <div className="flex items-center gap-3 p-4 rounded-lg border bg-card">
-                {health.services.jira.healthy ? (
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                ) : (
-                  <XCircle className="h-8 w-8 text-destructive" />
-                )}
+                <div className={`p-2 rounded-lg border ${
+                  health.services.jira.healthy 
+                    ? 'bg-green-50 border-green-200' 
+                    : 'bg-destructive/10 border-destructive/20'
+                }`}>
+                  {health.services.jira.healthy ? (
+                    <CheckCircle className="h-6 w-6 text-green-600" />
+                  ) : (
+                    <XCircle className="h-6 w-6 text-destructive" />
+                  )}
+                </div>
                 <div>
                   <p className="text-sm font-medium">Jira</p>
                   <p className="text-sm text-muted-foreground">
@@ -160,11 +166,17 @@ export function ToolsStatus() {
           {/* GitHub Service */}
           {health?.services?.github && (
             <div className="flex items-center gap-3 p-4 border rounded-lg bg-card">
-              {health.services.github.healthy ? (
-                <CheckCircle className="h-8 w-8 text-green-600" />
-              ) : (
-                <XCircle className="h-8 w-8 text-destructive" />
-              )}
+              <div className={`p-2 rounded-lg border ${
+                health.services.github.healthy 
+                  ? 'bg-green-50 border-green-200' 
+                  : 'bg-destructive/10 border-destructive/20'
+              }`}>
+                {health.services.github.healthy ? (
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                ) : (
+                  <XCircle className="h-6 w-6 text-destructive" />
+                )}
+              </div>
               <div>
                 <p className="text-sm font-medium">GitHub</p>
                 <p className="text-sm text-muted-foreground">
@@ -177,11 +189,17 @@ export function ToolsStatus() {
           {/* Cache Service */}
           {health?.services?.cache && (
             <div className="flex items-center gap-3 p-4 border rounded-lg bg-card">
-              {health.services.cache.healthy ? (
-                <CheckCircle className="h-8 w-8 text-green-600" />
-              ) : (
-                <XCircle className="h-8 w-8 text-destructive" />
-              )}
+              <div className={`p-2 rounded-lg border ${
+                health.services.cache.healthy 
+                  ? 'bg-green-50 border-green-200' 
+                  : 'bg-destructive/10 border-destructive/20'
+              }`}>
+                {health.services.cache.healthy ? (
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                ) : (
+                  <XCircle className="h-6 w-6 text-destructive" />
+                )}
+              </div>
               <div>
                 <p className="text-sm font-medium">Cache</p>
                 <p className="text-sm text-muted-foreground">
