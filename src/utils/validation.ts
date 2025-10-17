@@ -19,11 +19,19 @@ export const ValidationPatterns = {
 // Base validation schemas
 export const BaseSchemas = {
   sprintId: z
-    .string()
-    .regex(ValidationPatterns.sprintId, 'Sprint ID must be numeric'),
+    .union([z.string(), z.number()])
+    .transform((val) => String(val))
+    .refine(
+      (val) => ValidationPatterns.sprintId.test(val),
+      'Sprint ID must be numeric'
+    ),
   boardId: z
-    .string()
-    .regex(ValidationPatterns.boardId, 'Board ID must be numeric'),
+    .union([z.string(), z.number()])
+    .transform((val) => String(val))
+    .refine(
+      (val) => ValidationPatterns.boardId.test(val),
+      'Board ID must be numeric'
+    ),
   issueKey: z
     .string()
     .regex(ValidationPatterns.issueKey, 'Invalid Jira issue key format'),
