@@ -302,7 +302,7 @@ export class ReportTools {
 
     try {
       const analyticsData = await this.analyticsService.getAnalyticsReport(
-        params.sprint_id
+        String(params.sprint_id)
       );
       const pdfBuffer = await this.exportService.exportAnalyticsToPDF(
         analyticsData,
@@ -349,7 +349,7 @@ export class ReportTools {
 
     try {
       const report = await this.analyticsService.getAnalyticsReport(
-        params.board_id,
+        String(params.board_id),
         params.owner,
         params.repo,
         params.period
@@ -386,7 +386,7 @@ export class ReportTools {
 
     try {
       const velocityData = await this.sprintService.getVelocityData(
-        params.board_id,
+        String(params.board_id),
         params.sprint_count
       );
 
@@ -418,7 +418,7 @@ export class ReportTools {
 
     try {
       const burndownData = await this.sprintService.getBurndownData(
-        params.board_id
+        String(params.board_id)
       );
 
       this.logger.info('Successfully retrieved burndown data', {
@@ -451,7 +451,7 @@ export class ReportTools {
 
     try {
       const performanceData = await this.sprintService.getTeamPerformanceData(
-        params.board_id,
+        String(params.board_id),
         params.sprints
       );
 
