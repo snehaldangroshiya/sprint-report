@@ -38,7 +38,7 @@ export class JiraTools {
     this.logger.info('Getting sprints for board', { boardId: params.board_id });
 
     try {
-      const sprints = await this.jiraClient.getSprints(params.board_id);
+      const sprints = await this.jiraClient.getSprints(String(params.board_id));
       this.logger.info('Successfully retrieved sprints', {
         boardId: params.board_id,
         count: sprints.length,
@@ -63,7 +63,9 @@ export class JiraTools {
     this.logger.info('Getting sprint details', { sprintId: params.sprint_id });
 
     try {
-      const sprint = await this.jiraClient.getSprintData(params.sprint_id);
+      const sprint = await this.jiraClient.getSprintData(
+        String(params.sprint_id)
+      );
       this.logger.info('Successfully retrieved sprint details', {
         sprintId: params.sprint_id,
       });
@@ -151,7 +153,9 @@ export class JiraTools {
 
     try {
       // Get recent sprints for the board
-      const allSprints = await this.jiraClient.getSprints(params.board_id);
+      const allSprints = await this.jiraClient.getSprints(
+        String(params.board_id)
+      );
       const closedSprints = allSprints
         .filter((sprint: any) => sprint.state === 'closed')
         .slice(-(params.sprint_count || 5));
@@ -247,13 +251,17 @@ export class JiraTools {
     });
 
     try {
-      const sprint = await this.jiraClient.getSprintData(params.sprint_id);
+      const sprint = await this.jiraClient.getSprintData(
+        String(params.sprint_id)
+      );
 
       if (!sprint.startDate || !sprint.endDate) {
         throw new Error('Sprint must have start and end dates');
       }
 
-      const issues = await this.jiraClient.getSprintIssues(params.sprint_id);
+      const issues = await this.jiraClient.getSprintIssues(
+        String(params.sprint_id)
+      );
       const totalStoryPoints = issues.reduce(
         (sum: number, issue: any) => sum + (issue.storyPoints || 0),
         0

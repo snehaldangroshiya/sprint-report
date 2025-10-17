@@ -580,14 +580,33 @@ export class CacheOptimizer {
     return Array.from(this.prefetchStrategies.values());
   }
 
-  public getOptimizationSummary(): {
+  public async getOptimizationSummary(): Promise<{
     totalPatterns: number;
     highPriorityPatterns: number;
     averageHitRate: number;
     totalSpaceSaved: number;
     lastOptimization?: number;
     recommendations: string[];
-  } {
+  }> {
+    // Perform cache analysis if patterns are empty or stale (older than 5 minutes)
+    const now = Date.now();
+    const lastAnalysis = Math.max(
+      ...Array.from(this.cachePatterns.values()).map(p => p.lastAccessed),
+      0
+    );
+    const isStale = now - lastAnalysis > 300000; // 5 minutes
+
+    if (this.cachePatterns.size === 0 || isStale) {
+      try {
+        await this.analyzeCache();
+      } catch (error) {
+        console.warn(
+          'Failed to analyze cache for optimization summary:',
+          error
+        );
+      }
+    }
+
     const patterns = Array.from(this.cachePatterns.values());
     const lastOptimization =
       this.optimizationHistory[this.optimizationHistory.length - 1];

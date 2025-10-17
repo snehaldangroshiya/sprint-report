@@ -16,7 +16,9 @@ import {
   initializeGlobalPerformanceMonitor,
   measurePerformance,
 } from '../performance/performance-monitor';
+
 import { ToolRegistry } from './tool-registry';
+
 import { CacheManager } from '@/cache/cache-manager';
 import { CacheOptimizer } from '@/cache/cache-optimizer';
 import { GitHubClient } from '@/clients/github-client';
@@ -64,7 +66,8 @@ export class EnhancedMCPServer {
   constructor(options?: { healthCheckIntervalMs?: number }) {
     // Stdio mode default: 5 minutes (less frequent for desktop apps)
     // HTTP mode (api-server) should override to 30s
-    this.healthCheckIntervalMs = options?.healthCheckIntervalMs ?? 5 * 60 * 1000;
+    this.healthCheckIntervalMs =
+      options?.healthCheckIntervalMs ?? 5 * 60 * 1000;
     this.server = new Server(
       {
         name: 'enhanced-jira-github-sprint-reporter',
@@ -299,7 +302,11 @@ export class EnhancedMCPServer {
             {
               uri: 'sprint://active',
               mimeType: 'application/json',
-              text: JSON.stringify({ message: 'No active sprint found' }, null, 2),
+              text: JSON.stringify(
+                { message: 'No active sprint found' },
+                null,
+                2
+              ),
             },
           ],
         };
@@ -312,13 +319,19 @@ export class EnhancedMCPServer {
             {
               uri: 'sprint://active',
               mimeType: 'application/json',
-              text: JSON.stringify({ message: 'No active sprint found' }, null, 2),
+              text: JSON.stringify(
+                { message: 'No active sprint found' },
+                null,
+                2
+              ),
             },
           ],
         };
       }
 
-      const details = await this.context!.sprintService.getSprintDetails(activeSprint.id);
+      const details = await this.context!.sprintService.getSprintDetails(
+        activeSprint.id
+      );
 
       return {
         contents: [
@@ -340,7 +353,11 @@ export class EnhancedMCPServer {
           {
             uri: 'sprint://recent',
             mimeType: 'application/json',
-            text: JSON.stringify({ sprints: recent, count: recent.length }, null, 2),
+            text: JSON.stringify(
+              { sprints: recent, count: recent.length },
+              null,
+              2
+            ),
           },
         ],
       };
@@ -364,7 +381,11 @@ export class EnhancedMCPServer {
           {
             uri: 'reports://recent',
             mimeType: 'application/json',
-            text: JSON.stringify({ reports: recent, count: recent.length }, null, 2),
+            text: JSON.stringify(
+              { reports: recent, count: recent.length },
+              null,
+              2
+            ),
           },
         ],
       };
@@ -380,7 +401,8 @@ export class EnhancedMCPServer {
 
   private async readAnalyticsResource(path: string): Promise<any> {
     if (path === 'dashboard') {
-      const metrics = await this.context!.analyticsService.getDashboardMetrics();
+      const metrics =
+        await this.context!.analyticsService.getDashboardMetrics();
 
       return {
         contents: [
@@ -456,7 +478,8 @@ export class EnhancedMCPServer {
     return [
       {
         name: 'generate-sprint-report',
-        description: 'Generate a comprehensive sprint report with metrics and analysis',
+        description:
+          'Generate a comprehensive sprint report with metrics and analysis',
         arguments: [
           {
             name: 'sprint_id',
@@ -477,7 +500,8 @@ export class EnhancedMCPServer {
       },
       {
         name: 'analyze-sprint-performance',
-        description: 'Analyze sprint performance with velocity, completion rate, and trends',
+        description:
+          'Analyze sprint performance with velocity, completion rate, and trends',
         arguments: [
           {
             name: 'sprint_id',
@@ -502,14 +526,16 @@ export class EnhancedMCPServer {
           },
           {
             name: 'metrics',
-            description: 'Specific metrics to compare (velocity, completion, quality)',
+            description:
+              'Specific metrics to compare (velocity, completion, quality)',
             required: false,
           },
         ],
       },
       {
         name: 'generate-release-notes',
-        description: 'Generate release notes from sprint issues and GitHub commits',
+        description:
+          'Generate release notes from sprint issues and GitHub commits',
         arguments: [
           {
             name: 'sprint_id',
@@ -525,7 +551,8 @@ export class EnhancedMCPServer {
       },
       {
         name: 'executive-summary',
-        description: 'Generate executive-level sprint summary with key highlights',
+        description:
+          'Generate executive-level sprint summary with key highlights',
         arguments: [
           {
             name: 'sprint_id',
@@ -534,7 +561,8 @@ export class EnhancedMCPServer {
           },
           {
             name: 'focus_areas',
-            description: 'Key areas to highlight (achievements, risks, next-steps)',
+            description:
+              'Key areas to highlight (achievements, risks, next-steps)',
             required: false,
           },
         ],
@@ -542,7 +570,10 @@ export class EnhancedMCPServer {
     ];
   }
 
-  private async getPrompt(name: string, args: Record<string, any>): Promise<any> {
+  private async getPrompt(
+    name: string,
+    args: Record<string, any>
+  ): Promise<any> {
     switch (name) {
       case 'generate-sprint-report':
         return this.getSprintReportPrompt(args);
@@ -610,7 +641,9 @@ Focus on actionable insights and clear data visualization.`;
     };
   }
 
-  private async getSprintAnalysisPrompt(args: Record<string, any>): Promise<any> {
+  private async getSprintAnalysisPrompt(
+    args: Record<string, any>
+  ): Promise<any> {
     const { sprint_id, compare_previous = 'true' } = args;
 
     if (!sprint_id) {
@@ -665,7 +698,9 @@ Provide actionable recommendations for improvement.`;
     };
   }
 
-  private async getCompareSprintsPrompt(args: Record<string, any>): Promise<any> {
+  private async getCompareSprintsPrompt(
+    args: Record<string, any>
+  ): Promise<any> {
     const { sprint_ids, metrics = 'all' } = args;
 
     if (!sprint_ids) {
@@ -787,7 +822,9 @@ Use clear, user-friendly language. Focus on value delivered to users.`;
     };
   }
 
-  private async getExecutiveSummaryPrompt(args: Record<string, any>): Promise<any> {
+  private async getExecutiveSummaryPrompt(
+    args: Record<string, any>
+  ): Promise<any> {
     const { sprint_id, focus_areas = 'achievements,risks,next-steps' } = args;
 
     if (!sprint_id) {
@@ -884,7 +921,7 @@ Keep it concise (max 1 page). Use metrics to support insights. Highlight decisio
         jiraClient,
         githubClient,
         cacheManager,
-        config.github.token  // Pass GitHub token for GraphQL client
+        config.github.token // Pass GitHub token for GraphQL client
       );
       const analyticsService = (sprintService as any).analyticsService; // Access internal instance
       const exportService = new ExportService();
@@ -1215,11 +1252,13 @@ Keep it concise (max 1 page). Use metrics to support insights. Highlight decisio
     return await this.context.cacheOptimizer.optimizeCache();
   }
 
-  getPerformanceMetrics(): any {
+  async getPerformanceMetrics(): Promise<any> {
     return {
       summary: this.performanceMonitor.getPerformanceSummary(),
       recentSnapshots: this.performanceMonitor.getRecentSnapshots(10),
-      cacheOptimization: this.context?.cacheOptimizer.getOptimizationSummary(),
+      cacheOptimization: this.context
+        ? await this.context.cacheOptimizer.getOptimizationSummary()
+        : null,
     };
   }
 
@@ -1288,12 +1327,10 @@ Keep it concise (max 1 page). Use metrics to support insights. Highlight decisio
 process.on('SIGINT', async () => {
   console.error('\nReceived SIGINT, shutting down gracefully...');
   if (global.mcpServer) {
-    await global.mcpServer
-      .shutdown()
-      .catch((error: Error) => {
-        console.error('Error during shutdown:', error);
-        process.exit(1);
-      });
+    await global.mcpServer.shutdown().catch((error: Error) => {
+      console.error('Error during shutdown:', error);
+      process.exit(1);
+    });
   } else {
     process.exit(0);
   }
@@ -1302,12 +1339,10 @@ process.on('SIGINT', async () => {
 process.on('SIGTERM', async () => {
   console.error('\nReceived SIGTERM, shutting down gracefully...');
   if (global.mcpServer) {
-    await global.mcpServer
-      .shutdown()
-      .catch((error: Error) => {
-        console.error('Error during shutdown:', error);
-        process.exit(1);
-      });
+    await global.mcpServer.shutdown().catch((error: Error) => {
+      console.error('Error during shutdown:', error);
+      process.exit(1);
+    });
   } else {
     process.exit(0);
   }

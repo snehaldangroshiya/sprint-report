@@ -36,10 +36,10 @@ export function createHealthRouter(
   });
 
   // Performance metrics
-  router.get('/metrics', (_req, res) => {
+  router.get('/metrics', async (_req, res) => {
     try {
       const mcpServer = getMCPServer();
-      const metrics = mcpServer.getPerformanceMetrics();
+      const metrics = await mcpServer.getPerformanceMetrics();
       res.json(metrics);
     } catch (error) {
       res.status(500).json({ error: 'Failed to get metrics' });
@@ -141,7 +141,7 @@ export function createHealthRouter(
           });
         } else {
           // Fallback to performance metrics if getStats not available
-          const metrics = mcpServer.getPerformanceMetrics();
+          const metrics = await mcpServer.getPerformanceMetrics();
           if (metrics.summary?.cacheHitRate !== undefined) {
             status.cache.hitRate = metrics.summary.cacheHitRate;
             status.cache.status =
