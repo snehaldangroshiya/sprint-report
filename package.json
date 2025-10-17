@@ -19,6 +19,8 @@
     "agent": "tsx src/agent/cli.ts",
     "agent:example": "tsx src/agent/example-usage.ts",
     "agent:ollama": "tsx src/agent/ollama-cli.ts",
+    "agent:azure": "tsx src/agent/azure-cli.ts",
+    "verify:azure": "tsx scripts/verify-azure-setup.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -83,6 +85,7 @@
     "module-alias": "^2.2.3",
     "node-cache": "^5.1.2",
     "ollama": "^0.6.0",
+    "openai": "^6.4.0",
     "puppeteer": "^21.11.0",
     "winston": "^3.11.0",
     "zod": "^3.22.4"

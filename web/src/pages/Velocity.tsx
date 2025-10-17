@@ -236,19 +236,25 @@ export function Velocity() {
 
                   return (
                     <div key={sprint.id}>
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="mb-1">
                         <span className="text-sm font-medium">{sprint.name}</span>
-                        <span className="text-sm font-semibold text-blue-600">{sprint.velocity}</span>
                       </div>
-                      <div className="w-full bg-secondary rounded-full h-8">
-                        <div
-                          className="bg-blue-600 h-8 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
-                          style={{ width: `${widthPercentage}%` }}
-                        >
-                          {widthPercentage > 15 && (
-                            <span className="text-xs text-white font-medium">{sprint.velocity}</span>
-                          )}
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-secondary rounded-full h-8 relative">
+                          <div
+                            className="bg-blue-600 h-8 rounded-full transition-all duration-500 flex items-center justify-end pr-3"
+                            style={{ width: `${widthPercentage}%` }}
+                          >
+                            {widthPercentage > 20 && (
+                              <span className="text-sm text-white font-medium">{sprint.velocity}</span>
+                            )}
+                          </div>
                         </div>
+                        {widthPercentage <= 20 && (
+                          <span className="text-sm font-semibold text-blue-600 min-w-[3rem] text-right">
+                            {sprint.velocity}
+                          </span>
+                        )}
                       </div>
                     </div>
                   );
