@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, BarChart3, PieChart as PieChartIcon, Calendar, Download } from 'lucide-react';
+import { TrendingUp, BarChart3, PieChart as PieChartIcon, Calendar, Download, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { api } from '../lib/api';
 import { useConfiguration } from '../contexts/ConfigurationContext';
 
@@ -132,12 +135,12 @@ export function Analytics() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Sprint Analytics</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold tracking-tight">Sprint Analytics</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Advanced insights and performance metrics for your sprints
           </p>
         </div>
-        <Button onClick={exportToPDF}>
+        <Button onClick={exportToPDF} variant="default">
           <Download className="h-4 w-4 mr-2" />
           Export PDF
         </Button>
@@ -145,107 +148,121 @@ export function Analytics() {
 
       {/* Controls */}
       <Card>
-        <CardContent className="pt-6">
+        <CardHeader>
+          <CardTitle className="text-base">Configuration</CardTitle>
+          <CardDescription>Current board settings and analysis time period</CardDescription>
+        </CardHeader>
+        <CardContent>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <div className="text-sm font-medium text-gray-700">Current Configuration</div>
-              <div className="text-sm text-gray-600">
-                <p>Board: <span className="font-semibold">{config.jira.boardName} ({config.jira.boardId})</span></p>
-                <p>GitHub: <span className="font-semibold">{config.github.owner}/{config.github.repo}</span></p>
-                <p className="text-xs text-gray-500 mt-1">Configure these settings from the Dashboard</p>
+              <div className="text-sm font-medium">Current Configuration</div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Board:</span>
+                  <Badge variant="secondary">{config.jira.boardName}</Badge>
+                  <Badge variant="outline">ID: {config.jira.boardId}</Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">GitHub:</span>
+                  <code className="text-xs bg-muted px-2 py-1 rounded">
+                    {config.github.owner}/{config.github.repo}
+                  </code>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Configure these settings from the Dashboard
+                </p>
               </div>
             </div>
             <div className="space-y-2">
-              <label htmlFor="dateRange" className="text-sm font-medium text-gray-700">Time Period</label>
-              <select
-                id="dateRange"
+              <label htmlFor="dateRange" className="text-sm font-medium">
+                Time Period
+              </label>
+              <Select
                 value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                onValueChange={setDateRange}
               >
-                <option value="1month">Last Month</option>
-                <option value="3months">Last 3 Months</option>
-                <option value="6months">Last 6 Months</option>
-                <option value="1year">Last Year</option>
-              </select>
+                <SelectTrigger id="dateRange">
+                  <SelectValue placeholder="Select time period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1month">Last Month</SelectItem>
+                  <SelectItem value="3months">Last 3 Months</SelectItem>
+                  <SelectItem value="6months">Last 6 Months</SelectItem>
+                  <SelectItem value="1year">Last Year</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>
       </Card>      {/* Key Metrics */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <TrendingUp className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <p className="text-sm font-medium text-muted-foreground truncate">
-                  Average Velocity
-                </p>
-                <p className="text-lg font-medium">
-                  {velocityData?.average?.toFixed(1) || '--'}
-                </p>
-              </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Average Velocity
+            </CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {velocityData?.average?.toFixed(1) || '--'}
             </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Story points per sprint
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <BarChart3 className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <p className="text-sm font-medium text-muted-foreground truncate">
-                  Velocity Trend
-                </p>
-                <p className="text-lg font-medium">
-                  {velocityData?.trend || '--'}
-                </p>
-              </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Velocity Trend
+            </CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold capitalize">
+              {velocityData?.trend || '--'}
             </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Overall performance direction
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Calendar className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <p className="text-sm font-medium text-muted-foreground truncate">
-                  Sprints Analyzed
-                </p>
-                <p className="text-lg font-medium">
-                  {velocityData?.sprints?.length || 0}
-                </p>
-              </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Sprints Analyzed
+            </CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {velocityData?.sprints?.length || 0}
             </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Completed sprints in period
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <PieChartIcon className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <p className="text-sm font-medium text-muted-foreground truncate">
-                  Completion Rate
-                </p>
-                <p className={`text-lg font-medium ${
-                  completionRate >= 80 ? 'text-green-600' :
-                  completionRate >= 60 ? 'text-yellow-600' :
-                  'text-red-600'
-                }`}>
-                  {completionRate > 0 ? `${completionRate}%` : '--'}
-                </p>
-              </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Completion Rate
+            </CardTitle>
+            <PieChartIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {completionRate > 0 ? `${completionRate}%` : '--'}
             </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {completionRate >= 80 ? 'Excellent performance' :
+               completionRate >= 60 ? 'Good performance' :
+               completionRate > 0 ? 'Needs improvement' : 'No data available'}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -256,13 +273,16 @@ export function Analytics() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Sprint Velocity Trend</CardTitle>
-              <TrendingUp className="h-5 w-5 text-blue-500" />
+              <div>
+                <CardTitle>Sprint Velocity Trend</CardTitle>
+                <CardDescription>Commitment vs. completion over time</CardDescription>
+              </div>
+              <TrendingUp className="h-5 w-5 text-muted-foreground" />
             </div>
           </CardHeader>
           <CardContent>
             {velocityLoading ? (
-              <div className="h-72">
+              <div className="h-72 space-y-2">
                 <Skeleton className="h-full w-full" />
               </div>
             ) : velocityData?.sprints && velocityData.sprints.length > 0 ? (
@@ -304,11 +324,14 @@ export function Analytics() {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-72 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <BarChart3 className="h-12 w-12 mx-auto mb-2 text-muted" />
-                  <p className="text-sm">Select a board and click "Update Charts"</p>
-                </div>
+              <div className="h-72 flex items-center justify-center">
+                <Alert variant="default" className="max-w-md">
+                  <BarChart3 className="h-4 w-4" />
+                  <AlertTitle>No Data Available</AlertTitle>
+                  <AlertDescription>
+                    Select a board from the dashboard to view velocity trends.
+                  </AlertDescription>
+                </Alert>
               </div>
             )}
           </CardContent>
@@ -318,26 +341,29 @@ export function Analytics() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Team Performance</CardTitle>
-              <BarChart3 className="h-5 w-5 text-green-500" />
+              <div>
+                <CardTitle>Team Performance</CardTitle>
+                <CardDescription>Planned vs. completed points per sprint</CardDescription>
+              </div>
+              <BarChart3 className="h-5 w-5 text-muted-foreground" />
             </div>
           </CardHeader>
           <CardContent>
             {teamPerformanceLoading ? (
-              <div className="h-72">
+              <div className="h-72 space-y-2">
                 <Skeleton className="h-full w-full" />
               </div>
             ) : teamPerformanceError ? (
-              <div className="h-72 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <BarChart3 className="h-12 w-12 mx-auto mb-2 text-red-400" />
-                  <p className="text-sm text-red-600">
-                    Error loading team performance data
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {teamPerformanceError instanceof Error ? teamPerformanceError.message : 'Unknown error'}
-                  </p>
-                </div>
+              <div className="h-72 flex items-center justify-center">
+                <Alert variant="destructive" className="max-w-md">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Error Loading Data</AlertTitle>
+                  <AlertDescription>
+                    {teamPerformanceError instanceof Error 
+                      ? teamPerformanceError.message 
+                      : 'Failed to load team performance data. Please try again.'}
+                  </AlertDescription>
+                </Alert>
               </div>
             ) : teamPerformanceData && Array.isArray(teamPerformanceData) && teamPerformanceData.length > 0 ? (
               <ResponsiveContainer width="100%" height={288}>
@@ -364,16 +390,16 @@ export function Analytics() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-72 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <BarChart3 className="h-12 w-12 mx-auto mb-2 text-muted" />
-                  <p className="text-sm">
-                    {selectedBoard ? `No team performance data for ${sprintCount} sprints` : 'Select a board to view team performance'}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Try selecting a different time period
-                  </p>
-                </div>
+              <div className="h-72 flex items-center justify-center">
+                <Alert variant="default" className="max-w-md">
+                  <BarChart3 className="h-4 w-4" />
+                  <AlertTitle>No Performance Data</AlertTitle>
+                  <AlertDescription>
+                    {selectedBoard 
+                      ? `No team performance data found for the last ${sprintCount} sprints. Try selecting a different time period.`
+                      : 'Select a board from the dashboard to view team performance.'}
+                  </AlertDescription>
+                </Alert>
               </div>
             )}
           </CardContent>
@@ -383,13 +409,16 @@ export function Analytics() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Code Activity Trends</CardTitle>
-              <TrendingUp className="h-5 w-5 text-purple-500" />
+              <div>
+                <CardTitle>Code Activity Trends</CardTitle>
+                <CardDescription>Commits and pull requests over time</CardDescription>
+              </div>
+              <TrendingUp className="h-5 w-5 text-muted-foreground" />
             </div>
           </CardHeader>
           <CardContent>
             {commitTrendLoading ? (
-              <div className="h-72">
+              <div className="h-72 space-y-2">
                 <Skeleton className="h-full w-full" />
               </div>
             ) : commitTrendData && Array.isArray(commitTrendData) && commitTrendData.length > 0 ? (
@@ -431,26 +460,25 @@ export function Analytics() {
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-72 flex items-center justify-center text-muted-foreground">
-              <div className="text-center max-w-xs space-y-3">
-                <TrendingUp className="h-12 w-12 mx-auto text-muted" />
-                <div>
-                  <p className="font-medium">
-                    {commitTrendError ? 'Failed to Load GitHub Data' : 'No GitHub Data Available'}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">
+            <div className="h-72 flex items-center justify-center">
+              <Alert variant={commitTrendError ? "destructive" : "default"} className="max-w-md">
+                {commitTrendError ? <AlertCircle className="h-4 w-4" /> : <TrendingUp className="h-4 w-4" />}
+                <AlertTitle>
+                  {commitTrendError ? 'Failed to Load GitHub Data' : 'No GitHub Data Available'}
+                </AlertTitle>
+                <AlertDescription className="space-y-2">
+                  <p>
                     {commitTrendError
-                      ? `Error: ${commitTrendError instanceof Error ? commitTrendError.message : 'Repository not found or access denied'}`
-                      : 'Configure GitHub Owner and Repo above, then select a time period'
-                    }
+                      ? `${commitTrendError instanceof Error ? commitTrendError.message : 'Repository not found or access denied'}`
+                      : 'Configure GitHub Owner and Repo from the dashboard to view code activity trends.'}
                   </p>
                   {githubOwner && githubRepo && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Current: {githubOwner}/{githubRepo}
-                    </p>
+                    <code className="text-xs bg-muted px-2 py-1 rounded block">
+                      {githubOwner}/{githubRepo}
+                    </code>
                   )}
-                </div>
-              </div>
+                </AlertDescription>
+              </Alert>
             </div>
           )}
           </CardContent>
@@ -460,13 +488,16 @@ export function Analytics() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Issue Type Distribution</CardTitle>
-              <PieChartIcon className="h-5 w-5 text-orange-500" />
+              <div>
+                <CardTitle>Issue Type Distribution</CardTitle>
+                <CardDescription>Breakdown of work items by type</CardDescription>
+              </div>
+              <PieChartIcon className="h-5 w-5 text-muted-foreground" />
             </div>
           </CardHeader>
           <CardContent>
             {issueTypeLoading ? (
-              <div className="h-72">
+              <div className="h-72 space-y-2">
                 <Skeleton className="h-full w-full" />
               </div>
             ) : issueTypeData && Array.isArray(issueTypeData) && issueTypeData.length > 0 ? (
@@ -496,13 +527,16 @@ export function Analytics() {
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-72 flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <PieChartIcon className="h-12 w-12 mx-auto mb-2 text-muted" />
-                <p className="text-sm">
-                  {selectedBoard ? 'No issue type data available' : 'Select a board to view issue types'}
-                </p>
-              </div>
+            <div className="h-72 flex items-center justify-center">
+              <Alert variant="default" className="max-w-md">
+                <PieChartIcon className="h-4 w-4" />
+                <AlertTitle>No Issue Type Data</AlertTitle>
+                <AlertDescription>
+                  {selectedBoard 
+                    ? 'No issue type data available for the selected time period.' 
+                    : 'Select a board from the dashboard to view issue type distribution.'}
+                </AlertDescription>
+              </Alert>
             </div>
           )}
           </CardContent>
@@ -510,39 +544,51 @@ export function Analytics() {
       </div>
 
       {/* Sprint Comparison Table */}
-      {velocityData?.sprints && (
+      {velocityData?.sprints && velocityData.sprints.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Sprint Comparison</CardTitle>
+            <CardTitle>Sprint Comparison</CardTitle>
+            <CardDescription>
+              Detailed comparison of sprint commitments and completions
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Sprint</TableHead>
-                  <TableHead>Commitment</TableHead>
-                  <TableHead>Completed</TableHead>
-                  <TableHead>Velocity</TableHead>
-                  <TableHead>Success Rate</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {/* Display sprints in same order as Dashboard (newest → oldest) */}
-                {velocityData.sprints.map((sprint) => (
-                  <TableRow key={sprint.id}>
-                    <TableCell className="font-medium">{sprint.name}</TableCell>
-                    <TableCell>{sprint.commitment}</TableCell>
-                    <TableCell>{sprint.completed}</TableCell>
-                    <TableCell>{sprint.velocity}</TableCell>
-                    <TableCell>
-                      {sprint.commitment > 0
-                        ? ((sprint.completed / sprint.commitment) * 100).toFixed(1)
-                        : '0.0'}%
-                    </TableCell>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Sprint</TableHead>
+                    <TableHead className="text-right">Commitment</TableHead>
+                    <TableHead className="text-right">Completed</TableHead>
+                    <TableHead className="text-right">Velocity</TableHead>
+                    <TableHead className="text-right">Success Rate</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {velocityData.sprints.map((sprint) => {
+                    const successRate = sprint.commitment > 0
+                      ? (sprint.completed / sprint.commitment) * 100
+                      : 0;
+                    
+                    return (
+                      <TableRow key={sprint.id}>
+                        <TableCell className="font-medium">{sprint.name}</TableCell>
+                        <TableCell className="text-right">{sprint.commitment}</TableCell>
+                        <TableCell className="text-right">{sprint.completed}</TableCell>
+                        <TableCell className="text-right font-semibold">{sprint.velocity}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge 
+                            variant={successRate >= 80 ? "default" : successRate >= 60 ? "secondary" : "destructive"}
+                          >
+                            {successRate.toFixed(1)}%
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       )}
