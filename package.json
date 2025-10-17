@@ -91,6 +91,8 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
     "@playwright/test": "^1.55.1",
     "@types/dompurify": "^3.0.3",
     "@types/jest": "^29.5.5",
