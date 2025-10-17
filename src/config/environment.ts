@@ -14,6 +14,7 @@ const JiraConfigSchema = z.object({
   baseUrl: z.string().url('Jira base URL must be a valid URL'),
   email: z.string().email('Jira email must be a valid email address'),
   apiToken: z.string().min(1, 'Jira API token is required'),
+  authType: z.enum(['basic', 'bearer']).default('basic'), // Add authentication type
   maxResults: z.number().int().min(1).max(1000).default(100),
   timeout: z.number().int().min(1000).max(120000).default(30000),
 });
@@ -96,6 +97,7 @@ function getEnvironmentVariables(): Record<string, any> {
       baseUrl: process.env.JIRA_BASE_URL,
       email: process.env.JIRA_EMAIL,
       apiToken: process.env.JIRA_API_TOKEN,
+      authType: (process.env.JIRA_AUTH_TYPE as 'basic' | 'bearer') || 'basic',
       maxResults: process.env.JIRA_MAX_RESULTS
         ? parseInt(process.env.JIRA_MAX_RESULTS, 10)
         : undefined,

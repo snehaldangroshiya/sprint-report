@@ -160,6 +160,7 @@ export interface JiraConfig {
   baseUrl: string;
   email: string;
   apiToken: string;
+  authType: 'basic' | 'bearer'; // Add authentication type
   maxResults: number;
   timeout: number;
 }

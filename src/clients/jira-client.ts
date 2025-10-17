@@ -104,14 +104,19 @@ export class JiraClient extends BaseAPIClient {
   }
 
   constructor(config: AppConfig, cacheManager?: any) {
+    // Use authentication type from config (from .env JIRA_AUTH_TYPE)
+    const authHeader =
+      config.jira.authType === 'bearer'
+        ? `Bearer ${config.jira.apiToken}`
+        : `Basic ${Buffer.from(`${config.jira.email}:${config.jira.apiToken}`).toString('base64')}`;
+
     const options: APIClientOptions = {
       baseURL: config.jira.baseUrl,
       timeout: config.jira.timeout,
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
-        // Use Bearer token for Jira Server authentication
-        Authorization: `Bearer ${config.jira.apiToken}`,
+        Authorization: authHeader,
       },
       maxRetries: 3,
       retryDelay: 1000,
@@ -119,8 +124,9 @@ export class JiraClient extends BaseAPIClient {
 
     super(options, config, cacheManager);
 
-    // Note: Jira Server uses Bearer token authentication, not basic auth
-    // For Jira Cloud, use basic auth: this.httpClient.defaults.auth = { username: email, password: token }
+    // Authentication type is read from .env JIRA_AUTH_TYPE (basic or bearer)
+    // basic: uses email:token (default for most Jira instances)
+    // bearer: uses Bearer token (for some self-hosted Jira servers)
   }
 
   // Get sprints for a board
