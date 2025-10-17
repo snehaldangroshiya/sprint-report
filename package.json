@@ -15,6 +15,9 @@
     "dev:web": "tsx watch src/web-server.ts",
     "dev:http": "tsx watch src/http-server.ts",
     "dev:sse": "tsx watch src/sse-server.ts",
+    "agent": "tsx src/agent/cli.ts",
+    "agent:example": "tsx src/agent/example-usage.ts",
+    "agent:ollama": "tsx src/agent/ollama-cli.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -49,7 +52,9 @@
     "npm": ">=8.0.0"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.67.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "@octokit/graphql": "^9.0.2",
     "@types/bcrypt": "^6.0.0",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
@@ -59,6 +64,7 @@
     "axios": "^1.6.0",
     "bcrypt": "^6.0.0",
     "canvas": "^2.11.2",
+    "chalk": "^4.1.2",
     "chart.js": "^4.4.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
@@ -75,6 +81,7 @@
     "jsonwebtoken": "^9.0.2",
     "module-alias": "^2.2.3",
     "node-cache": "^5.1.2",
+    "ollama": "^0.6.0",
     "puppeteer": "^21.11.0",
     "winston": "^3.11.0",
     "zod": "^3.22.4"

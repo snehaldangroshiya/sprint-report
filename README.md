@@ -10,6 +10,7 @@ NextReleaseMCP is a Model Context Protocol (MCP) server that integrates Jira and
 
 ## ✨ Features
 
+### Core Features
 - 🚀 **MCP Server** - Full Model Context Protocol implementation for Claude Desktop
 - 📊 **Sprint Analytics** - Velocity tracking, completion rates, story point analysis
 - 📝 **Report Generation** - Export to HTML, Markdown, and JSON formats
@@ -18,6 +19,16 @@ NextReleaseMCP is a Model Context Protocol (MCP) server that integrates Jira and
 - ⚡ **Performance** - Multi-tier caching with Redis support
 - 🎨 **Modern Web UI** - React + TypeScript + shadcn/ui components
 - 🔒 **Enterprise Ready** - Authentication, rate limiting, error recovery
+
+### 🤖 AI Agents (NEW!)
+- **🤖 Claude Agent** - Premium AI with natural language access to all MCP tools
+- **🦙 Ollama Agent** - 100% FREE local LLM alternative (privacy-first, offline-capable)
+- **💬 Interactive CLI** - Ask questions like "List all bugs in current sprint"
+- **🌐 REST API** - Integrate AI capabilities into any application
+- **📡 Streaming** - Real-time responses via Server-Sent Events
+
+> **Quick Start:** `npm run agent` (Claude) or `npm run agent:ollama` (FREE!)  
+> **See:** [GET_STARTED.md](GET_STARTED.md) | [OLLAMA_QUICK_START.md](docs/OLLAMA_QUICK_START.md)
 
 ## 🚀 Quick Start
 
@@ -275,3 +286,14 @@ For issues and questions:
 **Version**: 2.1.1
 **Last Updated**: October 4, 2025
 **Status**: ✅ Production Ready
+
+
+```
+Couldn't find '/home/sd/.ollama/id_ed25519'. Generating new private key.
+Your new public key is: 
+
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFwAMZ6cxg37WMD48oRKBbvFEkarDD6+LNKXSvsMnQkN
+
+Error: listen tcp 127.0.0.1:11434: bind: address already in use
+
+```
