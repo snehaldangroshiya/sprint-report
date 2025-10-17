@@ -355,6 +355,31 @@ export interface ServiceContext {
   metadata?: Record<string, any>;
 }
 
+// ============================================================================
+// DEPENDENCY INVERSION: Sprint Data Provider Interface
+// ============================================================================
+
+/**
+ * Interface for providing sprint-related data to AnalyticsService.
+ * This breaks the circular dependency between SprintService and AnalyticsService.
+ *
+ * SprintService implements this interface, while AnalyticsService depends only on it.
+ */
+export interface ISprintDataProvider {
+  /**
+   * Get velocity data for a board
+   */
+  getVelocityData(boardId: string, sprintCount?: number): Promise<VelocityData>;
+
+  /**
+   * Get team performance data for a board
+   */
+  getTeamPerformanceData(
+    boardId: string,
+    sprintCount?: number
+  ): Promise<TeamPerformanceData[]>;
+}
+
 // Sprint Service Types
 export interface Sprint {
   id: string;

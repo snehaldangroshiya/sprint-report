@@ -3,6 +3,7 @@ import { GitHubClient } from '../clients/github-client.js';
 import { GitHubGraphQLClient } from '../clients/github-graphql-client.js';
 import { JiraClient } from '../clients/jira-client.js';
 import {
+  ISprintDataProvider,
   Sprint,
   SprintReport,
   SprintReportRequest,
@@ -19,7 +20,7 @@ import { Logger } from '../utils/logger.js';
 
 import { AnalyticsService } from './analytics-service.js';
 
-export class SprintService {
+export class SprintService implements ISprintDataProvider {
   private logger: Logger;
   private analyticsService: AnalyticsService;
   private githubGraphQLClient: GitHubGraphQLClient | null = null;

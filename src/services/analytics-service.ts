@@ -17,18 +17,17 @@ import {
   RiskItem,
   NextSprintForecast,
   CarryoverItems,
+  ISprintDataProvider,
 } from '../types/index.js';
 import { CacheKeyBuilder } from '../utils/cache-keys.js';
 import { Logger } from '../utils/logger.js';
-
-import { SprintService } from './sprint-service.js';
 
 export class AnalyticsService {
   private logger: Logger;
 
   constructor(
     private githubClient: GitHubClient,
-    private sprintService: SprintService,
+    private sprintDataProvider: ISprintDataProvider,
     private cache: CacheManager
   ) {
     if (!cache) {
@@ -138,16 +137,14 @@ export class AnalyticsService {
 
     try {
       // Get velocity data
-      const velocityData = await this.sprintService.getVelocityData(
+      const velocityData = await this.sprintDataProvider.getVelocityData(
         boardId,
         10
       );
 
       // Get team performance data
-      const teamPerformance = await this.sprintService.getTeamPerformanceData(
-        boardId,
-        10
-      );
+      const teamPerformance =
+        await this.sprintDataProvider.getTeamPerformanceData(boardId, 10);
 
       // Initialize report
       const report: Partial<AnalyticsReport> = {
