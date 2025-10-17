@@ -24,6 +24,7 @@ import { CacheOptimizer } from '@/cache/cache-optimizer';
 import { GitHubClient } from '@/clients/github-client';
 import { GitHubGraphQLClient } from '@/clients/github-graphql-client';
 import { JiraClient } from '@/clients/jira-client';
+import { TIMEOUT_CONFIG } from '@/config/constants';
 import { createAppConfig } from '@/config/environment';
 import { ReportGenerator } from '@/reporting/report-generator';
 import { AnalyticsService } from '@/services/analytics-service';
@@ -1045,9 +1046,18 @@ Keep it concise (max 1 page). Use metrics to support insights. Highlight decisio
       try {
         const [jiraHealth, githubHealth, cacheHealth] =
           await Promise.allSettled([
-            this.context.jiraClient.healthCheck(),
-            this.context.githubClient.healthCheck(),
-            this.context.cacheManager.healthCheck(),
+            this.withHealthCheckTimeout(
+              this.context.jiraClient.healthCheck(),
+              'jira'
+            ),
+            this.withHealthCheckTimeout(
+              this.context.githubClient.healthCheck(),
+              'github'
+            ),
+            this.withHealthCheckTimeout(
+              this.context.cacheManager.healthCheck(),
+              'cache'
+            ),
           ]);
 
         const serviceHealths = {
@@ -1099,6 +1109,30 @@ Keep it concise (max 1 page). Use metrics to support insights. Highlight decisio
     ];
   }
 
+  /**
+   * Wrap health check with timeout protection
+   * Prevents health checks from hanging indefinitely
+   */
+  private async withHealthCheckTimeout<T>(
+    promise: Promise<T>,
+    serviceName: string
+  ): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                `${serviceName} health check timed out after ${TIMEOUT_CONFIG.HEALTH_CHECK}ms`
+              )
+            ),
+          TIMEOUT_CONFIG.HEALTH_CHECK
+        )
+      ),
+    ]);
+  }
+
   async getHealthStatus(): Promise<HealthStatus> {
     if (!this.context) {
       return {
@@ -1112,9 +1146,18 @@ Keep it concise (max 1 page). Use metrics to support insights. Highlight decisio
 
     try {
       const [jiraHealth, githubHealth, cacheHealth] = await Promise.allSettled([
-        this.context.jiraClient.healthCheck(),
-        this.context.githubClient.healthCheck(),
-        this.context.cacheManager.healthCheck(),
+        this.withHealthCheckTimeout(
+          this.context.jiraClient.healthCheck(),
+          'jira'
+        ),
+        this.withHealthCheckTimeout(
+          this.context.githubClient.healthCheck(),
+          'github'
+        ),
+        this.withHealthCheckTimeout(
+          this.context.cacheManager.healthCheck(),
+          'cache'
+        ),
       ]);
 
       const checks = [

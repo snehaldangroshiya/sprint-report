@@ -39,7 +39,9 @@ export class WebAPIServer {
   constructor() {
     this.app = express();
     // HTTP mode: use frequent health checks (30 seconds) for web API monitoring
-    this.mcpServer = new EnhancedMCPServer({ healthCheckIntervalMs: 30 * 1000 });
+    this.mcpServer = new EnhancedMCPServer({
+      healthCheckIntervalMs: 30 * 1000,
+    });
     this.config = createAppConfig();
     this.logger = getLogger(this.config.logging);
     this.pdfGenerator = new PDFGenerator();
@@ -240,47 +242,44 @@ export class WebAPIServer {
   private async callMCPTool(toolName: string, args: any): Promise<any> {
     try {
       const context = this.mcpServer.getContext();
-      // Simulate MCP tool call via tool registry
-      console.log(
-        '[CALL-MCP-TOOL] Executing tool:',
-        toolName,
-        'with args keys:',
-        Object.keys(args)
-      );
+
+      this.logger.debug('Executing MCP tool', {
+        tool: toolName,
+        argKeys: Object.keys(args),
+      });
+
       const toolRegistry = (this.mcpServer as any).toolRegistry;
       const result = await toolRegistry.executeTool(toolName, args, context);
-      console.log('[CALL-MCP-TOOL] Tool result type:', typeof result);
-      console.log(
-        '[CALL-MCP-TOOL] Tool result keys:',
-        result && typeof result === 'object' ? Object.keys(result) : 'N/A'
-      );
+
+      this.logger.debug('MCP tool result received', {
+        tool: toolName,
+        resultType: typeof result,
+        resultKeys:
+          result && typeof result === 'object' ? Object.keys(result) : 'N/A',
+      });
 
       // Extract content from MCP response
       if (result.content?.[0]?.text) {
-        console.log(
-          '[CALL-MCP-TOOL] Extracting from content[0].text, length:',
-          result.content[0].text.length
-        );
+        this.logger.debug('Extracting from MCP content', {
+          tool: toolName,
+          contentLength: result.content[0].text.length,
+        });
+
         try {
           const parsed = JSON.parse(result.content[0].text);
-          console.log('[CALL-MCP-TOOL] Parsed JSON keys:', Object.keys(parsed));
-          console.log(
-            '[CALL-MCP-TOOL] Has metadata in parsed?',
-            !!parsed.metadata
-          );
-          console.log(
-            '[CALL-MCP-TOOL] Has sprintGoal in parsed?',
-            !!parsed.sprintGoal
-          );
+          this.logger.debug('Parsed MCP JSON content', {
+            tool: toolName,
+            parsedKeys: Object.keys(parsed),
+            hasMetadata: !!parsed.metadata,
+            hasSprintGoal: !!parsed.sprintGoal,
+          });
           return parsed;
         } catch {
           return result.content[0].text;
         }
       }
 
-      console.log(
-        '[CALL-MCP-TOOL] Returning result directly (no content[0].text)'
-      );
+      this.logger.debug('Returning MCP result directly', { tool: toolName });
       return result;
     } catch (error) {
       this.logger.logError(error as Error, `mcp_tool_${toolName}`, { args });

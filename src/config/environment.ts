@@ -224,14 +224,41 @@ export function createAppConfig(): AppConfig {
 
 // Additional configuration validation
 function validateConfiguration(config: AppConfig): void {
-  // Validate Jira URL format
-  if (
-    !config.jira.baseUrl.includes('atlassian.net') &&
-    !config.jira.baseUrl.includes('jira')
-  ) {
+  // Validate Jira URL format with strict domain validation
+  try {
+    const jiraUrl = new URL(config.jira.baseUrl);
+    const validDomains = ['atlassian.net', 'jira.com'];
+    const validKeywords = ['jira'];
+
+    // Check if hostname contains valid domain or jira keyword
+    const hasValidDomain = validDomains.some(domain =>
+      jiraUrl.hostname.endsWith(domain)
+    );
+    const hasValidKeyword = validKeywords.some(keyword =>
+      jiraUrl.hostname.includes(keyword)
+    );
+
+    if (!hasValidDomain && !hasValidKeyword) {
+      throw new ConfigurationError(
+        'jira.baseUrl',
+        `Jira base URL must be from a valid Jira domain (e.g., *.atlassian.net, *.jira.com) or contain 'jira' in hostname. Got: ${jiraUrl.hostname}`
+      );
+    }
+
+    // Enforce HTTPS in production
+    if (config.nodeEnv === 'production' && jiraUrl.protocol !== 'https:') {
+      throw new ConfigurationError(
+        'jira.baseUrl',
+        'Jira base URL must use HTTPS in production environment'
+      );
+    }
+  } catch (error) {
+    if (error instanceof ConfigurationError) {
+      throw error;
+    }
     throw new ConfigurationError(
       'jira.baseUrl',
-      'Jira base URL should be an Atlassian URL (e.g., https://company.atlassian.net)'
+      `Invalid Jira base URL format: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 

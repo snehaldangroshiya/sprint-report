@@ -36,13 +36,13 @@ export class SprintService {
       );
     }
     this.logger = new Logger('SprintService');
-    
+
     // Initialize GraphQL client if token provided
     if (githubToken) {
       this.githubGraphQLClient = new GitHubGraphQLClient(githubToken);
       this.logger.info('GitHub GraphQL client initialized for SprintService');
     }
-    
+
     this.analyticsService = new AnalyticsService(
       this.githubClient,
       this,
@@ -167,10 +167,16 @@ export class SprintService {
             github_owner: request.github_owner,
             github_repo: request.github_repo,
             include_enhanced_github: request.include_enhanced_github,
-            willFetchPRs: !!(request.include_prs && request.github_owner && request.github_repo),
+            willFetchPRs: !!(
+              request.include_prs &&
+              request.github_owner &&
+              request.github_repo
+            ),
           });
-          
-          return request.include_prs && request.github_owner && request.github_repo
+
+          return request.include_prs &&
+            request.github_owner &&
+            request.github_repo
             ? request.include_enhanced_github
               ? this.getEnhancedSprintPullRequests(
                   request.github_owner,
@@ -374,17 +380,16 @@ export class SprintService {
         }
       );
 
-      // DEBUG: Log what we're about to return
-      console.log(
-        '[SPRINT-SERVICE] About to return report with keys:',
-        Object.keys(reportData)
-      );
-      console.log('[SPRINT-SERVICE] Has metadata?', !!reportData.metadata);
-      console.log('[SPRINT-SERVICE] Has sprintGoal?', !!reportData.sprintGoal);
-      console.log('[SPRINT-SERVICE] Request flags:', {
-        tier1: request.include_tier1,
-        tier2: request.include_tier2,
-        tier3: request.include_tier3,
+      // Log report structure for debugging
+      this.logger.debug('Sprint report structure', {
+        reportKeys: Object.keys(reportData),
+        hasMetadata: !!reportData.metadata,
+        hasSprintGoal: !!reportData.sprintGoal,
+        requestFlags: {
+          tier1: request.include_tier1,
+          tier2: request.include_tier2,
+          tier3: request.include_tier3,
+        },
       });
 
       return reportData as SprintReport;
@@ -535,7 +540,9 @@ export class SprintService {
           );
         } else {
           // FALLBACK: Use GitHub Search API (REST v3)
-          this.logger.info('Using GitHub REST API Search (GraphQL client not available)');
+          this.logger.info(
+            'Using GitHub REST API Search (GraphQL client not available)'
+          );
           allPRs = await this.githubClient.searchPullRequestsByDateRange(
             owner,
             repo,
@@ -549,8 +556,14 @@ export class SprintService {
         pullRequests = allPRs.filter((pr: any) => {
           const createdAt = new Date(pr.createdAt || pr.created_at);
           const updatedAt = new Date(pr.updatedAt || pr.updated_at);
-          const mergedAt = (pr.mergedAt || pr.merged_at) ? new Date(pr.mergedAt || pr.merged_at) : null;
-          const closedAt = (pr.closedAt || pr.closed_at) ? new Date(pr.closedAt || pr.closed_at) : null;
+          const mergedAt =
+            pr.mergedAt || pr.merged_at
+              ? new Date(pr.mergedAt || pr.merged_at)
+              : null;
+          const closedAt =
+            pr.closedAt || pr.closed_at
+              ? new Date(pr.closedAt || pr.closed_at)
+              : null;
 
           // Include PR if any of its activity dates fall within the sprint
           return (
@@ -794,33 +807,39 @@ export class SprintService {
         });
 
         let basicPRs: any[];
-        let enhancedPRsList: PullRequest[] = [];
+        const enhancedPRsList: PullRequest[] = [];
 
         // PRIORITY 1: Use GitHub GraphQL API v4 if available (most efficient for all sprints)
         if (this.githubGraphQLClient) {
-          this.logger.info('Using GitHub GraphQL v4 API for enhanced PR search');
-          
+          this.logger.info(
+            'Using GitHub GraphQL v4 API for enhanced PR search'
+          );
+
           // GraphQL returns all PRs with all necessary data in one query
-          const graphqlPRs = await this.githubGraphQLClient.searchPullRequestsByDateRange(
+          const graphqlPRs =
+            await this.githubGraphQLClient.searchPullRequestsByDateRange(
+              owner,
+              repo,
+              startDate,
+              endDate,
+              'all'
+            );
+
+          // GraphQL PRs are already enhanced with review data
+          await this.cache.set(cacheKey, graphqlPRs, { ttl: 600 }); // 10 minutes
+          return graphqlPRs;
+        }
+
+        // FALLBACK: Use GitHub REST API Search for historical sprints or when GraphQL unavailable
+        this.logger.info(
+          'Using GitHub REST API Search for enhanced PRs (GraphQL not available)',
+          {
             owner,
             repo,
             startDate,
             endDate,
-            'all'
-          );
-
-          // GraphQL PRs are already enhanced with review data
-          await this.cache.set(cacheKey, graphqlPRs, { ttl: 600 }); // 10 minutes
-          return graphqlPRs as PullRequest[];
-        }
-
-        // FALLBACK: Use GitHub REST API Search for historical sprints or when GraphQL unavailable
-        this.logger.info('Using GitHub REST API Search for enhanced PRs (GraphQL not available)', {
-          owner,
-          repo,
-          startDate,
-          endDate,
-        });
+          }
+        );
 
         // Use Search API with date range filters for efficient retrieval
         basicPRs = await this.githubClient.searchPullRequestsByDateRange(
