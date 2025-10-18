@@ -55,8 +55,19 @@ export function Dashboard() {
     enabled: !!boardId,
   });
 
-  // Combine active and closed sprints, sorted by start date descending (newest first)
-  const recentSprints = combineAndSortSprints(activeSprints, closedSprints, sprintCount);
+  // Fetch future sprints using configured board
+  const { data: futureSprints } = useQuery({
+    queryKey: ['future-sprints', boardId],
+    queryFn: () => api.getSprints(boardId, 'future'),
+    enabled: !!boardId,
+  });
+
+  // Combine active, closed, and future sprints, sorted by start date descending (newest first)
+  const recentSprints = combineAndSortSprints(
+    [...(activeSprints || []), ...(futureSprints || [])],
+    closedSprints,
+    sprintCount
+  );
 
   const sprintsLoading = !boardId;
 
