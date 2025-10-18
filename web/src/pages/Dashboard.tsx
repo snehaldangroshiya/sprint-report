@@ -650,10 +650,15 @@ export function Dashboard() {
         <Card className="border-l-4 border-green-500">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center">
-                <Calendar className="h-5 w-5 mr-2 text-green-600" />
-                Recent Sprint Activity
-              </CardTitle>
+              <div>
+                <CardTitle className="flex items-center">
+                  <Calendar className="h-5 w-5 mr-2 text-green-600" />
+                  Recent Sprint Activity
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Track active, upcoming, and completed sprints with real-time status updates
+                </CardDescription>
+              </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">Filter:</span>
