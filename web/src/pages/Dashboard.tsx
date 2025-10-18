@@ -60,10 +60,10 @@ export function Dashboard() {
 
   const sprintsLoading = !boardId;
 
-  // Fetch velocity data for quick stats
+  // Fetch velocity data for quick stats - using sprintCount from state
   const { data: velocityData, isLoading: velocityLoading } = useQuery({
-    queryKey: ['velocity-stats', boardId],
-    queryFn: () => api.getVelocityData(boardId, 5),
+    queryKey: ['velocity-stats', boardId, sprintCount],
+    queryFn: () => api.getVelocityData(boardId, sprintCount),
     enabled: !!boardId,
   });
 
@@ -144,7 +144,7 @@ export function Dashboard() {
                     })()
                   : 0}%
               </div>
-              <p className="text-xs text-violet-600 font-medium">Last 5 sprints</p>
+              <p className="text-xs text-violet-600 font-medium">Last {sprintCount} sprint{sprintCount !== 1 ? 's' : ''}</p>
             </CardContent>
           </Card>
         )}
