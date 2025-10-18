@@ -65,16 +65,16 @@ export function Dashboard() {
   });
 
   // Combine active, closed, and future sprints, sorted by start date descending (newest first)
+  // Don't apply limit yet - we need to filter first
   const allRecentSprints = combineAndSortSprints(
     [...(activeSprints || []), ...(futureSprints || [])],
-    closedSprints,
-    sprintCount
+    closedSprints
   );
 
-  // Apply filter based on sprint state
+  // Apply filter based on sprint state, then apply the limit
   const recentSprints = sprintFilter === 'all' 
-    ? allRecentSprints
-    : allRecentSprints.filter(sprint => sprint.state.toLowerCase() === sprintFilter);
+    ? allRecentSprints.slice(0, sprintCount)
+    : allRecentSprints.filter(sprint => sprint.state.toLowerCase() === sprintFilter).slice(0, sprintCount);
 
   const sprintsLoading = !boardId;
 
@@ -704,7 +704,7 @@ export function Dashboard() {
             ) : (
             <div className="flow-root">
               <ul className="-mb-8">
-                {recentSprints.slice(0, sprintCount).map((sprint, idx) => {
+                {recentSprints.map((sprint, idx) => {
                   const isActive = sprint.state.toLowerCase() === 'active';
                   const isFuture = sprint.state.toLowerCase() === 'future';
                   const isClosed = sprint.state.toLowerCase() === 'closed';
