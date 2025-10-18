@@ -40,6 +40,13 @@ export function Dashboard() {
     refetchInterval: 30000, // Check every 30 seconds
   });
 
+  // Fetch MCP tools count
+  const { data: mcpTools } = useQuery({
+    queryKey: ['mcp-tools'],
+    queryFn: api.getMCPTools,
+    refetchInterval: 60000, // Check every minute
+  });
+
   // Use configured board ID instead of fetching all boards
   const boardId = config.jira.boardId;
 
@@ -265,7 +272,7 @@ export function Dashboard() {
                     MCP Tools Status
                   </h3>
                   <p className="text-sm text-gray-600">
-                    Monitor 14 MCP tools & health
+                    Monitor {mcpTools?.count || 0} MCP tools & health
                   </p>
                 </div>
               </div>
