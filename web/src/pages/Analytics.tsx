@@ -374,7 +374,7 @@ export function Analytics() {
               </div>
             ) : teamPerformanceData && Array.isArray(teamPerformanceData) && teamPerformanceData.length > 0 ? (
               <ResponsiveContainer width="100%" height={288}>
-                <BarChart data={teamPerformanceData}>
+                <BarChart data={[...teamPerformanceData].reverse()}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis
                     dataKey="name"
