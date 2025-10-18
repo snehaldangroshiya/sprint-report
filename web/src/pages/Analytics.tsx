@@ -275,7 +275,7 @@ export function Analytics() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Sprint Velocity Trend</CardTitle>
-                <CardDescription>Commitment vs. completion over time</CardDescription>
+                <CardDescription>Commitment vs. completion over time (oldest → newest)</CardDescription>
               </div>
               <TrendingUp className="h-5 w-5 text-muted-foreground" />
             </div>
@@ -287,7 +287,7 @@ export function Analytics() {
               </div>
             ) : velocityData?.sprints && velocityData.sprints.length > 0 ? (
               <ResponsiveContainer width="100%" height={288}>
-                <LineChart data={velocityData.sprints}>
+                <LineChart data={[...velocityData.sprints].reverse()}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis
                     dataKey="name"
@@ -296,13 +296,17 @@ export function Analytics() {
                     textAnchor="end"
                     height={80}
                   />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} label={{ value: 'Story Points', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: 'white',
                       border: '1px solid #e5e7eb',
                       borderRadius: '0.375rem'
                     }}
+                    formatter={(value: number, name: string) => [
+                      `${value} pts`,
+                      name === 'velocity' ? 'Completed' : name === 'commitment' ? 'Committed' : name
+                    ]}
                   />
                   <Legend wrapperStyle={{ fontSize: '14px' }} />
                   <Line
@@ -312,6 +316,7 @@ export function Analytics() {
                     stroke="#3b82f6"
                     strokeWidth={2}
                     dot={{ fill: '#3b82f6', r: 4 }}
+                    activeDot={{ r: 6 }}
                   />
                   <Line
                     type="monotone"
@@ -320,6 +325,8 @@ export function Analytics() {
                     stroke="#10b981"
                     strokeWidth={2}
                     dot={{ fill: '#10b981', r: 4 }}
+                    strokeDasharray="5 5"
+                    activeDot={{ r: 6 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -549,7 +556,7 @@ export function Analytics() {
           <CardHeader>
             <CardTitle>Sprint Comparison</CardTitle>
             <CardDescription>
-              Detailed comparison of sprint commitments and completions
+              Detailed comparison of sprint commitments and completions (newest → oldest)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -565,7 +572,7 @@ export function Analytics() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {velocityData.sprints.map((sprint) => {
+                  {[...velocityData.sprints].map((sprint) => {
                     const successRate = sprint.commitment > 0
                       ? (sprint.completed / sprint.commitment) * 100
                       : 0;
