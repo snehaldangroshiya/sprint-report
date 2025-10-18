@@ -810,6 +810,76 @@ export interface ServerInfo {
 // Alias for compatibility
 export type HealthCheckStatus = HealthStatus;
 
+// ============================================================================
+// SERVICE LAYER INTERFACES (Week 1 Refactoring)
+// ============================================================================
+
+/**
+ * Interface for MCPBridge service
+ * Provides abstraction layer for MCP tool execution
+ */
+export interface IMCPBridge {
+  executeTool<T = any>(toolName: string, args: any): Promise<T>;
+  generateComprehensiveReport(
+    sprintId: string,
+    params: {
+      github_owner?: string;
+      github_repo?: string;
+      include_tier1?: boolean;
+      include_tier2?: boolean;
+      include_tier3?: boolean;
+      include_forward_looking?: boolean;
+      include_enhanced_github?: boolean;
+    }
+  ): Promise<any>;
+  getContext(): any;
+}
+
+/**
+ * Interface for CacheOrchestrator service
+ * Handles intelligent cache management with TTL strategies
+ */
+export interface ICacheOrchestrator {
+  warmSprintCache(
+    sprintId: string,
+    github: { owner: string; repo: string }
+  ): Promise<void>;
+  invalidateSprintCache(sprintId: string): Promise<void>;
+  invalidateIssueCache(issue: any, changelog: any): Promise<void>;
+  getSmartTTL(sprintId: string): Promise<number>;
+  scheduleBackgroundRefresh(
+    cacheKey: string,
+    refreshFunction: () => Promise<any>,
+    ttl: number
+  ): Promise<void>;
+  getCacheManager(): any;
+}
+
+/**
+ * Interface for AnalyticsAggregator service
+ * Provides business logic for analytics calculations
+ */
+export interface IAnalyticsAggregator {
+  aggregateCommitsByMonth(
+    commits: any[],
+    pullRequests: any[],
+    startDate?: Date,
+    endDate?: Date
+  ): any[];
+  calculateVelocityOptimized(
+    boardId: string,
+    sprintCount: number
+  ): Promise<any>;
+  calculateTeamPerformance(
+    boardId: string,
+    sprintCount: number
+  ): Promise<any[]>;
+  calculateIssueDistribution(
+    boardId: string,
+    sprintCount: number
+  ): Promise<any[]>;
+}
+
 // Cache Manager Options
 export interface CacheManagerOptions {
   memory?: {
