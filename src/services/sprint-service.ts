@@ -852,8 +852,9 @@ export class SprintService implements ISprintDataProvider {
         );
 
         // We have basic PRs from Search API
-        // Now enhance them with review data (limit to first 50 to avoid rate limits)
-        const prsToEnhance = basicPRs.slice(0, 50);
+        // Now enhance them with review data (limit to first 15 for performance)
+        // NOTE: Core metrics (counts, merge rate) use ALL PRs, only averages use enhanced subset
+        const prsToEnhance = basicPRs.slice(0, 15);
 
         for (let i = 0; i < prsToEnhance.length; i++) {
           const pr = prsToEnhance[i];
@@ -867,9 +868,9 @@ export class SprintService implements ISprintDataProvider {
             );
             enhancedPRsList.push(enhanced);
 
-            // Rate limiting: delay every 5 requests
-            if ((i + 1) % 5 === 0) {
-              await new Promise(resolve => setTimeout(resolve, 1000));
+            // Rate limiting: delay every 10 requests (reduced from 5 for better performance)
+            if ((i + 1) % 10 === 0) {
+              await new Promise(resolve => setTimeout(resolve, 200)); // Reduced from 1000ms
             }
           } catch (error) {
             this.logger.warn(`Failed to enhance PR ${pr.number}`, {
