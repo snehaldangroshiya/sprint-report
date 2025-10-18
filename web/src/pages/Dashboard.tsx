@@ -21,6 +21,8 @@ import {
 export function Dashboard() {
   // State for number of sprints to show
   const [sprintCount, setSprintCount] = useState(5);
+  // State for sprint filter
+  const [sprintFilter, setSprintFilter] = useState<'all' | 'active' | 'future' | 'closed'>('all');
 
   // Get configuration from context
   const { config } = useConfiguration();
@@ -63,11 +65,16 @@ export function Dashboard() {
   });
 
   // Combine active, closed, and future sprints, sorted by start date descending (newest first)
-  const recentSprints = combineAndSortSprints(
+  const allRecentSprints = combineAndSortSprints(
     [...(activeSprints || []), ...(futureSprints || [])],
     closedSprints,
     sprintCount
   );
+
+  // Apply filter based on sprint state
+  const recentSprints = sprintFilter === 'all' 
+    ? allRecentSprints
+    : allRecentSprints.filter(sprint => sprint.state.toLowerCase() === sprintFilter);
 
   const sprintsLoading = !boardId;
 
@@ -639,7 +646,7 @@ export function Dashboard() {
             <Skeleton className="h-20 w-full" />
           </div>
         </div>
-      ) : recentSprints && recentSprints.length > 0 ? (
+      ) : allRecentSprints && allRecentSprints.length > 0 ? (
         <Card className="border-l-4 border-green-500">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -647,23 +654,54 @@ export function Dashboard() {
                 <Calendar className="h-5 w-5 mr-2 text-green-600" />
                 Recent Sprint Activity
               </CardTitle>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Show:</span>
-                <Select value={sprintCount.toString()} onValueChange={(value) => setSprintCount(Number(value))}>
-                  <SelectTrigger className="w-[120px]">
-                    <SelectValue placeholder="5 sprints" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="2">2 sprints</SelectItem>
-                    <SelectItem value="5">5 sprints</SelectItem>
-                    <SelectItem value="10">10 sprints</SelectItem>
-                    <SelectItem value="15">15 sprints</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Filter:</span>
+                  <Select value={sprintFilter} onValueChange={(value) => setSprintFilter(value as 'all' | 'active' | 'future' | 'closed')}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue placeholder="All sprints" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All sprints</SelectItem>
+                      <SelectItem value="active">Active only</SelectItem>
+                      <SelectItem value="future">Future only</SelectItem>
+                      <SelectItem value="closed">Closed only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Show:</span>
+                  <Select value={sprintCount.toString()} onValueChange={(value) => setSprintCount(Number(value))}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue placeholder="5 sprints" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2">2 sprints</SelectItem>
+                      <SelectItem value="5">5 sprints</SelectItem>
+                      <SelectItem value="10">10 sprints</SelectItem>
+                      <SelectItem value="15">15 sprints</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </CardHeader>
           <CardContent>
+            {recentSprints.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-500">
+                  No {sprintFilter !== 'all' ? sprintFilter : ''} sprints found.
+                  {sprintFilter !== 'all' && (
+                    <button 
+                      onClick={() => setSprintFilter('all')} 
+                      className="ml-1 text-blue-600 hover:text-blue-800 underline"
+                    >
+                      Show all sprints
+                    </button>
+                  )}
+                </p>
+              </div>
+            ) : (
             <div className="flow-root">
               <ul className="-mb-8">
                 {recentSprints.slice(0, sprintCount).map((sprint, idx) => {
@@ -769,6 +807,7 @@ export function Dashboard() {
                 })}
               </ul>
             </div>
+            )}
           </CardContent>
         </Card>
       ) : null}
