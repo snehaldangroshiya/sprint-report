@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { BarChart3, Activity, CheckCircle, TrendingUp, Target, Calendar, Database, Github, Zap, AlertTriangle, ArrowUp, ArrowDown, Minus, Lightbulb } from 'lucide-react';
+import { BarChart3, Activity, CheckCircle, TrendingUp, Target, Calendar, Database, Github, Zap, AlertTriangle, ArrowUp, ArrowDown, Minus, Lightbulb, Clock } from 'lucide-react';
 import { api } from '../lib/api';
 import { combineAndSortSprints } from '../lib/sprint-utils';
 import { useConfiguration } from '../contexts/ConfigurationContext';
@@ -668,6 +668,8 @@ export function Dashboard() {
               <ul className="-mb-8">
                 {recentSprints.slice(0, sprintCount).map((sprint, idx) => {
                   const isActive = sprint.state.toLowerCase() === 'active';
+                  const isFuture = sprint.state.toLowerCase() === 'future';
+                  const isClosed = sprint.state.toLowerCase() === 'closed';
                   const sprintEndDate = sprint.endDate ? new Date(sprint.endDate) : null;
                   const sprintStartDate = sprint.startDate ? new Date(sprint.startDate) : null;
 
@@ -682,7 +684,14 @@ export function Dashboard() {
                     } else {
                       relativeTime = 'Overdue';
                     }
-                  } else if (!isActive && sprintEndDate) {
+                  } else if (isFuture && sprintStartDate) {
+                    const daysUntilStart = Math.ceil((sprintStartDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                    if (daysUntilStart > 0) {
+                      relativeTime = `Starts in ${daysUntilStart} day${daysUntilStart !== 1 ? 's' : ''}`;
+                    } else if (daysUntilStart === 0) {
+                      relativeTime = 'Starts today';
+                    }
+                  } else if (isClosed && sprintEndDate) {
                     const daysAgo = Math.floor((Date.now() - sprintEndDate.getTime()) / (1000 * 60 * 60 * 24));
                     relativeTime = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo} days ago`;
                   }
@@ -693,7 +702,7 @@ export function Dashboard() {
                         {idx !== Math.min(sprintCount - 1, recentSprints.length - 1) && (
                           <span
                             className={`absolute top-4 left-4 -ml-px h-full w-0.5 ${
-                              isActive ? 'bg-blue-200' : 'bg-gray-200'
+                              isActive ? 'bg-blue-200' : isFuture ? 'bg-amber-200' : 'bg-gray-200'
                             }`}
                             aria-hidden="true"
                           />
@@ -703,10 +712,14 @@ export function Dashboard() {
                             <span className={`h-8 w-8 rounded-full ${
                               isActive
                                 ? 'bg-blue-500 ring-4 ring-blue-100'
+                                : isFuture
+                                ? 'bg-amber-500 ring-4 ring-amber-100'
                                 : 'bg-green-100'
                             } flex items-center justify-center ring-8 ring-white`}>
                               {isActive ? (
                                 <Activity className="h-5 w-5 text-white" />
+                              ) : isFuture ? (
+                                <Clock className="h-5 w-5 text-white" />
                               ) : (
                                 <CheckCircle className="h-5 w-5 text-green-600" />
                               )}
@@ -716,13 +729,18 @@ export function Dashboard() {
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <p className={`text-sm font-medium ${
-                                  isActive ? 'text-blue-700' : 'text-gray-900'
+                                  isActive ? 'text-blue-700' : isFuture ? 'text-amber-700' : 'text-gray-900'
                                 }`}>
                                   {sprint.name}
                                 </p>
                                 {isActive && (
                                   <Badge variant="default" className="bg-blue-500 text-white text-xs">
                                     Active
+                                  </Badge>
+                                )}
+                                {isFuture && (
+                                  <Badge variant="default" className="bg-amber-500 text-white text-xs">
+                                    Future
                                   </Badge>
                                 )}
                               </div>
@@ -732,7 +750,7 @@ export function Dashboard() {
                                   <> • {sprintStartDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {sprintEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</>
                                 )}
                                 {relativeTime && (
-                                  <> • <span className={isActive ? 'text-blue-600 font-medium' : 'text-gray-400'}>
+                                  <> • <span className={isActive ? 'text-blue-600 font-medium' : isFuture ? 'text-amber-600 font-medium' : 'text-gray-400'}>
                                     {relativeTime}
                                   </span></>
                                 )}
