@@ -658,7 +658,7 @@ export function Dashboard() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">Filter:</span>
                   <Select value={sprintFilter} onValueChange={(value) => setSprintFilter(value as 'all' | 'active' | 'future' | 'closed')}>
-                    <SelectTrigger className="w-[120px]">
+                    <SelectTrigger className="w-auto min-w-[110px]">
                       <SelectValue placeholder="All sprints" />
                     </SelectTrigger>
                     <SelectContent>
@@ -672,7 +672,7 @@ export function Dashboard() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">Show:</span>
                   <Select value={sprintCount.toString()} onValueChange={(value) => setSprintCount(Number(value))}>
-                    <SelectTrigger className="w-[120px]">
+                    <SelectTrigger className="w-auto min-w-[90px]">
                       <SelectValue placeholder="5 sprints" />
                     </SelectTrigger>
                     <SelectContent>
