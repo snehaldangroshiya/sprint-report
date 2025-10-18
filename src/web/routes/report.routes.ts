@@ -1,18 +1,17 @@
 // Report generation and export routes
 import { Router } from 'express';
 
-import { PDFGenerator } from '@/utils/pdf-generator';
+import { ReportController } from '../controllers/report.controller';
 
 /**
- * Create report generation routes
- * These routes handle sprint report generation and PDF exports
+ * Create report generation routes using ReportController
  */
 export function createReportRouter(
+  reportController: ReportController,
   callMCPTool: (toolName: string, args: any) => Promise<any>,
   handleAPIError: (error: any, res: any, message: string) => void
 ): Router {
   const router = Router();
-  const pdfGenerator = new PDFGenerator();
 
   // Generate sprint report in various formats
   router.post('/sprint', async (req, res) => {
@@ -67,58 +66,16 @@ export function createReportRouter(
   });
 
   // Export sprint report as PDF
-  router.post('/export/sprint-report/pdf', async (req, res) => {
-    try {
-      const { reportData, options = {} } = req.body;
-
-      if (!reportData) {
-        res.status(400).json({ error: 'Report data is required' });
-        return;
-      }
-
-      const pdfBuffer = await pdfGenerator.generateSprintReportPDF(
-        reportData,
-        options
-      );
-
-      res.set({
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="sprint-report-${reportData.sprint?.name || 'unknown'}.pdf"`,
-        'Content-Length': pdfBuffer.length.toString(),
-      });
-
-      res.send(pdfBuffer);
-    } catch (error) {
-      handleAPIError(error, res, 'Failed to generate PDF report');
-    }
-  });
+  router.post(
+    '/export/sprint-report/pdf',
+    reportController.exportSprintReportPDF.bind(reportController)
+  );
 
   // Export analytics data as PDF
-  router.post('/export/analytics/pdf', async (req, res) => {
-    try {
-      const { analyticsData, options = {} } = req.body;
-
-      if (!analyticsData) {
-        res.status(400).json({ error: 'Analytics data is required' });
-        return;
-      }
-
-      const pdfBuffer = await pdfGenerator.generateAnalyticsPDF(
-        analyticsData,
-        options
-      );
-
-      res.set({
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': 'attachment; filename="analytics-report.pdf"',
-        'Content-Length': pdfBuffer.length.toString(),
-      });
-
-      res.send(pdfBuffer);
-    } catch (error) {
-      handleAPIError(error, res, 'Failed to generate analytics PDF');
-    }
-  });
+  router.post(
+    '/export/analytics/pdf',
+    reportController.exportAnalyticsPDF.bind(reportController)
+  );
 
   return router;
 }
