@@ -78,12 +78,25 @@ export function Dashboard() {
 
   const sprintsLoading = !boardId;
 
-  // Fetch velocity data for quick stats - using sprintCount from state
+  // Fetch velocity data for the filtered sprints - now using sprintFilter and sprintCount
   const { data: velocityData, isLoading: velocityLoading } = useQuery({
-    queryKey: ['velocity-stats', boardId, sprintCount],
+    queryKey: ['velocity-stats', boardId, sprintCount, sprintFilter],
     queryFn: () => api.getVelocityData(boardId, sprintCount),
     enabled: !!boardId,
   });
+
+  // Calculate filtered metrics based on filter selection
+  const displayedVelocity = velocityData?.average?.toFixed(1) || '0';
+  const displayedCompletionRate = velocityData?.sprints && velocityData.sprints.length > 0
+    ? (() => {
+        const total = velocityData.sprints.reduce((sum, s) => sum + s.commitment, 0);
+        const completed = velocityData.sprints.reduce((sum, s) => sum + s.completed, 0);
+        return total > 0 ? Math.round((completed / total) * 100) : 0;
+      })()
+    : 0;
+  const displayedLabel = sprintFilter === 'all' 
+    ? `Last ${sprintCount} sprint${sprintCount !== 1 ? 's' : ''}`
+    : `${sprintCount} ${sprintFilter} sprint${sprintCount !== 1 ? 's' : ''}`;
 
 
   return (
@@ -137,7 +150,7 @@ export function Dashboard() {
               <TrendingUp className="h-4 w-4 text-emerald-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{velocityData?.average?.toFixed(1) || '0'}</div>
+              <div className="text-3xl font-bold text-gray-900">{displayedVelocity}</div>
               <p className="text-xs text-emerald-600 font-medium">Story points/sprint</p>
             </CardContent>
           </Card>
@@ -154,15 +167,9 @@ export function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-gray-900">
-                {velocityData?.sprints && velocityData.sprints.length > 0
-                  ? (() => {
-                      const total = velocityData.sprints.reduce((sum, s) => sum + s.commitment, 0);
-                      const completed = velocityData.sprints.reduce((sum, s) => sum + s.completed, 0);
-                      return total > 0 ? Math.round((completed / total) * 100) : 0;
-                    })()
-                  : 0}%
+                {displayedCompletionRate}%
               </div>
-              <p className="text-xs text-violet-600 font-medium">Last {sprintCount} sprint{sprintCount !== 1 ? 's' : ''}</p>
+              <p className="text-xs text-violet-600 font-medium">{displayedLabel}</p>
             </CardContent>
           </Card>
         )}
