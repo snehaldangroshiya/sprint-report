@@ -154,11 +154,11 @@ export function Dashboard() {
           <Card className="bg-white border border-emerald-100 hover:border-emerald-300 transition-all duration-200 hover:shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">Average Velocity</CardTitle>
-              <TrendingUp className="h-4 w-4 text-emerald-600" />
+              <TrendingUp className="h-4 w-4 text-emerald-700" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-gray-900">{displayedVelocity}</div>
-              <p className="text-xs text-emerald-600 font-medium">Story points/sprint</p>
+              <p className="text-xs text-emerald-700 font-medium">Story points/sprint</p>
             </CardContent>
           </Card>
         )}
@@ -170,13 +170,13 @@ export function Dashboard() {
           <Card className="bg-white border border-violet-100 hover:border-violet-300 transition-all duration-200 hover:shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">Completion Rate</CardTitle>
-              <Target className="h-4 w-4 text-violet-600" />
+              <Target className="h-4 w-4 text-violet-700" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-gray-900">
                 {displayedCompletionRate}%
               </div>
-              <p className="text-xs text-violet-600 font-medium">{displayedLabel}</p>
+              <p className="text-xs text-violet-700 font-medium">{displayedLabel}</p>
             </CardContent>
           </Card>
         )}
@@ -188,11 +188,11 @@ export function Dashboard() {
           <Card className="bg-white border border-amber-100 hover:border-amber-300 transition-all duration-200 hover:shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">Sprints Tracked</CardTitle>
-              <Database className="h-4 w-4 text-amber-600" />
+              <Database className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-gray-900">{recentSprints?.length || 0}</div>
-              <p className="text-xs text-amber-600 font-medium">Recent sprints</p>
+              <p className="text-xs text-orange-600 font-medium">Recent sprints</p>
             </CardContent>
           </Card>
         )}
@@ -770,7 +770,7 @@ export function Dashboard() {
                               isActive
                                 ? 'bg-blue-500 ring-4 ring-blue-100'
                                 : isFuture
-                                ? 'bg-amber-500 ring-4 ring-amber-100'
+                                ? 'bg-amber-600 ring-4 ring-amber-100'
                                 : 'bg-green-100'
                             } flex items-center justify-center ring-8 ring-white`}>
                               {isActive ? (
@@ -786,7 +786,7 @@ export function Dashboard() {
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <p className={`text-sm font-medium ${
-                                  isActive ? 'text-blue-700' : isFuture ? 'text-amber-700' : 'text-gray-900'
+                                  isActive ? 'text-blue-700' : isFuture ? 'text-orange-600' : 'text-gray-900'
                                 }`}>
                                   {sprint.name}
                                 </p>
@@ -796,7 +796,7 @@ export function Dashboard() {
                                   </Badge>
                                 )}
                                 {isFuture && (
-                                  <Badge variant="default" className="bg-amber-500 text-white text-xs">
+                                  <Badge variant="default" className="bg-amber-600 text-white text-xs">
                                     Future
                                   </Badge>
                                 )}
@@ -807,7 +807,7 @@ export function Dashboard() {
                                   <> • {sprintStartDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {sprintEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</>
                                 )}
                                 {relativeTime && (
-                                  <> • <span className={isActive ? 'text-blue-600 font-medium' : isFuture ? 'text-amber-600 font-medium' : 'text-gray-400'}>
+                                  <> • <span className={isActive ? 'text-blue-600 font-medium' : isFuture ? 'text-orange-600 font-medium' : 'text-gray-400'}>
                                     {relativeTime}
                                   </span></>
                                 )}
