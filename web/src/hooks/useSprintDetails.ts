@@ -150,17 +150,46 @@ export function useSprintDetails({
   // Find current and previous sprint data for comparison
   const currentSprintData = useMemo(() => {
     if (!sprintData?.velocity?.sprints || !sprintId) return null;
-    return sprintData.velocity.sprints.find(s => s.id === sprintId);
-  }, [sprintData?.velocity, sprintId]);
+    const found = sprintData.velocity.sprints.find(s => s.id === sprintId);
+    
+    // If sprint not in velocity data but we have metrics, construct it
+    if (!found && sprintData?.metrics?.metrics) {
+      return {
+        id: sprintId,
+        name: sprintData.metrics.sprint?.name || 'Current Sprint',
+        velocity: sprintData.metrics.metrics.completedStoryPoints || 0,
+        commitment: sprintData.metrics.metrics.totalStoryPoints || 0,
+        completed: sprintData.metrics.metrics.completedStoryPoints || 0,
+      };
+    }
+    
+    return found;
+  }, [sprintData?.velocity, sprintData?.metrics, sprintId]);
 
   const previousSprintData = useMemo(() => {
     if (!sprintData?.velocity?.sprints || !sprintId) return null;
     const currentIndex = sprintData.velocity.sprints.findIndex(s => s.id === sprintId);
-    if (currentIndex > 0) {
-      return sprintData.velocity.sprints[currentIndex - 1];
+    
+    // Sprints are sorted newest → oldest, so currentIndex + 1 is the previous sprint chronologically
+    if (currentIndex >= 0 && currentIndex < sprintData.velocity.sprints.length - 1) {
+      return sprintData.velocity.sprints[currentIndex + 1];
     }
+    
+    // If current sprint not found in velocity data, try to find any previous sprint
+    // by looking at allSprints and finding the next sprint after current
+    if (currentIndex === -1 && sprintData?.allSprints) {
+      const allSprintsIndex = sprintData.allSprints.findIndex(s => s.id === sprintId);
+      if (allSprintsIndex >= 0 && allSprintsIndex < sprintData.allSprints.length - 1) {
+        const prevSprintId = sprintData.allSprints[allSprintsIndex + 1]?.id;
+        // Try to find this sprint in velocity data
+        if (prevSprintId) {
+          return sprintData.velocity.sprints.find(s => s.id === prevSprintId) || null;
+        }
+      }
+    }
+    
     return null;
-  }, [sprintData?.velocity, sprintId]);
+  }, [sprintData?.velocity, sprintData?.allSprints, sprintId]);
 
   const isLoading = sprintLoading || reportLoading;
   const error = sprintError || reportError;
