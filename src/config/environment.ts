@@ -3,8 +3,8 @@
 import * as dotenv from 'dotenv';
 import { z } from 'zod';
 
-import { AppConfig } from '@/types';
-import { ConfigurationError } from '@/utils/errors';
+import { AppConfig } from '../types';
+import { ConfigurationError } from '../utils/errors';
 
 // Load environment variables from .env file
 dotenv.config();

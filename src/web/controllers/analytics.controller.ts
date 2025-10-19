@@ -86,7 +86,7 @@ export class AnalyticsController {
             page,
           });
 
-          if (commits && commits.length > 0) {
+          if (Array.isArray(commits) && commits.length > 0) {
             allCommits.push(...commits);
             hasMore = commits.length === 100;
             page++;
@@ -118,7 +118,7 @@ export class AnalyticsController {
               }
             );
 
-            if (prs && prs.length > 0) {
+            if (Array.isArray(prs) && prs.length > 0) {
               allPRs.push(...prs);
               hasMore = prs.length === 100;
               page++;

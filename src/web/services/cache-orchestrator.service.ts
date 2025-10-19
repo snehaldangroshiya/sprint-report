@@ -7,11 +7,12 @@ import { EnhancedMCPServer } from '../../server/enhanced-mcp-server';
 import { getLogger } from '../../utils/logger';
 
 import { MCPBridge } from './mcp-bridge.service';
+import type { Logger, Issue, Changelog } from './types';
 
 export class CacheOrchestrator {
   private mcpServer: EnhancedMCPServer;
   private mcpBridge: MCPBridge;
-  private logger: any;
+  private logger: Logger;
 
   constructor(mcpServer: EnhancedMCPServer, mcpBridge: MCPBridge) {
     this.mcpServer = mcpServer;
@@ -39,8 +40,8 @@ export class CacheOrchestrator {
           const sprint = await this.mcpBridge.callTool('jira_get_sprint', {
             sprint_id: sprintId,
           });
-          if (sprint) {
-            sprintState = sprint.state;
+          if (sprint && typeof sprint === 'object' && 'state' in sprint) {
+            sprintState = (sprint as Record<string, unknown>).state;
             // Cache sprint state for 1 hour
             await cacheManager.set(sprintStateKey, sprintState, {
               ttl: 3600000,
@@ -79,13 +80,11 @@ export class CacheOrchestrator {
    */
   async scheduleBackgroundRefresh(
     cacheKey: string,
-    refreshFunction: () => Promise<any>,
+    refreshFunction: () => Promise<unknown>,
     ttl: number
   ): Promise<void> {
     const cacheManager = this.mcpServer.getContext().cacheManager;
-    const cacheMetadata = (await cacheManager.get(
-      `${cacheKey}:metadata`
-    )) as any;
+    const cacheMetadata = await cacheManager.get(`${cacheKey}:metadata`);
 
     if (
       cacheMetadata &&
@@ -175,7 +174,10 @@ export class CacheOrchestrator {
   /**
    * Invalidate cache for specific issue and related sprints
    */
-  async invalidateIssueCache(issue: any, changelog: any): Promise<void> {
+  async invalidateIssueCache(
+    issue: Issue,
+    changelog: Changelog
+  ): Promise<void> {
     try {
       // Find all sprints this issue belongs to
       const sprintIds: string[] = [];

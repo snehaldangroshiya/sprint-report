@@ -6,9 +6,11 @@
 import { EnhancedMCPServer } from '../../server/enhanced-mcp-server';
 import { getLogger } from '../../utils/logger';
 
+import type { Logger } from './types';
+
 export class MCPBridge {
   private mcpServer: EnhancedMCPServer;
-  private logger: any;
+  private logger: Logger;
 
   constructor(mcpServer: EnhancedMCPServer) {
     this.mcpServer = mcpServer;
@@ -18,7 +20,10 @@ export class MCPBridge {
   /**
    * Execute MCP tool with unified error handling
    */
-  async callTool(toolName: string, args: any): Promise<any> {
+  async callTool(
+    toolName: string,
+    args: Record<string, unknown>
+  ): Promise<unknown> {
     try {
       const context = this.mcpServer.getContext();
 
@@ -27,6 +32,7 @@ export class MCPBridge {
         argKeys: Object.keys(args),
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const toolRegistry = (this.mcpServer as any).toolRegistry;
       const result = await toolRegistry.executeTool(toolName, args, context);
 
@@ -79,23 +85,26 @@ export class MCPBridge {
    */
   async generateComprehensiveReport(
     _sprintId: string,
-    toolParams: any
-  ): Promise<any> {
+    toolParams: Record<string, unknown>
+  ): Promise<Record<string, unknown>> {
     const result = await this.callTool('generate_sprint_report', toolParams);
 
     // Extract content from MCP tool result
-    let reportData;
+    let reportData: Record<string, unknown>;
     if (typeof result === 'object' && result !== null && 'content' in result) {
-      const content = result.content;
-      reportData = typeof content === 'string' ? JSON.parse(content) : content;
+      const content = (result as Record<string, unknown>).content;
+      reportData =
+        typeof content === 'string'
+          ? (JSON.parse(content) as Record<string, unknown>)
+          : (content as Record<string, unknown>);
     } else if (typeof result === 'string') {
-      reportData = JSON.parse(result);
+      reportData = JSON.parse(result) as Record<string, unknown>;
     } else {
-      reportData = result;
+      reportData = result as Record<string, unknown>;
     }
 
     // Reorganize data to match frontend expectations
-    const response: any = {
+    const response: Record<string, unknown> = {
       ...reportData,
       tier1:
         reportData.sprintGoal ||
@@ -136,13 +145,21 @@ export class MCPBridge {
           : undefined,
       enhanced_github: reportData.enhancedGitHubMetrics
         ? {
-            commit_activity: reportData.enhancedGitHubMetrics.commitActivity,
-            pull_request_stats:
-              reportData.enhancedGitHubMetrics.pullRequestStats,
-            code_change_stats: reportData.enhancedGitHubMetrics.codeChanges,
-            pr_to_issue_traceability:
-              reportData.enhancedGitHubMetrics.prToIssueTraceability,
-            code_review_stats: reportData.enhancedGitHubMetrics.codeReviewStats,
+            commit_activity: (
+              reportData.enhancedGitHubMetrics as Record<string, unknown>
+            ).commitActivity,
+            pull_request_stats: (
+              reportData.enhancedGitHubMetrics as Record<string, unknown>
+            ).pullRequestStats,
+            code_change_stats: (
+              reportData.enhancedGitHubMetrics as Record<string, unknown>
+            ).codeChanges,
+            pr_to_issue_traceability: (
+              reportData.enhancedGitHubMetrics as Record<string, unknown>
+            ).prToIssueTraceability,
+            code_review_stats: (
+              reportData.enhancedGitHubMetrics as Record<string, unknown>
+            ).codeReviewStats,
           }
         : undefined,
     };

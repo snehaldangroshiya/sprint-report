@@ -335,7 +335,7 @@ describe('CacheOrchestrator', () => {
         },
       };
 
-      await cacheOrchestrator.invalidateIssueCache(issue, null);
+      await cacheOrchestrator.invalidateIssueCache(issue, {});
 
       expect(mockCacheManager.delete).toHaveBeenCalledWith(
         'sprint:500:issues:*'
@@ -399,7 +399,7 @@ describe('CacheOrchestrator', () => {
     it('should handle issues without sprints', async () => {
       const issue = { key: 'PROJ-NO-SPRINT', fields: {} };
 
-      await cacheOrchestrator.invalidateIssueCache(issue, null);
+      await cacheOrchestrator.invalidateIssueCache(issue, {});
 
       // Should not crash, but no sprints to invalidate
       expect(mockCacheManager.delete).not.toHaveBeenCalled();
@@ -413,7 +413,7 @@ describe('CacheOrchestrator', () => {
       mockCacheManager.delete.mockRejectedValue(new Error('Delete failed'));
 
       // Should not throw error
-      await cacheOrchestrator.invalidateIssueCache(issue, null);
+      await cacheOrchestrator.invalidateIssueCache(issue, {});
 
       expect(mockCacheManager.delete).toHaveBeenCalled();
     });
@@ -488,9 +488,9 @@ describe('CacheOrchestrator', () => {
       expect(mockCacheManager.delete).not.toHaveBeenCalled();
     });
 
-    it('should handle changelog with null items', async () => {
+    it('should handle changelog with undefined items', async () => {
       const issue = { key: 'PROJ-NULL-ITEMS' };
-      const changelog = { items: null };
+      const changelog = {};
 
       // Should not crash
       await cacheOrchestrator.invalidateIssueCache(issue, changelog);

@@ -7,11 +7,23 @@ import { EnhancedMCPServer } from '../../server/enhanced-mcp-server';
 import { getLogger } from '../../utils/logger';
 
 import { MCPBridge } from './mcp-bridge.service';
+import type {
+  Logger,
+  Commit,
+  PullRequest,
+  MonthlyData,
+  VelocityResult,
+  TeamPerformance,
+  IssueTypeDistribution,
+  Sprint,
+  Issue,
+  SprintVelocityData,
+} from './types';
 
 export class AnalyticsAggregator {
   private mcpServer: EnhancedMCPServer;
   private mcpBridge: MCPBridge;
-  private logger: any;
+  private logger: Logger;
 
   constructor(mcpServer: EnhancedMCPServer, mcpBridge: MCPBridge) {
     this.mcpServer = mcpServer;
@@ -23,11 +35,11 @@ export class AnalyticsAggregator {
    * Aggregate commits and PRs by month with zero-filling
    */
   aggregateCommitsByMonth(
-    commits: any[],
-    pullRequests: any[] = [],
+    commits: Commit[],
+    pullRequests: PullRequest[] = [],
     startDate?: Date,
     endDate?: Date
-  ): any[] {
+  ): MonthlyData[] {
     const monthlyData: { [key: string]: { commits: number; prs: number } } = {};
 
     // Initialize all months in the range with zeros if dates provided
@@ -90,7 +102,7 @@ export class AnalyticsAggregator {
   async calculateVelocityData(
     boardId: string,
     sprintCount: number
-  ): Promise<any> {
+  ): Promise<VelocityResult> {
     try {
       const cacheManager = this.mcpServer.getContext().cacheManager;
 
@@ -107,25 +119,27 @@ export class AnalyticsAggregator {
       }
 
       // Sort by start date descending (newest first) before slicing
-      const sortedSprints = (sprints as any[]).sort((a: any, b: any) => {
-        if (!a.startDate) return 1;
-        if (!b.startDate) return -1;
-        return (
-          new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-        );
-      });
+      const sortedSprints = (Array.isArray(sprints) ? sprints : []).sort(
+        (a: Sprint, b: Sprint) => {
+          if (!a.startDate) return 1;
+          if (!b.startDate) return -1;
+          return (
+            new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+          );
+        }
+      );
 
       const recentSprints = sortedSprints.slice(0, sprintCount);
 
       // Layer 2: Check cache for individual sprint issues (batch operation)
       const sprintIssueKeys = recentSprints.map(
-        (sprint: any) => `sprint:${sprint.id}:issues`
+        (sprint: Sprint) => `sprint:${sprint.id}:issues`
       );
       const cachedIssues = await cacheManager.getMany(sprintIssueKeys);
 
       // Layer 3: Fetch missing sprint issues in parallel
       const missingSprintIds: string[] = [];
-      const sprintIssuesMap = new Map<string, any[]>();
+      const sprintIssuesMap = new Map<string, Issue[]>();
 
       for (let i = 0; i < recentSprints.length; i++) {
         const sprint = recentSprints[i];
@@ -172,26 +186,26 @@ export class AnalyticsAggregator {
       }
 
       // Calculate velocity metrics
-      const sprintData = [];
+      const sprintData: SprintVelocityData[] = [];
       let totalVelocity = 0;
 
       for (const sprint of recentSprints) {
         const issues = sprintIssuesMap.get(sprint.id) || [];
 
         const completed = issues.filter(
-          (issue: any) =>
+          (issue: Issue) =>
             issue?.status?.toLowerCase() === 'done' ||
             issue?.status?.toLowerCase() === 'closed' ||
             issue?.status?.toLowerCase() === 'resolved'
         );
 
         const committedPoints = issues.reduce(
-          (sum: number, issue: any) => sum + (issue?.storyPoints || 0),
+          (sum: number, issue: Issue) => sum + (issue?.storyPoints || 0),
           0
         );
 
         const completedPoints = completed.reduce(
-          (sum: number, issue: any) => sum + (issue?.storyPoints || 0),
+          (sum: number, issue: Issue) => sum + (issue?.storyPoints || 0),
           0
         );
 
@@ -246,7 +260,7 @@ export class AnalyticsAggregator {
   async calculateTeamPerformance(
     boardId: string,
     sprintCount: number
-  ): Promise<any[]> {
+  ): Promise<TeamPerformance[]> {
     try {
       const cacheManager = this.mcpServer.getContext().cacheManager;
 
@@ -263,13 +277,15 @@ export class AnalyticsAggregator {
       }
 
       // Sort by start date descending (newest first)
-      const sortedSprints = (sprints as any[]).sort((a: any, b: any) => {
-        if (!a.startDate) return 1;
-        if (!b.startDate) return -1;
-        return (
-          new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-        );
-      });
+      const sortedSprints = (Array.isArray(sprints) ? sprints : []).sort(
+        (a: Sprint, b: Sprint) => {
+          if (!a.startDate) return 1;
+          if (!b.startDate) return -1;
+          return (
+            new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+          );
+        }
+      );
 
       const recentSprints = sortedSprints.slice(0, sprintCount);
 
@@ -283,12 +299,12 @@ export class AnalyticsAggregator {
 
       // Reuse cached sprint issues (batch operation)
       const sprintIssueKeys = recentSprints.map(
-        (sprint: any) => `sprint:${sprint.id}:issues`
+        (sprint: Sprint) => `sprint:${sprint.id}:issues`
       );
       const cachedIssues = await cacheManager.getMany(sprintIssueKeys);
 
       const missingSprintIds: string[] = [];
-      const sprintIssuesMap = new Map<string, any[]>();
+      const sprintIssuesMap = new Map<string, Issue[]>();
 
       for (let i = 0; i < recentSprints.length; i++) {
         const sprint = recentSprints[i];
@@ -334,33 +350,35 @@ export class AnalyticsAggregator {
       }
 
       // Calculate performance metrics
-      const performance = recentSprints.map((sprint: any) => {
-        const issues = sprintIssuesMap.get(sprint.id) || [];
+      const performance: TeamPerformance[] = recentSprints.map(
+        (sprint: Sprint) => {
+          const issues = sprintIssuesMap.get(sprint.id) || [];
 
-        const completed = issues.filter(
-          (issue: any) =>
-            issue.status?.toLowerCase() === 'done' ||
-            issue.status?.toLowerCase() === 'closed' ||
-            issue.status?.toLowerCase() === 'resolved'
-        );
+          const completed = issues.filter(
+            (issue: Issue) =>
+              issue.status?.toLowerCase() === 'done' ||
+              issue.status?.toLowerCase() === 'closed' ||
+              issue.status?.toLowerCase() === 'resolved'
+          );
 
-        const plannedPoints = issues.reduce(
-          (sum: number, issue: any) => sum + (issue?.storyPoints || 0),
-          0
-        );
+          const plannedPoints = issues.reduce(
+            (sum: number, issue: Issue) => sum + (issue?.storyPoints || 0),
+            0
+          );
 
-        const completedPoints = completed.reduce(
-          (sum: number, issue: any) => sum + (issue?.storyPoints || 0),
-          0
-        );
+          const completedPoints = completed.reduce(
+            (sum: number, issue: Issue) => sum + (issue?.storyPoints || 0),
+            0
+          );
 
-        return {
-          name: sprint.name,
-          planned: plannedPoints,
-          completed: completedPoints,
-          velocity: completedPoints,
-        };
-      });
+          return {
+            name: sprint.name,
+            planned: plannedPoints,
+            completed: completedPoints,
+            velocity: completedPoints,
+          };
+        }
+      );
 
       return performance;
     } catch (error) {
@@ -375,7 +393,7 @@ export class AnalyticsAggregator {
   async calculateIssueTypeDistribution(
     boardId: string,
     sprintCount: number
-  ): Promise<any[]> {
+  ): Promise<IssueTypeDistribution[]> {
     try {
       const cacheManager = this.mcpServer.getContext().cacheManager;
 
@@ -392,24 +410,26 @@ export class AnalyticsAggregator {
       }
 
       // Sort by start date descending
-      const sortedSprints = (sprints as any[]).sort((a: any, b: any) => {
-        if (!a.startDate) return 1;
-        if (!b.startDate) return -1;
-        return (
-          new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-        );
-      });
+      const sortedSprints = (Array.isArray(sprints) ? sprints : []).sort(
+        (a: Sprint, b: Sprint) => {
+          if (!a.startDate) return 1;
+          if (!b.startDate) return -1;
+          return (
+            new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+          );
+        }
+      );
 
       const recentSprints = sortedSprints.slice(0, sprintCount);
 
       // Reuse cached sprint issues
       const sprintIssueKeys = recentSprints.map(
-        (sprint: any) => `sprint:${sprint.id}:issues`
+        (sprint: Sprint) => `sprint:${sprint.id}:issues`
       );
       const cachedIssues = await cacheManager.getMany(sprintIssueKeys);
 
       const missingSprintIds: string[] = [];
-      const allIssues: any[] = [];
+      const allIssues: Issue[] = [];
 
       for (let i = 0; i < recentSprints.length; i++) {
         const sprint = recentSprints[i];
@@ -445,7 +465,7 @@ export class AnalyticsAggregator {
 
       // Count issue types
       const issueTypeCounts: { [key: string]: number } = {};
-      allIssues.forEach((issue: any) => {
+      allIssues.forEach((issue: Issue) => {
         const issueType = issue?.issueType || issue?.type || 'Unknown';
         issueTypeCounts[issueType] = (issueTypeCounts[issueType] || 0) + 1;
       });
