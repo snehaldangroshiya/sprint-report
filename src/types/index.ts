@@ -903,3 +903,74 @@ export interface PerformanceMetric {
   tags: Record<string, string>;
   context?: Record<string, any> | undefined;
 }
+
+// ============================================================================
+// MCP RESOURCE & PROMPT TYPES (P0 Type Safety)
+// ============================================================================
+
+/**
+ * MCP Resource Definition
+ */
+export interface MCPResourceDefinition {
+  uri: string;
+  name: string;
+  description: string;
+  mimeType: string;
+}
+
+/**
+ * MCP Resource Content Response
+ */
+export interface MCPResourceContent {
+  uri: string;
+  mimeType: string;
+  text: string;
+}
+
+/**
+ * MCP Resource Response
+ */
+export interface MCPResourceResponse {
+  contents: MCPResourceContent[];
+}
+
+/**
+ * MCP Prompt Definition
+ */
+export interface MCPPromptDefinition {
+  name: string;
+  description: string;
+  arguments: Array<{
+    name: string;
+    description: string;
+    required: boolean;
+  }>;
+}
+
+/**
+ * MCP Prompt Message
+ */
+export interface MCPPromptMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: {
+    type: 'text' | 'image';
+    text: string;
+  };
+}
+
+/**
+ * MCP Prompt Response
+ */
+export interface MCPPromptResponse {
+  messages: MCPPromptMessage[];
+}
+
+/**
+ * Health Check Result from service clients
+ */
+export interface ServiceHealthResult {
+  healthy: boolean;
+  latency?: number;
+  responseTime?: number;
+  error?: string;
+}

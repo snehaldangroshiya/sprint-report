@@ -16,6 +16,7 @@ import {
   initializeGlobalPerformanceMonitor,
   measurePerformance,
 } from '../performance/performance-monitor';
+import type { ServiceHealth } from '../performance/performance-monitor';
 
 import { ToolRegistry } from './tool-registry';
 
@@ -31,7 +32,16 @@ import { AnalyticsService } from '@/services/analytics-service';
 import { ExportService } from '@/services/export-service';
 import { SprintService } from '@/services/sprint-service';
 import { ReportTools } from '@/tools/report-tools';
-import { AppConfig, ServerInfo, HealthStatus } from '@/types';
+import {
+  AppConfig,
+  ServerInfo,
+  HealthStatus,
+  MCPResourceDefinition,
+  MCPResourceResponse,
+  MCPPromptDefinition,
+  MCPPromptResponse,
+  ServiceHealthResult,
+} from '@/types';
 import { BaseError } from '@/utils/errors';
 import { getLogger } from '@/utils/logger';
 import { ServiceRateLimiter } from '@/utils/rate-limiter';
@@ -163,7 +173,8 @@ export class EnhancedMCPServer {
       }
 
       const { uri } = request.params;
-      return await this.readResource(uri);
+      const response = await this.readResource(uri);
+      return response as any; // MCP SDK type compatibility
     });
 
     // List available prompts
@@ -176,7 +187,8 @@ export class EnhancedMCPServer {
     // Get prompt with arguments
     this.server.setRequestHandler(GetPromptRequestSchema, async request => {
       const { name, arguments: args } = request.params;
-      return await this.getPrompt(name, args || {});
+      const response = await this.getPrompt(name, args || {});
+      return response as any; // MCP SDK type compatibility
     });
   }
 
@@ -208,7 +220,7 @@ export class EnhancedMCPServer {
     });
   }
 
-  private getResourceDefinitions(): any[] {
+  private getResourceDefinitions(): MCPResourceDefinition[] {
     return [
       {
         uri: 'sprint://active',
@@ -249,7 +261,7 @@ export class EnhancedMCPServer {
     ];
   }
 
-  private async readResource(uri: string): Promise<any> {
+  private async readResource(uri: string): Promise<MCPResourceResponse> {
     if (!this.context) {
       throw new BaseError(
         'SERVER_NOT_INITIALIZED',
@@ -290,12 +302,12 @@ export class EnhancedMCPServer {
     }
   }
 
-  private async readSprintResource(path: string): Promise<any> {
+  private async readSprintResource(path: string): Promise<MCPResourceResponse> {
     if (path === 'active') {
       // Get active sprint for default board (6306)
       const boardId = '6306';
       const allSprints = await this.context!.sprintService.getSprints(boardId);
-      const activeSprints = allSprints.filter((s: any) => s.state === 'active');
+      const activeSprints = allSprints.filter(s => s.state === 'active');
 
       if (activeSprints.length === 0) {
         return {
@@ -346,7 +358,7 @@ export class EnhancedMCPServer {
     } else if (path === 'recent') {
       const boardId = '6306';
       const allSprints = await this.context!.sprintService.getSprints(boardId);
-      const closedSprints = allSprints.filter((s: any) => s.state === 'closed');
+      const closedSprints = allSprints.filter(s => s.state === 'closed');
       const recent = closedSprints.slice(0, 5); // Last 5 sprints
 
       return {
@@ -372,7 +384,9 @@ export class EnhancedMCPServer {
     );
   }
 
-  private async readReportsResource(path: string): Promise<any> {
+  private async readReportsResource(
+    path: string
+  ): Promise<MCPResourceResponse> {
     if (path === 'recent') {
       const reports = this.context!.reportGenerator.getAllReports();
       const recent = reports.slice(0, 10); // Last 10 reports
@@ -400,7 +414,9 @@ export class EnhancedMCPServer {
     );
   }
 
-  private async readAnalyticsResource(path: string): Promise<any> {
+  private async readAnalyticsResource(
+    path: string
+  ): Promise<MCPResourceResponse> {
     if (path === 'dashboard') {
       const metrics =
         await this.context!.analyticsService.getDashboardMetrics();
@@ -424,7 +440,7 @@ export class EnhancedMCPServer {
     );
   }
 
-  private async readConfigResource(path: string): Promise<any> {
+  private async readConfigResource(path: string): Promise<MCPResourceResponse> {
     if (path === 'server') {
       const config = {
         server: this.getServerInfo(),
@@ -452,7 +468,7 @@ export class EnhancedMCPServer {
     );
   }
 
-  private async readHealthResource(path: string): Promise<any> {
+  private async readHealthResource(path: string): Promise<MCPResourceResponse> {
     if (path === 'status') {
       const health = await this.getHealthStatus();
 
@@ -475,7 +491,7 @@ export class EnhancedMCPServer {
     );
   }
 
-  private getPromptDefinitions(): any[] {
+  private getPromptDefinitions(): MCPPromptDefinition[] {
     return [
       {
         name: 'generate-sprint-report',
@@ -573,8 +589,8 @@ export class EnhancedMCPServer {
 
   private async getPrompt(
     name: string,
-    args: Record<string, any>
-  ): Promise<any> {
+    args: Record<string, string | boolean>
+  ): Promise<MCPPromptResponse> {
     switch (name) {
       case 'generate-sprint-report':
         return this.getSprintReportPrompt(args);
@@ -596,7 +612,9 @@ export class EnhancedMCPServer {
     }
   }
 
-  private async getSprintReportPrompt(args: Record<string, any>): Promise<any> {
+  private async getSprintReportPrompt(
+    args: Record<string, string | boolean>
+  ): Promise<MCPPromptResponse> {
     const { sprint_id, format = 'markdown', include_github = 'true' } = args;
 
     if (!sprint_id) {
@@ -643,8 +661,8 @@ Focus on actionable insights and clear data visualization.`;
   }
 
   private async getSprintAnalysisPrompt(
-    args: Record<string, any>
-  ): Promise<any> {
+    args: Record<string, string | boolean>
+  ): Promise<MCPPromptResponse> {
     const { sprint_id, compare_previous = 'true' } = args;
 
     if (!sprint_id) {
@@ -700,11 +718,11 @@ Provide actionable recommendations for improvement.`;
   }
 
   private async getCompareSprintsPrompt(
-    args: Record<string, any>
-  ): Promise<any> {
+    args: Record<string, string | boolean>
+  ): Promise<MCPPromptResponse> {
     const { sprint_ids, metrics = 'all' } = args;
 
-    if (!sprint_ids) {
+    if (!sprint_ids || typeof sprint_ids !== 'string') {
       throw new BaseError(
         'MISSING_ARGUMENT',
         'sprint_ids is required',
@@ -761,7 +779,9 @@ Present the comparison in a clear table format with trend indicators (↑/↓/�
     };
   }
 
-  private async getReleaseNotesPrompt(args: Record<string, any>): Promise<any> {
+  private async getReleaseNotesPrompt(
+    args: Record<string, string | boolean>
+  ): Promise<MCPPromptResponse> {
     const { sprint_id, repository } = args;
 
     if (!sprint_id) {
@@ -824,8 +844,8 @@ Use clear, user-friendly language. Focus on value delivered to users.`;
   }
 
   private async getExecutiveSummaryPrompt(
-    args: Record<string, any>
-  ): Promise<any> {
+    args: Record<string, string | boolean>
+  ): Promise<MCPPromptResponse> {
     const { sprint_id, focus_areas = 'achievements,risks,next-steps' } = args;
 
     if (!sprint_id) {
@@ -837,7 +857,11 @@ Use clear, user-friendly language. Focus on value delivered to users.`;
       );
     }
 
-    const areas = focus_areas.split(',').map((a: string) => a.trim());
+    const focusAreasStr =
+      typeof focus_areas === 'string'
+        ? focus_areas
+        : 'achievements,risks,next-steps';
+    const areas = focusAreasStr.split(',').map((a: string) => a.trim());
 
     const prompt = `Generate an executive-level summary for sprint ${sprint_id}.
 
@@ -1075,16 +1099,22 @@ Keep it concise (max 1 page). Use metrics to support insights. Highlight decisio
     }, this.healthCheckIntervalMs);
   }
 
-  private convertHealthResult(result: PromiseSettledResult<any>): any {
+  private convertHealthResult(
+    result: PromiseSettledResult<ServiceHealthResult>
+  ): ServiceHealth {
     if (result.status === 'fulfilled') {
       const health = result.value;
-      return {
+      const healthStatus: ServiceHealth = {
         status: health.healthy ? 'healthy' : 'unhealthy',
         latency: health.latency || 0,
         errorRate: 0,
         consecutiveErrors: 0,
-        lastError: health.error,
       };
+      // Only add lastError if error exists (exactOptionalPropertyTypes compatibility)
+      if (health.error) {
+        healthStatus.lastError = health.error;
+      }
+      return healthStatus;
     } else {
       return {
         status: 'unhealthy',
@@ -1282,7 +1312,12 @@ Keep it concise (max 1 page). Use metrics to support insights. Highlight decisio
     await this.context.cacheOptimizer.warmCache(context);
   }
 
-  async optimizeCache(): Promise<any> {
+  async optimizeCache(): Promise<{
+    keysProcessed: number;
+    spaceSaved: number;
+    actionsPerformed: Record<string, number>;
+    recommendations: string[];
+  }> {
     if (!this.context) {
       throw new BaseError(
         'SERVER_NOT_INITIALIZED',
@@ -1295,7 +1330,11 @@ Keep it concise (max 1 page). Use metrics to support insights. Highlight decisio
     return await this.context.cacheOptimizer.optimizeCache();
   }
 
-  async getPerformanceMetrics(): Promise<any> {
+  async getPerformanceMetrics(): Promise<{
+    summary: Record<string, unknown>;
+    recentSnapshots: unknown[];
+    cacheOptimization: unknown;
+  }> {
     return {
       summary: this.performanceMonitor.getPerformanceSummary(),
       recentSnapshots: this.performanceMonitor.getRecentSnapshots(10),
