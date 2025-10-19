@@ -91,7 +91,8 @@ export class CacheOrchestrator {
       typeof cacheMetadata === 'object' &&
       'createdAt' in cacheMetadata
     ) {
-      const age = Date.now() - cacheMetadata.createdAt;
+      const age =
+        Date.now() - (cacheMetadata as { createdAt: number }).createdAt;
       const halfLife = ttl / 2;
 
       if (age > halfLife) {
