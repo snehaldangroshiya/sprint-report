@@ -2,6 +2,7 @@
 // Compatible with Azure OpenAI and Azure ML deployed models
 
 import OpenAI from 'openai';
+
 import { EnhancedServerContext } from '@/server/enhanced-mcp-server';
 import { ToolRegistry } from '@/server/tool-registry';
 import { createLogger } from '@/utils/logger';
@@ -40,7 +41,7 @@ export interface ToolCall {
 
 /**
  * Azure AI Foundry Agent
- * 
+ *
  * Supports:
  * - Azure AI Foundry deployed models (Llama, Mistral, Phi, etc.)
  * - Azure OpenAI Service
@@ -73,11 +74,23 @@ export class AzureAgent {
     this.config = {
       endpoint: config.endpoint || process.env.AZURE_OPENAI_ENDPOINT || '',
       apiKey: config.apiKey || process.env.AZURE_OPENAI_API_KEY || '',
-      deploymentName: config.deploymentName || process.env.AZURE_OPENAI_DEPLOYMENT_NAME || 'llama-3-1-8b',
-      temperature: config.temperature ?? parseFloat(process.env.AZURE_OPENAI_TEMPERATURE || '0.7'),
-      maxTokens: config.maxTokens ?? parseInt(process.env.AZURE_OPENAI_MAX_TOKENS || '4096'),
-      maxIterations: config.maxIterations ?? parseInt(process.env.AZURE_OPENAI_MAX_ITERATIONS || '10'),
-      apiVersion: config.apiVersion || process.env.AZURE_OPENAI_API_VERSION || '2024-02-01',
+      deploymentName:
+        config.deploymentName ||
+        process.env.AZURE_OPENAI_DEPLOYMENT_NAME ||
+        'llama-3-1-8b',
+      temperature:
+        config.temperature ??
+        parseFloat(process.env.AZURE_OPENAI_TEMPERATURE || '0.7'),
+      maxTokens:
+        config.maxTokens ??
+        parseInt(process.env.AZURE_OPENAI_MAX_TOKENS || '4096'),
+      maxIterations:
+        config.maxIterations ??
+        parseInt(process.env.AZURE_OPENAI_MAX_ITERATIONS || '10'),
+      apiVersion:
+        config.apiVersion ||
+        process.env.AZURE_OPENAI_API_VERSION ||
+        '2024-02-01',
     };
 
     logger.info('Azure Agent initialized', {
@@ -93,9 +106,9 @@ export class AzureAgent {
     userPrompt: string,
     conversationHistory: AgentMessage[] = []
   ): Promise<AgentResponse> {
-    logger.info('Azure agent query started', { 
+    logger.info('Azure agent query started', {
       prompt: userPrompt.substring(0, 100),
-      deployment: this.config.deploymentName 
+      deployment: this.config.deploymentName,
     });
 
     const toolsUsed: string[] = [];
@@ -110,10 +123,12 @@ export class AzureAgent {
       });
     } else {
       // Convert conversation history
-      messages.push(...conversationHistory.map(msg => ({
-        role: msg.role,
-        content: msg.content,
-      })));
+      messages.push(
+        ...conversationHistory.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+        }))
+      );
     }
 
     // Add user message
@@ -145,7 +160,8 @@ export class AzureAgent {
           requestParams.tool_choice = 'auto';
         }
 
-        const response = await this.client.chat.completions.create(requestParams);
+        const response =
+          await this.client.chat.completions.create(requestParams);
 
         const choice = response.choices[0];
         if (!choice) {
@@ -164,7 +180,7 @@ export class AzureAgent {
           // Process tool calls
           for (const toolCall of choice.message.tool_calls) {
             if (toolCall.type !== 'function') continue;
-            
+
             const toolName = toolCall.function.name;
             const toolArgs = JSON.parse(toolCall.function.arguments);
 
@@ -183,7 +199,8 @@ export class AzureAgent {
               const resultText =
                 typeof result === 'string'
                   ? result
-                  : result.content?.[0]?.text || JSON.stringify(result, null, 2);
+                  : result.content?.[0]?.text ||
+                    JSON.stringify(result, null, 2);
 
               // Add tool result to messages
               messages.push({
@@ -195,7 +212,7 @@ export class AzureAgent {
               logger.info(`Tool ${toolName} executed successfully`);
             } catch (error) {
               logger.error(error as Error, `Tool ${toolName} failed`);
-              
+
               // Add error to messages so agent can handle it
               messages.push({
                 role: 'tool',
@@ -226,12 +243,12 @@ export class AzureAgent {
         };
       } catch (error) {
         logger.error(error as Error, 'Agent iteration failed');
-        
+
         // Check if it's a rate limit or service error
         if (error instanceof Error && error.message.includes('rate limit')) {
           throw new Error('Azure rate limit exceeded. Please try again later.');
         }
-        
+
         throw error;
       }
     }
@@ -290,7 +307,10 @@ Guidelines:
       .filter(msg => msg.role === 'user' || msg.role === 'assistant')
       .map(msg => ({
         role: msg.role as 'user' | 'assistant',
-        content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+        content:
+          typeof msg.content === 'string'
+            ? msg.content
+            : JSON.stringify(msg.content),
       }));
   }
 
@@ -316,10 +336,12 @@ Guidelines:
         content: this.buildSystemPrompt(),
       });
     } else {
-      messages.push(...conversationHistory.map(msg => ({
-        role: msg.role,
-        content: msg.content,
-      })));
+      messages.push(
+        ...conversationHistory.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+        }))
+      );
     }
 
     messages.push({
@@ -338,20 +360,18 @@ Guidelines:
           messages,
           temperature: this.config.temperature,
           max_tokens: this.config.maxTokens,
-          stream: true as true, // Force TypeScript to use streaming overload
+          stream: true as const, // Force TypeScript to use streaming overload
           ...(tools.length > 0 && { tools, tool_choice: 'auto' as const }),
         };
 
         const stream = await this.client.chat.completions.create(streamParams);
 
-        let currentMessage = '';
-        let toolCalls: any[] = [];
+        const toolCalls: any[] = [];
 
         for await (const chunk of stream) {
           const delta = chunk.choices[0]?.delta;
 
           if (delta?.content) {
-            currentMessage += delta.content;
             yield {
               type: 'text',
               content: delta.content,
@@ -386,7 +406,8 @@ Guidelines:
                   const resultText =
                     typeof result === 'string'
                       ? result
-                      : result.content?.[0]?.text || JSON.stringify(result, null, 2);
+                      : result.content?.[0]?.text ||
+                        JSON.stringify(result, null, 2);
 
                   messages.push({
                     role: 'tool',
@@ -459,7 +480,10 @@ Guidelines:
     } catch (error) {
       return {
         available: false,
-        error: error instanceof Error ? error.message : 'Azure AI Foundry not available',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Azure AI Foundry not available',
       };
     }
   }

@@ -2,9 +2,12 @@
 // Interactive CLI for AI Agent
 
 import readline from 'readline';
-import { AIAgent } from './ai-agent';
-import { EnhancedMCPServer } from '@/server/enhanced-mcp-server';
+
 import chalk from 'chalk';
+
+import { AIAgent } from './ai-agent';
+
+import { EnhancedMCPServer } from '@/server/enhanced-mcp-server';
 
 async function main() {
   console.log(chalk.bold.blue('\n🤖 AI Agent CLI\n'));
@@ -20,7 +23,9 @@ async function main() {
   // Check API key
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    console.error(chalk.red('❌ Error: ANTHROPIC_API_KEY environment variable is required'));
+    console.error(
+      chalk.red('❌ Error: ANTHROPIC_API_KEY environment variable is required')
+    );
     console.log(chalk.yellow('\nPlease set your API key:'));
     console.log('export ANTHROPIC_API_KEY=sk-ant-api03-...');
     process.exit(1);
@@ -83,7 +88,8 @@ async function main() {
     if (trimmed === 'history') {
       console.log(chalk.bold('\n💬 Conversation History:\n'));
       conversationHistory.forEach((msg: any, i: number) => {
-        const role = msg.role === 'user' ? chalk.cyan('You') : chalk.magenta('Agent');
+        const role =
+          msg.role === 'user' ? chalk.cyan('You') : chalk.magenta('Agent');
         const content =
           typeof msg.content === 'string'
             ? msg.content
@@ -114,7 +120,10 @@ async function main() {
         )
       );
     } catch (error) {
-      console.error(chalk.red('❌ Error:'), error instanceof Error ? error.message : error);
+      console.error(
+        chalk.red('❌ Error:'),
+        error instanceof Error ? error.message : error
+      );
       console.log();
     }
 

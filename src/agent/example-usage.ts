@@ -1,8 +1,9 @@
 // Example usage of the AI Agent with MCP tools
 
 import { AIAgent } from './ai-agent';
-import { EnhancedMCPServer } from '@/server/enhanced-mcp-server';
+
 import { createAppConfig } from '@/config/environment';
+import { EnhancedMCPServer } from '@/server/enhanced-mcp-server';
 
 /**
  * Example: Using the AI Agent to answer questions about sprints
@@ -56,7 +57,9 @@ async function exampleUsage() {
 
   // Example 4: Streaming response
   console.log('\n=== Example 4: Streaming Response ===');
-  console.log('Asking: Generate a comprehensive sprint report for sprint 123...\n');
+  console.log(
+    'Asking: Generate a comprehensive sprint report for sprint 123...\n'
+  );
 
   for await (const chunk of agent.queryStream(
     'Generate a comprehensive sprint report for sprint 123 in markdown format'
@@ -76,7 +79,10 @@ async function exampleUsage() {
   console.log('\n=== Example 5: Conversation ===');
   let conversationHistory: any[] = [];
 
-  const turn1 = await agent.query('List all sprints in project SCRUM', conversationHistory);
+  const turn1 = await agent.query(
+    'List all sprints in project SCRUM',
+    conversationHistory
+  );
   console.log('User: List all sprints in project SCRUM');
   console.log('Agent:', turn1.answer);
   conversationHistory = turn1.conversationHistory;
@@ -93,7 +99,9 @@ async function exampleUsage() {
     'What recommendations would you make for improving velocity?',
     conversationHistory
   );
-  console.log('\nUser: What recommendations would you make for improving velocity?');
+  console.log(
+    '\nUser: What recommendations would you make for improving velocity?'
+  );
   console.log('Agent:', turn3.answer);
 }
 

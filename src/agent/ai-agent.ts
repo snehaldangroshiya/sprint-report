@@ -2,6 +2,7 @@
 // This agent can intelligently use your MCP tools to answer queries
 
 import Anthropic from '@anthropic-ai/sdk';
+
 import { EnhancedServerContext } from '@/server/enhanced-mcp-server';
 import { ToolRegistry } from '@/server/tool-registry';
 import { createLogger } from '@/utils/logger';
@@ -87,7 +88,9 @@ export class AIAgent {
           tools,
         });
 
-        logger.info(`Iteration ${iterations}: stop_reason = ${response.stop_reason}`);
+        logger.info(
+          `Iteration ${iterations}: stop_reason = ${response.stop_reason}`
+        );
 
         // Check if Claude wants to use tools
         if (response.stop_reason === 'tool_use') {

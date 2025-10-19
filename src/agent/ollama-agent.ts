@@ -2,6 +2,7 @@
 // This agent runs completely locally and is FREE!
 
 import { Ollama } from 'ollama';
+
 import { EnhancedServerContext } from '@/server/enhanced-mcp-server';
 import { ToolRegistry } from '@/server/tool-registry';
 import { createLogger } from '@/utils/logger';
@@ -44,15 +45,25 @@ export class OllamaAgent {
     config: OllamaAgentConfig = {}
   ) {
     this.client = new Ollama({
-      host: config.ollamaHost || process.env.OLLAMA_HOST || 'http://localhost:11434',
+      host:
+        config.ollamaHost ||
+        process.env.OLLAMA_HOST ||
+        'http://localhost:11434',
     });
     this.toolRegistry = toolRegistry;
     this.context = context;
     this.config = {
       model: config.model || process.env.OLLAMA_MODEL || 'llama3.1:8b',
-      temperature: config.temperature ?? parseFloat(process.env.OLLAMA_TEMPERATURE || '0.7'),
-      maxIterations: config.maxIterations ?? parseInt(process.env.OLLAMA_MAX_ITERATIONS || '10'),
-      ollamaHost: config.ollamaHost || process.env.OLLAMA_HOST || 'http://localhost:11434',
+      temperature:
+        config.temperature ??
+        parseFloat(process.env.OLLAMA_TEMPERATURE || '0.7'),
+      maxIterations:
+        config.maxIterations ??
+        parseInt(process.env.OLLAMA_MAX_ITERATIONS || '10'),
+      ollamaHost:
+        config.ollamaHost ||
+        process.env.OLLAMA_HOST ||
+        'http://localhost:11434',
     };
   }
 
@@ -63,7 +74,10 @@ export class OllamaAgent {
     userPrompt: string,
     conversationHistory: AgentMessage[] = []
   ): Promise<AgentResponse> {
-    logger.info('Ollama agent query started', { prompt: userPrompt, model: this.config.model });
+    logger.info('Ollama agent query started', {
+      prompt: userPrompt,
+      model: this.config.model,
+    });
 
     const toolsUsed: string[] = [];
     let iterations = 0;
@@ -103,13 +117,17 @@ export class OllamaAgent {
         });
 
         const responseText = response.response.trim();
-        logger.info(`Iteration ${iterations}: Got response (${responseText.length} chars)`);
+        logger.info(
+          `Iteration ${iterations}: Got response (${responseText.length} chars)`
+        );
 
         // Check if the response contains a tool call
         const toolCall = this.extractToolCall(responseText);
 
         if (toolCall) {
-          logger.info(`Tool call detected: ${toolCall.name}`, { params: toolCall.parameters });
+          logger.info(`Tool call detected: ${toolCall.name}`, {
+            params: toolCall.parameters,
+          });
           toolsUsed.push(toolCall.name);
 
           try {
@@ -244,7 +262,7 @@ Guidelines:
     const toolCallMatch = response.match(/TOOL_CALL:\s*(\w+)/i);
     const parametersMatch = response.match(/PARAMETERS:\s*(\{[\s\S]*?\})/i);
 
-    if (toolCallMatch && toolCallMatch[1] && parametersMatch && parametersMatch[1]) {
+    if (toolCallMatch?.[1] && parametersMatch?.[1]) {
       try {
         const parameters = JSON.parse(parametersMatch[1]);
         return {
@@ -266,7 +284,7 @@ Guidelines:
   private extractFinalAnswer(response: string): string {
     // Look for FINAL_ANSWER: prefix
     const finalAnswerMatch = response.match(/FINAL_ANSWER:\s*([\s\S]*)/i);
-    if (finalAnswerMatch && finalAnswerMatch[1]) {
+    if (finalAnswerMatch?.[1]) {
       return finalAnswerMatch[1].trim();
     }
 
@@ -322,7 +340,10 @@ Guidelines:
         fullResponse += chunk.response;
 
         // Check if we're getting a tool call
-        if (fullResponse.includes('TOOL_CALL:') && !fullResponse.includes('PARAMETERS:')) {
+        if (
+          fullResponse.includes('TOOL_CALL:') &&
+          !fullResponse.includes('PARAMETERS:')
+        ) {
           // Still receiving tool call, don't yield yet
           continue;
         }
@@ -410,7 +431,9 @@ Guidelines:
     try {
       // Check if Ollama is running
       const models = await this.client.list();
-      const modelPulled = models.models.some(m => m.name.includes(this.config.model));
+      const modelPulled = models.models.some(m =>
+        m.name.includes(this.config.model)
+      );
 
       if (modelPulled) {
         return {

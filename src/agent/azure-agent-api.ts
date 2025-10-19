@@ -2,6 +2,7 @@
 // Self-hosted LLMs on Azure infrastructure
 
 import { Router, Request, Response } from 'express';
+
 import { AzureAgent, AzureAgentConfig } from '@/agent/azure-agent';
 import { EnhancedServerContext } from '@/server/enhanced-mcp-server';
 import { ToolRegistry } from '@/server/tool-registry';
@@ -23,7 +24,9 @@ export function createAzureAgentRouter(
       const config: AzureAgentConfig = {
         temperature: parseFloat(process.env.AZURE_OPENAI_TEMPERATURE || '0.7'),
         maxTokens: parseInt(process.env.AZURE_OPENAI_MAX_TOKENS || '4096'),
-        maxIterations: parseInt(process.env.AZURE_OPENAI_MAX_ITERATIONS || '10'),
+        maxIterations: parseInt(
+          process.env.AZURE_OPENAI_MAX_ITERATIONS || '10'
+        ),
       };
 
       if (process.env.AZURE_OPENAI_ENDPOINT) {
@@ -55,7 +58,9 @@ export function createAzureAgentRouter(
         });
       }
 
-      logger.info('Azure agent chat request', { message: message.substring(0, 100) });
+      logger.info('Azure agent chat request', {
+        message: message.substring(0, 100),
+      });
 
       const agent = getAgent();
 
@@ -100,54 +105,63 @@ export function createAzureAgentRouter(
    * POST /api/agent/azure/chat/stream
    * Stream responses from the Azure AI agent (Server-Sent Events)
    */
-  router.post('/chat/stream', async (req: Request, res: Response) => {
-    try {
-      const { message, conversationHistory = [] } = req.body;
-
-      if (!message || typeof message !== 'string') {
-        return res.status(400).json({
-          error: 'Message is required and must be a string',
-        });
-      }
-
-      logger.info('Azure agent stream request', { message: message.substring(0, 100) });
-
-      // Set up SSE
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-
-      const agent = getAgent();
-
+  router.post(
+    '/chat/stream',
+    async (req: Request, res: Response): Promise<void> => {
       try {
-        for await (const chunk of agent.queryStream(message, conversationHistory)) {
-          const data = JSON.stringify(chunk);
-          res.write(`data: ${data}\n\n`);
+        const { message, conversationHistory = [] } = req.body;
 
-          if (chunk.type === 'done') {
-            break;
-          }
+        if (!message || typeof message !== 'string') {
+          res.status(400).json({
+            error: 'Message is required and must be a string',
+          });
+          return;
         }
 
-        res.write('data: [DONE]\n\n');
-        res.end();
+        logger.info('Azure agent stream request', {
+          message: message.substring(0, 100),
+        });
 
-        logger.info('Azure agent stream completed');
-        return;
+        // Set up SSE
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        const agent = getAgent();
+
+        try {
+          for await (const chunk of agent.queryStream(
+            message,
+            conversationHistory
+          )) {
+            const data = JSON.stringify(chunk);
+            res.write(`data: ${data}\n\n`);
+
+            if (chunk.type === 'done') {
+              break;
+            }
+          }
+
+          res.write('data: [DONE]\n\n');
+          res.end();
+
+          logger.info('Azure agent stream completed');
+        } catch (error) {
+          logger.error(error as Error, 'Azure agent stream failed');
+          res.write(
+            `data: ${JSON.stringify({ type: 'error', content: 'Stream failed' })}\n\n`
+          );
+          res.end();
+        }
       } catch (error) {
-        logger.error(error as Error, 'Azure agent stream failed');
-        res.write(`data: ${JSON.stringify({ type: 'error', content: 'Stream failed' })}\n\n`);
-        res.end();
-        return;
+        logger.error(error as Error, 'Azure agent stream setup failed');
+        res.status(500).json({
+          error: 'Failed to setup stream',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        });
       }
-    } catch (error) {
-      logger.error(error as Error, 'Azure agent stream setup failed');
-      return res.status(500).json({
-        error: 'Failed to setup stream',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
     }
-  });
+  );
 
   /**
    * GET /api/agent/azure/status
@@ -216,10 +230,13 @@ export function createAzureAgentRouter(
       success: true,
       data: {
         endpoint: process.env.AZURE_OPENAI_ENDPOINT || 'Not configured',
-        deploymentName: process.env.AZURE_OPENAI_DEPLOYMENT_NAME || 'Not configured',
+        deploymentName:
+          process.env.AZURE_OPENAI_DEPLOYMENT_NAME || 'Not configured',
         temperature: parseFloat(process.env.AZURE_OPENAI_TEMPERATURE || '0.7'),
         maxTokens: parseInt(process.env.AZURE_OPENAI_MAX_TOKENS || '4096'),
-        maxIterations: parseInt(process.env.AZURE_OPENAI_MAX_ITERATIONS || '10'),
+        maxIterations: parseInt(
+          process.env.AZURE_OPENAI_MAX_ITERATIONS || '10'
+        ),
         provider: 'azure-ai-foundry',
         selfHosted: true,
       },

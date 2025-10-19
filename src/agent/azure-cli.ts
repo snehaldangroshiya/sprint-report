@@ -2,12 +2,17 @@
 // Interactive CLI for Azure AI Foundry Agent (Self-hosted LLMs on Azure)
 
 import readline from 'readline';
-import { AzureAgent } from './azure-agent';
-import { EnhancedMCPServer } from '@/server/enhanced-mcp-server';
+
 import chalk from 'chalk';
 
+import { AzureAgent } from './azure-agent';
+
+import { EnhancedMCPServer } from '@/server/enhanced-mcp-server';
+
 async function main() {
-  console.log(chalk.bold.blue('\n🔷 Azure AI Foundry Agent CLI (Self-Hosted LLMs)\n'));
+  console.log(
+    chalk.bold.blue('\n🔷 Azure AI Foundry Agent CLI (Self-Hosted LLMs)\n')
+  );
   console.log('Initializing MCP server...');
 
   // Initialize MCP server
@@ -21,10 +26,18 @@ async function main() {
   if (!process.env.AZURE_OPENAI_ENDPOINT || !process.env.AZURE_OPENAI_API_KEY) {
     console.error(chalk.red('\n❌ Error: Azure AI Foundry not configured'));
     console.log(chalk.yellow('\nPlease set these environment variables:'));
-    console.log(chalk.cyan('  AZURE_OPENAI_ENDPOINT=https://your-endpoint.inference.ml.azure.com/v1'));
+    console.log(
+      chalk.cyan(
+        '  AZURE_OPENAI_ENDPOINT=https://your-endpoint.inference.ml.azure.com/v1'
+      )
+    );
     console.log(chalk.cyan('  AZURE_OPENAI_API_KEY=your-azure-api-key'));
-    console.log(chalk.cyan('  AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name'));
-    console.log(chalk.gray('\nSee docs/AZURE_AI_FOUNDRY_SETUP.md for setup instructions.'));
+    console.log(
+      chalk.cyan('  AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name')
+    );
+    console.log(
+      chalk.gray('\nSee docs/AZURE_AI_FOUNDRY_SETUP.md for setup instructions.')
+    );
     process.exit(1);
   }
 
@@ -47,7 +60,11 @@ async function main() {
   }
 
   const info = agent.getDeploymentInfo();
-  console.log(chalk.green(`✅ Azure AI Foundry ready! Using deployment: ${info.deploymentName}`));
+  console.log(
+    chalk.green(
+      `✅ Azure AI Foundry ready! Using deployment: ${info.deploymentName}`
+    )
+  );
   console.log(chalk.gray(`   Endpoint: ${info.endpoint}`));
 
   // List available tools
@@ -116,8 +133,11 @@ async function main() {
         console.log(chalk.gray('  (empty)'));
       } else {
         conversationHistory.forEach((msg: any) => {
-          const prefix = msg.role === 'user' ? chalk.cyan('You:') : chalk.green('Agent:');
-          console.log(`${prefix} ${msg.content.substring(0, 100)}${msg.content.length > 100 ? '...' : ''}`);
+          const prefix =
+            msg.role === 'user' ? chalk.cyan('You:') : chalk.green('Agent:');
+          console.log(
+            `${prefix} ${msg.content.substring(0, 100)}${msg.content.length > 100 ? '...' : ''}`
+          );
         });
       }
       console.log();
@@ -154,7 +174,10 @@ async function main() {
       // Update conversation history
       conversationHistory = response.conversationHistory;
     } catch (error) {
-      console.error(chalk.red('\n❌ Error: ') + (error instanceof Error ? error.message : 'Unknown error'));
+      console.error(
+        chalk.red('\n❌ Error: ') +
+          (error instanceof Error ? error.message : 'Unknown error')
+      );
       console.log();
     }
 

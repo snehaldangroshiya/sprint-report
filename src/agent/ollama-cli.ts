@@ -2,9 +2,12 @@
 // Interactive CLI for Ollama AI Agent (Local LLM - FREE!)
 
 import readline from 'readline';
-import { OllamaAgent } from './ollama-agent';
-import { EnhancedMCPServer } from '@/server/enhanced-mcp-server';
+
 import chalk from 'chalk';
+
+import { OllamaAgent } from './ollama-agent';
+
+import { EnhancedMCPServer } from '@/server/enhanced-mcp-server';
 
 async function main() {
   console.log(chalk.bold.blue('\n🦙 Ollama AI Agent CLI (FREE Local LLM)\n'));
@@ -47,7 +50,11 @@ async function main() {
   }
 
   const models = await agent.listModels();
-  console.log(chalk.green(`✅ Ollama ready! Using model: ${process.env.OLLAMA_MODEL || 'llama3.1:8b'}`));
+  console.log(
+    chalk.green(
+      `✅ Ollama ready! Using model: ${process.env.OLLAMA_MODEL || 'llama3.1:8b'}`
+    )
+  );
   console.log(chalk.gray(`Available models: ${models.join(', ')}\n`));
 
   console.log(chalk.gray('Type your question or command:'));
@@ -105,10 +112,18 @@ async function main() {
       const models = await agent.listModels();
       console.log(chalk.bold('\n🦙 Available Ollama Models:\n'));
       models.forEach((model: string) => {
-        const current = model.includes(process.env.OLLAMA_MODEL || 'llama3.1:8b');
-        console.log(current ? chalk.green(`  ✓ ${model} (current)`) : chalk.gray(`    ${model}`));
+        const current = model.includes(
+          process.env.OLLAMA_MODEL || 'llama3.1:8b'
+        );
+        console.log(
+          current
+            ? chalk.green(`  ✓ ${model} (current)`)
+            : chalk.gray(`    ${model}`)
+        );
       });
-      console.log(chalk.gray('\nTo switch models: export OLLAMA_MODEL=model-name\n'));
+      console.log(
+        chalk.gray('\nTo switch models: export OLLAMA_MODEL=model-name\n')
+      );
       rl.prompt();
       return;
     }
@@ -153,7 +168,10 @@ async function main() {
         )
       );
     } catch (error) {
-      console.error(chalk.red('❌ Error:'), error instanceof Error ? error.message : error);
+      console.error(
+        chalk.red('❌ Error:'),
+        error instanceof Error ? error.message : error
+      );
       console.log();
     }
 
