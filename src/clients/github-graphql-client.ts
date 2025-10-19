@@ -1,6 +1,7 @@
 // GitHub GraphQL API v4 client implementation
 
 import { graphql } from '@octokit/graphql';
+
 import { PullRequest, Commit, GitHubRepository } from '@/types';
 import { createLogger } from '@/utils/logger';
 
@@ -228,7 +229,9 @@ export class GitHubGraphQLClient {
           cursor,
         });
 
-        const prs = response.search.nodes.map(pr => this.transformGraphQLPR(pr, owner, repo));
+        const prs = response.search.nodes.map(pr =>
+          this.transformGraphQLPR(pr, owner, repo)
+        );
         allPRs.push(...prs);
 
         hasNextPage = response.search.pageInfo.hasNextPage;
@@ -252,7 +255,10 @@ export class GitHubGraphQLClient {
 
       return allPRs;
     } catch (error) {
-      logger.error('GraphQL PR search failed', error instanceof Error ? error.message : String(error));
+      logger.error(
+        'GraphQL PR search failed',
+        error instanceof Error ? error.message : String(error)
+      );
       throw error;
     }
   }
@@ -260,7 +266,10 @@ export class GitHubGraphQLClient {
   /**
    * Get repository information with enhanced metadata
    */
-  async getRepositoryInfo(owner: string, repo: string): Promise<GitHubRepository> {
+  async getRepositoryInfo(
+    owner: string,
+    repo: string
+  ): Promise<GitHubRepository> {
     const cacheKey = `graphql:repo:${owner}/${repo}`;
 
     if (this.enableCache && this.cacheManager) {
@@ -291,22 +300,28 @@ export class GitHubGraphQLClient {
         }
       `;
 
-      const response: { repository: GraphQLRepository } = await this.graphqlWithAuth({
-        query,
-        owner,
-        repo,
-      });
+      const response: { repository: GraphQLRepository } =
+        await this.graphqlWithAuth({
+          query,
+          owner,
+          repo,
+        });
 
       const result = this.transformGraphQLRepository(response.repository);
 
       if (this.enableCache && this.cacheManager) {
-        await this.cacheManager.set(cacheKey, result, { ttl: this.defaultCacheTTL });
+        await this.cacheManager.set(cacheKey, result, {
+          ttl: this.defaultCacheTTL,
+        });
       }
 
       logger.info('Repository info fetched via GraphQL', { owner, repo });
       return result;
     } catch (error) {
-      logger.error('Failed to fetch repository via GraphQL', error instanceof Error ? error.message : String(error));
+      logger.error(
+        'Failed to fetch repository via GraphQL',
+        error instanceof Error ? error.message : String(error)
+      );
       throw error;
     }
   }
@@ -333,7 +348,11 @@ export class GitHubGraphQLClient {
     if (this.enableCache && this.cacheManager) {
       const cached = await this.cacheManager.get(cacheKey);
       if (cached) {
-        logger.info('Commits from cache', { owner, repo, count: cached.length });
+        logger.info('Commits from cache', {
+          owner,
+          repo,
+          count: cached.length,
+        });
         return cached;
       }
     }
@@ -383,17 +402,21 @@ export class GitHubGraphQLClient {
       if (options.since) variables.since = options.since;
       if (options.until) variables.until = options.until;
 
-      const response: GraphQLCommitHistoryResponse = await this.graphqlWithAuth({
-        query,
-        ...variables,
-      });
+      const response: GraphQLCommitHistoryResponse = await this.graphqlWithAuth(
+        {
+          query,
+          ...variables,
+        }
+      );
 
       const commits = response.repository.ref.target.history.nodes.map(commit =>
         this.transformGraphQLCommit(commit)
       );
 
       if (this.enableCache && this.cacheManager) {
-        await this.cacheManager.set(cacheKey, commits, { ttl: this.defaultCacheTTL });
+        await this.cacheManager.set(cacheKey, commits, {
+          ttl: this.defaultCacheTTL,
+        });
       }
 
       logger.info('Commits fetched via GraphQL', {
@@ -405,7 +428,10 @@ export class GitHubGraphQLClient {
 
       return commits;
     } catch (error) {
-      logger.error('Failed to fetch commits via GraphQL', error instanceof Error ? error.message : String(error));
+      logger.error(
+        'Failed to fetch commits via GraphQL',
+        error instanceof Error ? error.message : String(error)
+      );
       throw error;
     }
   }
@@ -413,7 +439,11 @@ export class GitHubGraphQLClient {
   /**
    * Get commit details with full stats
    */
-  async getCommitDetails(owner: string, repo: string, sha: string): Promise<Commit> {
+  async getCommitDetails(
+    owner: string,
+    repo: string,
+    sha: string
+  ): Promise<Commit> {
     const cacheKey = `graphql:commit:${owner}/${repo}:${sha}`;
 
     if (this.enableCache && this.cacheManager) {
@@ -448,12 +478,13 @@ export class GitHubGraphQLClient {
         }
       `;
 
-      const response: { repository: { object: GraphQLCommit } } = await this.graphqlWithAuth({
-        query,
-        owner,
-        repo,
-        sha,
-      });
+      const response: { repository: { object: GraphQLCommit } } =
+        await this.graphqlWithAuth({
+          query,
+          owner,
+          repo,
+          sha,
+        });
 
       const commit = this.transformGraphQLCommit(response.repository.object);
 
@@ -464,7 +495,10 @@ export class GitHubGraphQLClient {
       logger.info('Commit details fetched via GraphQL', { owner, repo, sha });
       return commit;
     } catch (error) {
-      logger.error('Failed to fetch commit details via GraphQL', error instanceof Error ? error.message : String(error));
+      logger.error(
+        'Failed to fetch commit details via GraphQL',
+        error instanceof Error ? error.message : String(error)
+      );
       throw error;
     }
   }
@@ -523,13 +557,16 @@ export class GitHubGraphQLClient {
         }
       `;
 
-      const response: { search: { commitCount: number; nodes: GraphQLCommit[] } } =
-        await this.graphqlWithAuth({
-          query: graphqlQuery,
-          searchQuery,
-        });
+      const response: {
+        search: { commitCount: number; nodes: GraphQLCommit[] };
+      } = await this.graphqlWithAuth({
+        query: graphqlQuery,
+        searchQuery,
+      });
 
-      const commits = response.search.nodes.map(commit => this.transformGraphQLCommit(commit));
+      const commits = response.search.nodes.map(commit =>
+        this.transformGraphQLCommit(commit)
+      );
 
       logger.info('Commit search completed via GraphQL', {
         owner,
@@ -540,7 +577,10 @@ export class GitHubGraphQLClient {
 
       return commits;
     } catch (error) {
-      logger.error('Failed to search commits via GraphQL', error instanceof Error ? error.message : String(error));
+      logger.error(
+        'Failed to search commits via GraphQL',
+        error instanceof Error ? error.message : String(error)
+      );
       throw error;
     }
   }
@@ -548,7 +588,11 @@ export class GitHubGraphQLClient {
   /**
    * Transform GraphQL PR response to our PullRequest type
    */
-  private transformGraphQLPR(pr: GraphQLPullRequest, _owner: string, _repo: string): PullRequest {
+  private transformGraphQLPR(
+    pr: GraphQLPullRequest,
+    _owner: string,
+    _repo: string
+  ): PullRequest {
     // Determine merged state
     const state: 'open' | 'closed' | 'merged' = pr.mergedAt
       ? 'merged'
@@ -599,7 +643,9 @@ export class GitHubGraphQLClient {
   /**
    * Transform GraphQL repository to our GitHubRepository type
    */
-  private transformGraphQLRepository(repo: GraphQLRepository): GitHubRepository {
+  private transformGraphQLRepository(
+    repo: GraphQLRepository
+  ): GitHubRepository {
     return {
       owner: repo.owner.login,
       repo: repo.name,

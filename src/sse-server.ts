@@ -4,11 +4,12 @@
 import 'module-alias/register';
 
 // MCP Server with SSE (Server-Sent Events) Transport
+import { IncomingMessage, ServerResponse } from 'http';
+
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import cors from 'cors';
 import express, { Request, Response } from 'express';
-import { IncomingMessage, ServerResponse } from 'http';
 
 import { CacheManager } from './cache/cache-manager';
 import { CacheOptimizer } from './cache/cache-optimizer';
@@ -175,16 +176,26 @@ async function main() {
 
       // Create new server and transport for this session
       const sessionServer = createServerInstance();
-      
+
       // Prepare SSE transport options
-      const allowedOrigins = process.env.NODE_ENV === 'production'
-        ? (process.env.ALLOWED_ORIGINS?.split(',') || [])
-        : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:5173'];
-      
-      const sessionTransport = new SSEServerTransport(SSE_ENDPOINT, res as ServerResponse, {
-        enableDnsRebindingProtection: false,
-        allowedOrigins: allowedOrigins,
-      });
+      const allowedOrigins =
+        process.env.NODE_ENV === 'production'
+          ? process.env.ALLOWED_ORIGINS?.split(',') || []
+          : [
+              'http://localhost:3000',
+              'http://localhost:3001',
+              'http://localhost:3002',
+              'http://localhost:5173',
+            ];
+
+      const sessionTransport = new SSEServerTransport(
+        SSE_ENDPOINT,
+        res as ServerResponse,
+        {
+          enableDnsRebindingProtection: false,
+          allowedOrigins: allowedOrigins,
+        }
+      );
 
       const sessionId = sessionTransport.sessionId;
 
@@ -209,7 +220,7 @@ async function main() {
 
       // Connect server to transport and start SSE stream
       await sessionServer.connect(sessionTransport);
-      
+
       logger.info(`SSE stream started for session: ${sessionId}`);
     } catch (error: any) {
       logger.error('Error establishing SSE connection:', error);
@@ -291,7 +302,9 @@ async function main() {
     console.log('='.repeat(60));
     console.log(`📍 URL: http://${HOST}:${PORT}`);
     console.log(`🔌 SSE Endpoint: http://${HOST}:${PORT}/sse`);
-    console.log(`📨 POST Endpoint: http://${HOST}:${PORT}${SSE_ENDPOINT}?sessionId=<id>`);
+    console.log(
+      `📨 POST Endpoint: http://${HOST}:${PORT}${SSE_ENDPOINT}?sessionId=<id>`
+    );
     console.log(`❤️  Health Check: http://${HOST}:${PORT}/health`);
     console.log(`📊 Sessions: http://${HOST}:${PORT}/sessions`);
     console.log(

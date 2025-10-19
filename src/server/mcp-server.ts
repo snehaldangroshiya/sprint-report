@@ -16,15 +16,15 @@ import { GitHubClient } from '@/clients/github-client';
 import { JiraClient } from '@/clients/jira-client';
 import { createAppConfig } from '@/config/environment';
 import { initializeGlobalPerformanceMonitor } from '@/performance/performance-monitor';
+import { ReportGenerator } from '@/reporting/report-generator';
 import { AnalyticsService } from '@/services/analytics-service';
+import { ExportService } from '@/services/export-service';
 import { SprintService } from '@/services/sprint-service';
+import { ReportTools } from '@/tools/report-tools';
 import { AppConfig, ServerInfo, HealthStatus } from '@/types';
 import { BaseError } from '@/utils/errors';
 import { Logger, getLogger } from '@/utils/logger';
 import { ServiceRateLimiter } from '@/utils/rate-limiter';
-import { ExportService } from '@/services/export-service';
-import { ReportGenerator } from '@/reporting/report-generator';
-import { ReportTools } from '@/tools/report-tools';
 
 // Legacy ServerContext - kept for backwards compatibility
 export interface ServerContext {

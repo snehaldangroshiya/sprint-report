@@ -37,6 +37,14 @@ export class MCPBridge {
           result && typeof result === 'object' ? Object.keys(result) : 'N/A',
       });
 
+      // Handle undefined or null results
+      if (!result) {
+        this.logger.debug('MCP tool returned null/undefined', {
+          tool: toolName,
+        });
+        return result;
+      }
+
       // Extract content from MCP response
       if (result.content?.[0]?.text) {
         this.logger.debug('Extracting from MCP content', {

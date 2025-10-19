@@ -1,8 +1,9 @@
 // Advanced caching system with in-memory and Redis support
 
-import NodeCache from 'node-cache';
-import { gzip, gunzip } from 'zlib';
 import { promisify } from 'util';
+import { gzip, gunzip } from 'zlib';
+
+import NodeCache from 'node-cache';
 
 import { CacheStats } from '@/types';
 import { CacheError } from '@/utils/errors';
@@ -387,7 +388,10 @@ export class CacheManager {
 
                   this.stats.hits++;
                 } catch (parseError) {
-                  console.warn(`Decompression/parse error for key ${key}:`, parseError);
+                  console.warn(
+                    `Decompression/parse error for key ${key}:`,
+                    parseError
+                  );
                   results.set(key, null);
                 }
               } else {
@@ -655,7 +659,9 @@ export class CacheManager {
     const compressionRatio =
       this.stats.compressionCount > 0
         ? (this.stats.compressionSaves /
-           (this.stats.compressionSaves + this.stats.compressionCount * COMPRESSION_THRESHOLD)) * 100
+            (this.stats.compressionSaves +
+              this.stats.compressionCount * COMPRESSION_THRESHOLD)) *
+          100
         : 0;
 
     const info: any = {
@@ -666,7 +672,7 @@ export class CacheManager {
       },
       stats: {
         ...this.stats,
-        compressionRatio: Number(compressionRatio.toFixed(2))
+        compressionRatio: Number(compressionRatio.toFixed(2)),
       },
     };
 

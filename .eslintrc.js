@@ -121,6 +121,9 @@ module.exports = {
   overrides: [
     {
       files: ['**/*.test.ts', '**/*.spec.ts'],
+      parserOptions: {
+        project: './tsconfig.test.json',
+      },
       env: {
         jest: true,
       },
@@ -128,8 +131,13 @@ module.exports = {
         '@typescript-eslint/no-explicit-any': 'off',
         '@typescript-eslint/no-unsafe-assignment': 'off',
         '@typescript-eslint/no-unsafe-member-access': 'off',
+        '@typescript-eslint/no-unsafe-call': 'off',
+        '@typescript-eslint/no-unsafe-return': 'off',
+        '@typescript-eslint/no-unsafe-argument': 'off',
+        '@typescript-eslint/unbound-method': 'off',
         'security/detect-object-injection': 'off',
         'max-lines-per-function': 'off',
+        'max-lines': 'off',
       },
     },
   ],

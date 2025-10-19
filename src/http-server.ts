@@ -4,9 +4,10 @@
 import 'module-alias/register';
 
 // MCP Server with HTTP/StreamableHttp Transport
+import { randomUUID } from 'crypto';
+
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { randomUUID } from 'crypto';
 import cors from 'cors';
 import express, { Request, Response } from 'express';
 
@@ -207,7 +208,7 @@ async function main() {
   app.all('/mcp', async (req: Request, res: Response) => {
     try {
       const sessionId = req.headers['mcp-session-id'] as string | undefined;
-      
+
       logger.info(`MCP ${req.method} request`, {
         sessionId,
         hasBody: !!req.body,

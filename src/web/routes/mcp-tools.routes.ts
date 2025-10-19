@@ -20,27 +20,29 @@ export function createMCPToolsRouter(
       const logger = context.logger;
 
       // Get registered tools from the MCP server
-      const toolRegistry = (mcpServer as any).toolRegistry;
-      
+      const toolRegistry = mcpServer.toolRegistry;
+
       if (!toolRegistry) {
         res.status(500).json({ error: 'Tool registry not available' });
         return;
       }
 
       // Access the private tools map via reflection
-      const tools = (toolRegistry as any).tools;
-      
+      const tools = toolRegistry.tools;
+
       if (!tools || !(tools instanceof Map)) {
         res.status(500).json({ error: 'Tools map not accessible' });
         return;
       }
 
       // Convert tools map to array
-      const toolsList = Array.from(tools.entries()).map(([name, toolDef]: [string, any]) => ({
-        name,
-        description: toolDef.definition.description,
-        inputSchema: toolDef.definition.inputSchema,
-      }));
+      const toolsList = Array.from(tools.entries()).map(
+        ([name, toolDef]: [string, any]) => ({
+          name,
+          description: toolDef.definition.description,
+          inputSchema: toolDef.definition.inputSchema,
+        })
+      );
 
       logger.info(`Listed ${toolsList.length} MCP tools`);
 
@@ -108,25 +110,27 @@ export function createMCPToolsRouter(
       }
 
       // Get fresh tools list
-      const toolRegistry = (mcpServer as any).toolRegistry;
-      
+      const toolRegistry = mcpServer.toolRegistry;
+
       if (!toolRegistry) {
         res.status(500).json({ error: 'Tool registry not available' });
         return;
       }
 
-      const tools = (toolRegistry as any).tools;
-      
+      const tools = toolRegistry.tools;
+
       if (!tools || !(tools instanceof Map)) {
         res.status(500).json({ error: 'Tools map not accessible' });
         return;
       }
 
-      const toolsList = Array.from(tools.entries()).map(([name, toolDef]: [string, any]) => ({
-        name,
-        description: toolDef.definition.description,
-        inputSchema: toolDef.definition.inputSchema,
-      }));
+      const toolsList = Array.from(tools.entries()).map(
+        ([name, toolDef]: [string, any]) => ({
+          name,
+          description: toolDef.definition.description,
+          inputSchema: toolDef.definition.inputSchema,
+        })
+      );
 
       logger.info(`Refreshed ${toolsList.length} MCP tools`);
 
