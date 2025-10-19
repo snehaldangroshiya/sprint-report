@@ -49,6 +49,9 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/web/dist ./web/dist
 COPY --from=builder /app/src ./src
 
+# Copy data directory (board-mappings.json is now bundled in dist, but keeping for reference)
+COPY --from=builder /app/data ./data
+
 # Copy necessary configuration files
 COPY package*.json ./
 COPY web/package*.json ./web/

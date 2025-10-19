@@ -1,14 +1,14 @@
 /**
  * JIRA Board Mappings Loader
- * Loads board mappings from external JSON file
+ * Bundled board mappings from JSON file
  *
- * Data source: data/board-mappings.json
+ * Data source: data/board-mappings.json (bundled at build time)
  * Auto-generated from JIRA API on 2025-08-04T07:33:55.512Z
  * Total boards: 2868
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+// Import the JSON data directly - will be bundled with the code
+import boardMappingsData from '../data/board-mappings.json';
 
 export interface BoardMapping {
   id: number;
@@ -19,39 +19,11 @@ export interface BoardMapping {
 }
 
 /**
- * Load board mappings from JSON file
- * This approach keeps the data separate from code for better maintainability
- */
-function loadBoardMappings(): Record<string, BoardMapping> {
-  try {
-    // Try multiple paths to handle different execution contexts
-    const possiblePaths = [
-      path.join(process.cwd(), 'data', 'board-mappings.json'),
-      path.join(__dirname, '..', '..', 'data', 'board-mappings.json'),
-      path.join(__dirname, '..', '..', '..', 'data', 'board-mappings.json'),
-    ];
-
-    for (const filePath of possiblePaths) {
-      if (fs.existsSync(filePath)) {
-        const data = fs.readFileSync(filePath, 'utf8');
-        return JSON.parse(data) as Record<string, BoardMapping>;
-      }
-    }
-
-    console.warn('Board mappings file not found, returning empty object');
-    return {};
-  } catch (error) {
-    console.error('Failed to load board mappings:', error);
-    return {};
-  }
-}
-
-/**
  * Board mappings by name (for boards without projects)
- * Loaded from external JSON file
+ * Bundled from JSON file at build time for production reliability
  */
 export const BOARD_NAME_MAPPINGS: Record<string, BoardMapping> =
-  loadBoardMappings();
+  boardMappingsData as Record<string, BoardMapping>;
 
 /**
  * Static mapping of JIRA boards by project key (currently empty)
@@ -74,6 +46,7 @@ export function findBoard(nameOrId: string | number): BoardMapping | undefined {
 
   // Search by name
   if (typeof nameOrId === 'string') {
+    // eslint-disable-next-line security/detect-object-injection
     return BOARD_NAME_MAPPINGS[nameOrId];
   }
 
@@ -110,14 +83,15 @@ export class BoardLookup {
    * Get board info by project key
    */
   static getBoardByProject(projectKey: string): BoardMapping | null {
-    return STATIC_BOARD_MAPPINGS[projectKey.toUpperCase()] || null;
+    return STATIC_BOARD_MAPPINGS[projectKey.toUpperCase()] ?? null;
   }
 
   /**
    * Get board by name (fallback for boards without projects)
    */
   static getBoardByName(boardName: string): BoardMapping | null {
-    return BOARD_NAME_MAPPINGS[boardName] || null;
+    // eslint-disable-next-line security/detect-object-injection
+    return BOARD_NAME_MAPPINGS[boardName] ?? null;
   }
 
   /**

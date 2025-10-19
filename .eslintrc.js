@@ -19,7 +19,7 @@ module.exports = {
     node: true,
     jest: true,
   },
-  ignorePatterns: ['.eslintrc.js', 'dist/', 'node_modules/', 'src/__tests__/'],
+  ignorePatterns: ['.eslintrc.js', 'dist/', 'node_modules/', 'src/__tests__/', 'scripts/'],
   rules: {
     // TypeScript specific rules
     '@typescript-eslint/interface-name-prefix': 'off',

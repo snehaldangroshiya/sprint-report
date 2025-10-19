@@ -39,9 +39,7 @@
       "@/tools/*": ["tools/*"]
     }
   },
-  "include": [
-    "src/**/*"
-  ],
+  "include": ["src/**/*", "src/**/board-mappings.json"],
   "exclude": [
     "node_modules",
     "dist",

@@ -21,6 +21,7 @@
     "agent:ollama": "tsx src/agent/ollama-cli.ts",
     "agent:azure": "tsx src/agent/azure-cli.ts",
     "verify:azure": "tsx scripts/verify-azure-setup.ts",
+    "verify:boards": "tsx scripts/verify-board-mappings.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
