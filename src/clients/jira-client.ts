@@ -566,19 +566,21 @@ export class JiraClient extends BaseAPIClient {
     const issues = await this.getSprintIssues(sprintId, undefined, maxResults);
 
     // Fetch enhanced data for each issue (with batching to avoid rate limits)
+    // Limit to first 20 issues for performance (tier analytics only need representative sample)
+    const issuesToEnhance = issues.slice(0, 20);
     const enhancedIssues: Issue[] = [];
 
-    for (let i = 0; i < issues.length; i++) {
-      const issue = issues[i];
+    for (let i = 0; i < issuesToEnhance.length; i++) {
+      const issue = issuesToEnhance[i];
       if (!issue) continue;
 
       try {
         const enhanced = await this.getEnhancedIssue(issue.key);
         enhancedIssues.push(enhanced);
 
-        // Add delay every 10 requests to avoid rate limiting
-        if ((i + 1) % 10 === 0) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+        // Reduced delay for better performance: every 15 requests with 200ms delay
+        if ((i + 1) % 15 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
       } catch (error) {
         // If enhancement fails, use basic issue data
