@@ -1,93 +1,136 @@
-# Multi-stage build for production optimization
-FROM node:18-alpine AS base
+# ============================================
+# NextReleaseMCP - Backend Server Dockerfile
+# Production-ready multi-stage build
+# ============================================
 
-# Install dependencies only when needed
-FROM base AS deps
+# ============================================
+# Stage 1: Dependencies
+# ============================================
+FROM node:20-alpine AS deps
+
 WORKDIR /app
+
+# Install build dependencies for native modules
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    cairo-dev \
+    pango-dev \
+    pixman-dev \
+    jpeg-dev \
+    giflib-dev \
+    freetype-dev
 
 # Copy package files
-COPY package*.json ./
-COPY web/package*.json ./web/
+COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
-RUN cd web && npm ci --only=production && npm cache clean --force
+# Verify files copied correctly
+RUN ls -la && \
+    node --version && \
+    npm --version
 
-# Build stage
-FROM base AS builder
+# Install ALL dependencies (needed for build)
+RUN npm install && npm cache clean --force
+
+# ============================================
+# Stage 2: Builder
+# ============================================
+FROM node:20-alpine AS builder
+
 WORKDIR /app
 
-# Copy source code and dependencies
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source code
 COPY package*.json ./
-COPY web/package*.json ./web/
-RUN npm ci
-RUN cd web && npm ci
+COPY tsconfig*.json ./
+COPY src ./src
 
-# Copy source files
-COPY . .
+# Build TypeScript to JavaScript
+RUN npm run build
 
-# Build the web application
-RUN cd web && npm run build
+# ============================================
+# Stage 3: Production Dependencies
+# ============================================
+FROM node:20-alpine AS prod-deps
 
-# Build the TypeScript backend
-RUN npm run build 2>/dev/null || tsc || echo "TypeScript build completed"
-
-# Production stage
-FROM base AS runner
 WORKDIR /app
+
+# Install build dependencies for native modules
+# bcrypt: python3, make, g++
+# canvas: cairo, pango, pixman, jpeg, gif, freetype
+# puppeteer: chromium (but we skip chromium download, see below)
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    cairo-dev \
+    pango-dev \
+    pixman-dev \
+    jpeg-dev \
+    giflib-dev \
+    freetype-dev
+
+# Copy package files
+COPY package.json package-lock.json ./
+
+# Install ONLY production dependencies
+RUN npm install --production && npm cache clean --force
+
+# Remove build dependencies to reduce image size (keep runtime libs)
+RUN apk del python3 make g++
+
+# ============================================
+# Stage 4: Production Runner
+# ============================================
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+# Install runtime dependencies for native modules
+# canvas requires cairo, pango, pixman, jpeg, gif at runtime
+RUN apk add --no-cache \
+    cairo \
+    pango \
+    pixman \
+    jpeg \
+    giflib \
+    freetype
 
 # Create non-root user for security
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextrelease
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
 
-# Install production dependencies
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/web/node_modules ./web/node_modules
+# Copy production dependencies
+COPY --from=prod-deps --chown=nodejs:nodejs /app/node_modules ./node_modules
 
 # Copy built application
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/web/dist ./web/dist
-COPY --from=builder /app/src ./src
+COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
-# Copy data directory (board-mappings.json is now bundled in dist, but keeping for reference)
-COPY --from=builder /app/data ./data
-
-# Copy necessary configuration files
-COPY package*.json ./
-COPY web/package*.json ./web/
-
-# Install additional runtime dependencies
-RUN apk add --no-cache \
-    chromium \
-    nss \
-    freetype \
-    freetype-dev \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
-    && rm -rf /var/cache/apk/*
-
-# Set Puppeteer to use installed Chromium
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-
-# Set production environment
-ENV NODE_ENV=production
-ENV PORT=8080
+# Copy package.json for module-alias and version info
+COPY --chown=nodejs:nodejs package.json ./
 
 # Create directories for logs and data
 RUN mkdir -p /app/logs /app/data && \
-    chown -R nextrelease:nodejs /app
+    chown -R nodejs:nodejs /app
+
+# Set production environment variables
+ENV NODE_ENV=production \
+    PORT=3000 \
+    LOG_LEVEL=info \
+    ENABLE_API_LOGGING=true
+
+# Expose API port
+EXPOSE 3000
 
 # Switch to non-root user
-USER nextrelease
-
-# Expose port
-EXPOSE 8080
+USER nodejs
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:8080/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)}).on('error', () => process.exit(1))"
 
-# Start the application
-CMD ["node", "-r", "tsx/cjs", "src/web/api-server.ts"]
+# Start the Web API server (not MCP stdio server)
+CMD ["node", "dist/web-server.js"]

@@ -36,7 +36,6 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,json,md}\"",
     "type-check": "tsc --noEmit",
     "validate": "npm run type-check && npm run lint && npm run test",
-    "prepare": "husky install",
     "docker:build": "docker build -t sprint-reporter-mcp .",
     "docker:run": "docker-compose up -d",
     "docker:stop": "docker-compose down"
@@ -64,7 +63,6 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/puppeteer": "^5.4.7",
     "axios": "^1.6.0",
     "bcrypt": "^6.0.0",
     "canvas": "^2.11.2",
@@ -87,7 +85,6 @@
     "node-cache": "^5.1.2",
     "ollama": "^0.6.0",
     "openai": "^6.4.0",
-    "puppeteer": "^21.11.0",
     "winston": "^3.11.0",
     "zod": "^3.22.4"
   },

@@ -63,7 +63,16 @@
       "WebFetch(domain:github.com)",
       "Bash(ls:*)",
       "Bash(wc:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(docker --version:*)",
+      "Bash(docker-compose:*)",
+      "Bash(/usr/local/bin/docker --version)",
+      "Bash(if [ -f \"$file\" ])",
+      "Bash(then)",
+      "Bash(else)",
+      "Bash(fi)",
+      "Bash(npm --version:*)",
+      "Bash(docker exec:*)"
     ],
     "deny": [],
     "ask": []
