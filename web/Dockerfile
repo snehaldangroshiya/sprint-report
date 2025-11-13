@@ -31,15 +31,30 @@ WORKDIR /app
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 
-# Copy source code
-COPY package*.json ./
-COPY vite.config.ts ./
-COPY tsconfig*.json ./
+# Copy source code (with verification)
+# Package files
+COPY package.json package-lock.json ./
+
+# Configuration files
+COPY vite.config.ts tsconfig.json tsconfig.node.json ./
+COPY postcss.config.js tailwind.config.js components.json ./
+
+# HTML entry point
 COPY index.html ./
-COPY postcss.config.js ./
-COPY tailwind.config.js ./
-COPY components.json ./
+
+# Source directory
 COPY src ./src
+
+# Public assets (static files)
+COPY public ./public
+
+# Verify critical files exist
+RUN ls -la && \
+    test -f package.json || (echo "❌ package.json missing!" && exit 1) && \
+    test -f index.html || (echo "❌ index.html missing!" && exit 1) && \
+    test -d src || (echo "❌ src/ directory missing!" && exit 1) && \
+    test -d public || (echo "❌ public/ directory missing!" && exit 1) && \
+    echo "✅ All required files present"
 
 # Build arguments for environment variables
 ARG VITE_API_BASE_URL=http://localhost:3000/api

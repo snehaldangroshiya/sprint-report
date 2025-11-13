@@ -72,7 +72,8 @@
       "Bash(else)",
       "Bash(fi)",
       "Bash(npm --version:*)",
-      "Bash(docker exec:*)"
+      "Bash(docker exec:*)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []
