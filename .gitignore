@@ -124,6 +124,9 @@ Thumbs.db
 reports/
 *.pdf
 *.html
+# BUT allow web app HTML files
+!web/index.html
+!web/**/*.html
 
 # Redis dump
 dump.rdb
@@ -135,8 +138,11 @@ docker-compose.override.yml
 # Husky
 .husky/_
 
-# Gatsby
+# Gatsby public/ (build output)
 public/
+# BUT allow web app public/ (static assets)
+!web/public/
+!web/public/**
 
 # Optional files
 .node_repl_history
