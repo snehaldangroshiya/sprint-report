@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, BarChart3, PieChart as PieChartIcon, Calendar, Download, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { TrendingUp, BarChart3, PieChart as PieChartIcon, Calendar, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -88,47 +87,7 @@ export function Analytics() {
       })()
     : 0;
 
-  const exportToPDF = async () => {
-    try {
-      const analyticsData = {
-        averageVelocity: velocityData?.average,
-        sprintsAnalyzed: velocityData?.sprints?.length || 0,
-        completionRate,
-        velocityTrend: velocityData?.trend,
-        sprintComparison: velocityData?.sprints
-      };
 
-      const response = await fetch('/api/export/analytics/pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          analyticsData,
-          options: {
-            format: 'A4',
-            orientation: 'portrait'
-          }
-        }),
-      });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'analytics-report.pdf';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } else {
-        console.error('Failed to generate PDF');
-      }
-    } catch (error) {
-      console.error('Error exporting PDF:', error);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -140,10 +99,6 @@ export function Analytics() {
             Advanced insights and performance metrics for your sprints
           </p>
         </div>
-        <Button onClick={exportToPDF} variant="default">
-          <Download className="h-4 w-4 mr-2" />
-          Export PDF
-        </Button>
       </div>
 
       {/* Controls */}
