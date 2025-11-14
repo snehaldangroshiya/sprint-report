@@ -107,10 +107,10 @@ export function Dashboard() {
 
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="mt-1 text-sm text-gray-500">
           Monitor sprint reporting system status and generate reports
         </p>
@@ -133,7 +133,7 @@ export function Dashboard() {
               <Calendar className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900 truncate">
+              <div className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
                 {activeSprints && activeSprints.length > 0
                   ? activeSprints[0].name
                   : 'None'}
@@ -157,7 +157,7 @@ export function Dashboard() {
               <TrendingUp className="h-4 w-4 text-emerald-700" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{displayedVelocity}</div>
+              <div className="text-2xl sm:text-3xl font-bold text-gray-900">{displayedVelocity}</div>
               <p className="text-xs text-emerald-700 font-medium">Story points/sprint</p>
             </CardContent>
           </Card>
@@ -173,7 +173,7 @@ export function Dashboard() {
               <Target className="h-4 w-4 text-violet-700" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
+              <div className="text-2xl sm:text-3xl font-bold text-gray-900">
                 {displayedCompletionRate}%
               </div>
               <p className="text-xs text-violet-700 font-medium">{displayedLabel}</p>
@@ -191,7 +191,7 @@ export function Dashboard() {
               <Database className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{recentSprints?.length || 0}</div>
+              <div className="text-2xl sm:text-3xl font-bold text-gray-900">{recentSprints?.length || 0}</div>
               <p className="text-xs text-orange-600 font-medium">Recent sprints</p>
             </CardContent>
           </Card>
@@ -203,16 +203,16 @@ export function Dashboard() {
         {activeSprints && activeSprints.length > 0 ? (
           <Link to={`/sprint/${activeSprints[0].id}`}>
             <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white hover:border-blue-400 hover:shadow-lg transition-all focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
-              <CardContent className="pt-6">
+              <CardContent className="pt-5 sm:pt-6">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0 p-3 bg-blue-100 rounded-lg">
-                    <Target className="h-8 w-8 text-blue-600" />
+                  <div className="flex-shrink-0 p-2 sm:p-3 bg-blue-100 rounded-lg">
+                    <Target className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
                   </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-semibold text-gray-900">
+                  <div className="ml-3 sm:ml-4 min-w-0 flex-1">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900">
                       View Active Sprint
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 truncate">
                       {activeSprints[0].name}
                     </p>
                   </div>
@@ -222,13 +222,13 @@ export function Dashboard() {
           </Link>
         ) : (
           <Card className="border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-white opacity-60">
-            <CardContent className="pt-6">
+            <CardContent className="pt-5 sm:pt-6">
               <div className="flex items-center">
-                <div className="flex-shrink-0 p-3 bg-gray-100 rounded-lg">
-                  <Target className="h-8 w-8 text-gray-400" />
+                <div className="flex-shrink-0 p-2 sm:p-3 bg-gray-100 rounded-lg">
+                  <Target className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400" />
                 </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                <div className="ml-3 sm:ml-4">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">
                     No Active Sprint
                   </h3>
                   <p className="text-sm text-gray-600">
@@ -242,13 +242,13 @@ export function Dashboard() {
 
         <Link to="/velocity">
           <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-white hover:border-green-400 hover:shadow-lg transition-all focus-within:outline-none focus-within:ring-2 focus-within:ring-green-500 focus-within:ring-offset-2">
-            <CardContent className="pt-6">
+            <CardContent className="pt-5 sm:pt-6">
               <div className="flex items-center">
-                <div className="flex-shrink-0 p-3 bg-green-100 rounded-lg">
-                  <BarChart3 className="h-8 w-8 text-green-600" />
+                <div className="flex-shrink-0 p-2 sm:p-3 bg-green-100 rounded-lg">
+                  <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
                 </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                <div className="ml-3 sm:ml-4">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">
                     Sprint Velocity
                   </h3>
                   <p className="text-sm text-gray-600">
@@ -262,13 +262,13 @@ export function Dashboard() {
 
         <Link to="/tools">
           <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white hover:border-purple-400 hover:shadow-lg transition-all focus-within:outline-none focus-within:ring-2 focus-within:ring-purple-500 focus-within:ring-offset-2">
-            <CardContent className="pt-6">
+            <CardContent className="pt-5 sm:pt-6">
               <div className="flex items-center">
-                <div className="flex-shrink-0 p-3 bg-purple-100 rounded-lg">
-                  <Activity className="h-8 w-8 text-purple-600" />
+                <div className="flex-shrink-0 p-2 sm:p-3 bg-purple-100 rounded-lg">
+                  <Activity className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
                 </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                <div className="ml-3 sm:ml-4">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">
                     MCP Tools Status
                   </h3>
                   <p className="text-sm text-gray-600">
@@ -319,7 +319,7 @@ export function Dashboard() {
                           systemStatus.jira.status === 'degraded' ? 'text-yellow-600' : 'text-red-600'
                         }`} />
                       </div>
-                      <h4 className="ml-3 text-lg font-semibold text-gray-900">Jira</h4>
+                      <h4 className="ml-2 sm:ml-3 text-base sm:text-lg font-semibold text-gray-900">Jira</h4>
                     </div>
                     <Badge
                       variant={
@@ -327,7 +327,7 @@ export function Dashboard() {
                         systemStatus.jira.status === 'degraded' ? 'secondary' :
                         'destructive'
                       }
-                      className="capitalize"
+                      className="capitalize text-xs"
                     >
                       {systemStatus.jira.status}
                     </Badge>
@@ -365,7 +365,7 @@ export function Dashboard() {
                           systemStatus.github.status === 'degraded' ? 'text-yellow-600' : 'text-red-600'
                         }`} />
                       </div>
-                      <h4 className="ml-3 text-lg font-semibold text-gray-900">GitHub</h4>
+                      <h4 className="ml-2 sm:ml-3 text-base sm:text-lg font-semibold text-gray-900">GitHub</h4>
                     </div>
                     <Badge
                       variant={
@@ -373,7 +373,7 @@ export function Dashboard() {
                         systemStatus.github.status === 'degraded' ? 'secondary' :
                         'destructive'
                       }
-                      className="capitalize"
+                      className="capitalize text-xs"
                     >
                       {systemStatus.github.status}
                     </Badge>
@@ -411,7 +411,7 @@ export function Dashboard() {
                           systemStatus.cache.status === 'degraded' ? 'text-yellow-600' : 'text-red-600'
                         }`} />
                       </div>
-                      <h4 className="ml-3 text-lg font-semibold text-gray-900">Cache</h4>
+                      <h4 className="ml-2 sm:ml-3 text-base sm:text-lg font-semibold text-gray-900">Cache</h4>
                     </div>
                     <Badge
                       variant={
@@ -419,7 +419,7 @@ export function Dashboard() {
                         systemStatus.cache.status === 'degraded' ? 'secondary' :
                         'destructive'
                       }
-                      className="capitalize"
+                      className="capitalize text-xs"
                     >
                       {systemStatus.cache.status}
                     </Badge>
@@ -483,7 +483,7 @@ export function Dashboard() {
                             metrics.summary.cacheHitRate >= 50 ? 'text-yellow-600' : 'text-red-600'
                           }`} />
                         </div>
-                        <h4 className="ml-3 text-lg font-semibold text-gray-900">Cache Efficiency</h4>
+                        <h4 className="ml-2 sm:ml-3 text-base sm:text-lg font-semibold text-gray-900">Cache Efficiency</h4>
                       </div>
                       <Badge
                         variant={
@@ -491,6 +491,7 @@ export function Dashboard() {
                           metrics.summary.cacheHitRate >= 50 ? 'secondary' :
                           'destructive'
                         }
+                        className="text-xs"
                       >
                         {metrics.summary.cacheHitRate >= 80 ? 'Excellent' :
                          metrics.summary.cacheHitRate >= 50 ? 'Good' : 'Needs Attention'}
@@ -499,7 +500,7 @@ export function Dashboard() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium text-gray-600">Hit Rate</p>
-                        <p className="text-2xl font-bold text-gray-900">
+                        <p className="text-xl sm:text-2xl font-bold text-gray-900">
                           {Math.round(metrics.summary.cacheHitRate)}%
                         </p>
                       </div>
@@ -544,7 +545,7 @@ export function Dashboard() {
                             <Minus className="h-5 w-5 text-green-600" />
                           )}
                         </div>
-                        <h4 className="ml-3 text-lg font-semibold text-gray-900">Memory Usage</h4>
+                        <h4 className="ml-2 sm:ml-3 text-base sm:text-lg font-semibold text-gray-900">Memory Usage</h4>
                       </div>
                       <Badge
                         variant={
@@ -552,11 +553,11 @@ export function Dashboard() {
                           metrics.summary.memoryTrend === 'increasing' ? 'secondary' :
                           'outline'
                         }
-                        className={
+                        className={`text-xs ${
                           metrics.summary.memoryTrend === 'stable' ? 'bg-green-500' :
                           metrics.summary.memoryTrend === 'increasing' ? 'bg-yellow-500' :
                           'bg-blue-500 text-white border-blue-500'
-                        }
+                        }`}
                       >
                         {metrics.summary.memoryTrend === 'increasing' ? 'Increasing' :
                          metrics.summary.memoryTrend === 'decreasing' ? 'Decreasing' : 'Stable'}
@@ -593,9 +594,9 @@ export function Dashboard() {
                         <div className="p-2 rounded-lg bg-purple-100">
                           <Lightbulb className="h-5 w-5 text-purple-600" />
                         </div>
-                        <h4 className="ml-3 text-lg font-semibold text-gray-900">Optimization</h4>
+                        <h4 className="ml-2 sm:ml-3 text-base sm:text-lg font-semibold text-gray-900">Optimization</h4>
                       </div>
-                      <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
                         {metrics.cacheOptimization.recommendations?.length || 0} Tips
                       </Badge>
                     </div>
@@ -603,7 +604,7 @@ export function Dashboard() {
                       <p className="text-sm font-medium text-gray-600">
                         Available Recommendations
                       </p>
-                      <p className="text-3xl font-bold text-purple-600">
+                      <p className="text-2xl sm:text-3xl font-bold text-purple-600">
                         {metrics.cacheOptimization.recommendations?.length || 0}
                       </p>
                       <p className="text-xs text-gray-500 mt-2">
@@ -663,21 +664,21 @@ export function Dashboard() {
       ) : allRecentSprints && allRecentSprints.length > 0 ? (
         <Card className="border-l-4 border-green-500">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <CardTitle className="flex items-center">
-                  <Calendar className="h-5 w-5 mr-2 text-green-600" />
+                <CardTitle className="flex items-center text-base sm:text-lg">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-green-600" />
                   Recent Sprint Activity
                 </CardTitle>
-                <CardDescription className="mt-1">
+                <CardDescription className="mt-1 text-xs sm:text-sm">
                   Track active, upcoming, and completed sprints with real-time status updates
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Filter:</span>
+                  <span className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">Filter:</span>
                   <Select value={sprintFilter} onValueChange={(value) => setSprintFilter(value as 'all' | 'active' | 'future' | 'closed')}>
-                    <SelectTrigger className="w-auto min-w-[110px]">
+                    <SelectTrigger className="w-auto min-w-[110px] h-9">
                       <SelectValue placeholder="All sprints" />
                     </SelectTrigger>
                     <SelectContent>
@@ -689,9 +690,9 @@ export function Dashboard() {
                   </Select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Show:</span>
+                  <span className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">Show:</span>
                   <Select value={sprintCount.toString()} onValueChange={(value) => setSprintCount(Number(value))}>
-                    <SelectTrigger className="w-auto min-w-[90px]">
+                    <SelectTrigger className="w-auto min-w-[90px] h-9">
                       <SelectValue placeholder="5 sprints" />
                     </SelectTrigger>
                     <SelectContent>
@@ -764,9 +765,9 @@ export function Dashboard() {
                             aria-hidden="true"
                           />
                         )}
-                        <div className="relative flex space-x-3">
+                        <div className="relative flex space-x-2 sm:space-x-3">
                           <div>
-                            <span className={`h-8 w-8 rounded-full ${
+                            <span className={`h-7 w-7 sm:h-8 sm:w-8 rounded-full ${
                               isActive
                                 ? 'bg-blue-500 ring-4 ring-blue-100'
                                 : isFuture
@@ -774,18 +775,18 @@ export function Dashboard() {
                                 : 'bg-green-100'
                             } flex items-center justify-center ring-8 ring-white`}>
                               {isActive ? (
-                                <Activity className="h-5 w-5 text-white" />
+                                <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                               ) : isFuture ? (
-                                <Clock className="h-5 w-5 text-white" />
+                                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                               ) : (
-                                <CheckCircle className="h-5 w-5 text-green-600" />
+                                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                               )}
                             </span>
                           </div>
-                          <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className={`text-sm font-medium ${
+                          <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:justify-between sm:space-x-4 pt-1.5 gap-2 sm:gap-0">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className={`text-sm font-medium truncate ${
                                   isActive ? 'text-blue-700' : isFuture ? 'text-orange-600' : 'text-gray-900'
                                 }`}>
                                   {sprint.name}
@@ -801,10 +802,10 @@ export function Dashboard() {
                                   </Badge>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-500 mt-1">
+                              <p className="text-xs sm:text-sm text-gray-500 mt-1">
                                 <span className="capitalize">{sprint.state}</span>
                                 {sprintStartDate && sprintEndDate && (
-                                  <> • {sprintStartDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {sprintEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</>
+                                  <> • <span className="hidden sm:inline">{sprintStartDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {sprintEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span><span className="sm:hidden">{sprintStartDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></>
                                 )}
                                 {relativeTime && (
                                   <> • <span className={isActive ? 'text-blue-600 font-medium' : isFuture ? 'text-orange-600 font-medium' : 'text-gray-400'}>
@@ -813,9 +814,10 @@ export function Dashboard() {
                                 )}
                               </p>
                             </div>
-                            <div className="whitespace-nowrap text-right text-sm">
-                              <Link to={`/sprint/${sprint.id}`} className="text-blue-600 hover:text-blue-800 font-medium hover:underline">
-                                View Details →
+                            <div className="whitespace-nowrap text-xs sm:text-sm">
+                              <Link to={`/sprint/${sprint.id}`} className="text-blue-600 hover:text-blue-800 font-medium hover:underline inline-flex items-center min-h-[44px] sm:min-h-0">
+                                <span className="hidden sm:inline">View Details →</span>
+                                <span className="sm:hidden">View →</span>
                               </Link>
                             </div>
                           </div>

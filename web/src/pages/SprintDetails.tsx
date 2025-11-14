@@ -112,9 +112,9 @@ export function SprintDetails() {
   const isActive = sprint.state === 'active';
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Link
@@ -122,9 +122,9 @@ export function SprintDetails() {
               className="text-gray-500 hover:text-gray-700 transition-colors"
               aria-label="Back to dashboard"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Link>
-            <h1 className="text-3xl font-bold tracking-tight">{sprint.name}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{sprint.name}</h1>
             {isActive && (
               <Badge variant="default" className="bg-blue-500">Active</Badge>
             )}
@@ -149,14 +149,14 @@ export function SprintDetails() {
       </div>
 
       {/* Executive Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-xl sm:text-2xl font-bold">
               {metrics?.completion_rate ? `${(metrics.completion_rate * 100).toFixed(0)}%` : 'N/A'}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -171,7 +171,7 @@ export function SprintDetails() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics?.velocity || 0}</div>
+            <div className="text-xl sm:text-2xl font-bold">{metrics?.velocity || 0}</div>
             <p className="text-xs text-muted-foreground">
               Story points completed
             </p>
@@ -184,7 +184,7 @@ export function SprintDetails() {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-xl sm:text-2xl font-bold">
               {metrics?.completed_story_points || 0}/{metrics?.total_story_points || 0}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -199,7 +199,7 @@ export function SprintDetails() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics?.in_progress_issues || 0}</div>
+            <div className="text-xl sm:text-2xl font-bold">{metrics?.in_progress_issues || 0}</div>
             <p className="text-xs text-muted-foreground">
               Active work items
             </p>
@@ -211,13 +211,13 @@ export function SprintDetails() {
       {currentSprintData && previousSprintData && (
         <Card>
           <CardHeader>
-            <CardTitle>Sprint vs Previous</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Sprint vs Previous</CardTitle>
             <CardDescription>
               How this sprint compares to {previousSprintData.name}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
               {/* Velocity Comparison */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -233,7 +233,7 @@ export function SprintDetails() {
                   )}
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold">{currentSprintData.velocity || 0}</span>
+                  <span className="text-2xl sm:text-3xl font-bold">{currentSprintData.velocity || 0}</span>
                   <span className="text-sm text-muted-foreground">pts</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -253,7 +253,7 @@ export function SprintDetails() {
                   )}
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold">{currentSprintData.commitment || 0}</span>
+                  <span className="text-2xl sm:text-3xl font-bold">{currentSprintData.commitment || 0}</span>
                   <span className="text-sm text-muted-foreground">pts</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -273,7 +273,7 @@ export function SprintDetails() {
                   )}
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold">{currentSprintData.completed || 0}</span>
+                  <span className="text-2xl sm:text-3xl font-bold">{currentSprintData.completed || 0}</span>
                   <span className="text-sm text-muted-foreground">pts</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -300,7 +300,7 @@ export function SprintDetails() {
                   })()}
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold">
+                  <span className="text-2xl sm:text-3xl font-bold">
                     {comprehensiveReport?.enhanced_github?.pull_request_stats?.mergedPRs || 0}
                   </span>
                   <span className="text-sm text-muted-foreground">PRs</span>
@@ -326,7 +326,7 @@ export function SprintDetails() {
         <TabsContent value="deliverables" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Sprint Issues</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Sprint Issues</CardTitle>
               <CardDescription>
                 {issues.length} issues from page {apiPage} of {issuesPagination?.total_pages || 1}
                 {issuesPagination && ` (${issuesPagination.total_issues} total in sprint)`}
@@ -334,7 +334,7 @@ export function SprintDetails() {
             </CardHeader>
             <CardContent>
               {/* Summary Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 p-4 bg-muted/30 rounded-lg">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 p-4 bg-muted/30 rounded-lg">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-600" />
                   <div>
@@ -515,34 +515,34 @@ export function SprintDetails() {
           {prStats && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <GitPullRequest className="h-5 w-5" />
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <GitPullRequest className="h-4 w-4 sm:h-5 sm:w-5" />
                   Pull Request Statistics
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div>
                     <p className="text-sm text-gray-500">Total PRs</p>
-                    <p className="text-2xl font-bold">{prStats.totalPRs || prStats.total || 0}</p>
+                    <p className="text-xl sm:text-2xl font-bold">{prStats.totalPRs || prStats.total || 0}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Merged</p>
-                    <p className="text-2xl font-bold text-green-600">{prStats.mergedPRs || prStats.merged || 0}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-green-600">{prStats.mergedPRs || prStats.merged || 0}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Open</p>
-                    <p className="text-2xl font-bold text-blue-600">{prStats.openPRs || prStats.open || 0}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-blue-600">{prStats.openPRs || prStats.open || 0}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Closed (No Merge)</p>
-                    <p className="text-2xl font-bold text-gray-600">{prStats.closedWithoutMerge || prStats.closed || 0}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-gray-600">{prStats.closedWithoutMerge || prStats.closed || 0}</p>
                   </div>
                 </div>
 
                 {/* Additional PR Metrics */}
                 <div className="mt-6 pt-4 border-t">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Merge Rate</p>
                       <p className="text-lg font-semibold text-green-600">
@@ -585,8 +585,8 @@ export function SprintDetails() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <GitCommit className="h-5 w-5" />
+                  <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                    <GitCommit className="h-4 w-4 sm:h-5 sm:w-5" />
                     Commit Activity
                   </CardTitle>
                   <CardDescription>
@@ -729,10 +729,10 @@ export function SprintDetails() {
 
         {/* Detailed Metrics Tab */}
         <TabsContent value="metrics" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
-                <CardTitle>Issue Breakdown</CardTitle>
+                <CardTitle className="text-base sm:text-lg">Issue Breakdown</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -761,7 +761,7 @@ export function SprintDetails() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Story Points</CardTitle>
+                <CardTitle className="text-base sm:text-lg">Story Points</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">

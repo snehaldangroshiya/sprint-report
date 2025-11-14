@@ -40,11 +40,11 @@ export function Velocity() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Sprint Velocity Analytics</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Sprint Velocity Analytics</h1>
+        <p className="mt-1 text-xs sm:text-sm text-gray-500">
           Track team velocity and sprint performance trends
         </p>
       </div>
@@ -52,14 +52,14 @@ export function Velocity() {
       {/* Configuration */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <CardTitle className="text-base">Current Configuration</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-sm sm:text-base">Current Configuration</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
                 Using board: <span className="font-semibold">{config.jira.boardName}</span> (ID: {config.jira.boardId})
               </CardDescription>
             </div>
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
               <Link to="/" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
                 Change Board
@@ -68,19 +68,19 @@ export function Velocity() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-muted rounded-lg p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="bg-muted rounded-lg p-3 sm:p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Jira Board</p>
-                  <p className="text-sm font-semibold mt-1">{config.jira.boardName}</p>
+                  <p className="text-xs sm:text-sm font-semibold mt-1 truncate max-w-[180px] sm:max-w-none">{config.jira.boardName}</p>
                 </div>
-                <Badge variant="secondary">ID: {config.jira.boardId}</Badge>
+                <Badge variant="secondary" className="text-xs">ID: {config.jira.boardId}</Badge>
               </div>
             </div>
 
             <div>
-              <label htmlFor="sprintCount" className="block text-sm font-medium mb-2">
+              <label htmlFor="sprintCount" className="block text-xs sm:text-sm font-medium mb-2">
                 Number of Sprints to Analyze
               </label>
               <Select
@@ -105,14 +105,14 @@ export function Velocity() {
       {/* Velocity Summary */}
       {velocityData && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Average Velocity</CardTitle>
-                <BarChart3 className="h-5 w-5 text-blue-500" />
+                <CardTitle className="text-xs sm:text-sm font-medium">Average Velocity</CardTitle>
+                <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">
+                <div className="text-2xl sm:text-3xl font-bold">
                   {Math.round(velocityData.average)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -123,16 +123,16 @@ export function Velocity() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Velocity Trend</CardTitle>
+                <CardTitle className="text-xs sm:text-sm font-medium">Velocity Trend</CardTitle>
                 {getTrendIcon(velocityData.trend)}
               </CardHeader>
               <CardContent>
-                <div className={`text-xl font-bold capitalize ${getTrendColor(velocityData.trend)}`}>
+                <div className={`text-lg sm:text-xl font-bold capitalize ${getTrendColor(velocityData.trend)}`}>
                   {velocityData.trend}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {velocityData.trend === 'increasing' 
-                    ? 'Team velocity is improving over time' 
+                  {velocityData.trend === 'increasing'
+                    ? 'Team velocity is improving over time'
                     : velocityData.trend === 'decreasing'
                     ? 'Team velocity is declining over time'
                     : 'Team velocity is relatively stable'}
@@ -140,13 +140,13 @@ export function Velocity() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="sm:col-span-2 lg:col-span-1">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Sprints Analyzed</CardTitle>
-                <Target className="h-5 w-5 text-purple-500" />
+                <CardTitle className="text-xs sm:text-sm font-medium">Sprints Analyzed</CardTitle>
+                <Target className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">
+                <div className="text-2xl sm:text-3xl font-bold">
                   {velocityData.sprints.length}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -159,21 +159,22 @@ export function Velocity() {
           {/* Sprint Details */}
           <Card>
             <CardHeader>
-              <CardTitle>Sprint Performance</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-base sm:text-lg">Sprint Performance</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
                 Detailed breakdown of commitment vs completion for each sprint
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              {/* Desktop Table */}
+              <div className="hidden sm:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Sprint</TableHead>
-                      <TableHead>Commitment</TableHead>
-                      <TableHead>Completed</TableHead>
-                      <TableHead>Velocity</TableHead>
-                      <TableHead>Completion %</TableHead>
+                      <TableHead className="text-xs">Sprint</TableHead>
+                      <TableHead className="text-xs">Commitment</TableHead>
+                      <TableHead className="text-xs">Completed</TableHead>
+                      <TableHead className="text-xs">Velocity</TableHead>
+                      <TableHead className="text-xs">Completion %</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -184,30 +185,30 @@ export function Velocity() {
 
                       return (
                         <TableRow key={sprint.id}>
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium text-xs sm:text-sm">
                             {sprint.name}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-xs sm:text-sm">
                             {sprint.commitment}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-xs sm:text-sm">
                             {sprint.completed}
                           </TableCell>
-                          <TableCell className="font-semibold text-blue-600">
+                          <TableCell className="font-semibold text-blue-600 text-xs sm:text-sm">
                             {sprint.velocity}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <span className={`text-sm font-medium ${
+                              <span className={`text-xs sm:text-sm font-medium ${
                                 completionRate >= 90 ? 'text-green-600' :
                                 completionRate >= 70 ? 'text-yellow-600' :
                                 'text-red-600'
                               }`}>
                                 {completionRate}%
                               </span>
-                              <Progress 
-                                value={completionRate} 
-                                className="w-20 h-2"
+                              <Progress
+                                value={completionRate}
+                                className="w-16 sm:w-20 h-2"
                               />
                             </div>
                           </TableCell>
@@ -217,19 +218,62 @@ export function Velocity() {
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Mobile Card View */}
+              <div className="sm:hidden space-y-3">
+                {velocityData.sprints.map((sprint) => {
+                  const completionRate = sprint.commitment > 0
+                    ? Math.round((sprint.completed / sprint.commitment) * 100)
+                    : 0;
+
+                  return (
+                    <div key={sprint.id} className="bg-muted rounded-lg p-3 space-y-2">
+                      <div className="font-semibold text-sm">{sprint.name}</div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-muted-foreground">Commitment:</span>
+                          <span className="ml-1 font-medium">{sprint.commitment}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Completed:</span>
+                          <span className="ml-1 font-medium">{sprint.completed}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Velocity:</span>
+                          <span className="ml-1 font-semibold text-blue-600">{sprint.velocity}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Completion:</span>
+                          <span className={`ml-1 font-medium ${
+                            completionRate >= 90 ? 'text-green-600' :
+                            completionRate >= 70 ? 'text-yellow-600' :
+                            'text-red-600'
+                          }`}>
+                            {completionRate}%
+                          </span>
+                        </div>
+                      </div>
+                      <Progress
+                        value={completionRate}
+                        className="w-full h-2"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
 
           {/* Velocity Chart (Simple Bar Chart) */}
           <Card>
             <CardHeader>
-              <CardTitle>Velocity History</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-base sm:text-lg">Velocity History</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
                 Visual comparison of story points completed across sprints
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {velocityData.sprints.map((sprint) => {
                   const maxVelocity = Math.max(...velocityData.sprints.map(s => s.velocity));
                   const widthPercentage = (sprint.velocity / maxVelocity) * 100;
@@ -237,21 +281,21 @@ export function Velocity() {
                   return (
                     <div key={sprint.id}>
                       <div className="mb-1">
-                        <span className="text-sm font-medium">{sprint.name}</span>
+                        <span className="text-xs sm:text-sm font-medium">{sprint.name}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-secondary rounded-full h-8 relative">
+                        <div className="flex-1 bg-secondary rounded-full h-6 sm:h-8 relative">
                           <div
-                            className="bg-blue-600 h-8 rounded-full transition-all duration-500 flex items-center justify-end pr-3"
+                            className="bg-blue-600 h-6 sm:h-8 rounded-full transition-all duration-500 flex items-center justify-end pr-2 sm:pr-3"
                             style={{ width: `${widthPercentage}%` }}
                           >
                             {widthPercentage > 20 && (
-                              <span className="text-sm text-white font-medium">{sprint.velocity}</span>
+                              <span className="text-xs sm:text-sm text-white font-medium">{sprint.velocity}</span>
                             )}
                           </div>
                         </div>
                         {widthPercentage <= 20 && (
-                          <span className="text-sm font-semibold text-blue-600 min-w-[3rem] text-right">
+                          <span className="text-xs sm:text-sm font-semibold text-blue-600 min-w-[2.5rem] sm:min-w-[3rem] text-right">
                             {sprint.velocity}
                           </span>
                         )}
@@ -267,18 +311,18 @@ export function Velocity() {
 
       {isLoading && (
         <Card>
-          <CardContent className="pt-6 space-y-4">
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-64 w-full" />
-            <Skeleton className="h-40 w-full" />
+          <CardContent className="pt-6 space-y-3 sm:space-y-4">
+            <Skeleton className="h-24 sm:h-32 w-full" />
+            <Skeleton className="h-48 sm:h-64 w-full" />
+            <Skeleton className="h-32 sm:h-40 w-full" />
           </CardContent>
         </Card>
       )}
 
       {!isLoading && !velocityData && config.jira.boardId && (
         <Card>
-          <CardContent className="pt-12 pb-12 text-center">
-            <p className="text-muted-foreground">
+          <CardContent className="pt-8 pb-8 sm:pt-12 sm:pb-12 text-center px-4">
+            <p className="text-sm sm:text-base text-muted-foreground">
               No velocity data available for board <span className="font-semibold">{config.jira.boardName}</span> (ID: {config.jira.boardId})
             </p>
             <p className="text-xs text-muted-foreground mt-2">

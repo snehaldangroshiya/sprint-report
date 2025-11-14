@@ -222,7 +222,7 @@ export function ConfigurationWidget() {
 
       {/* Configuration Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="max-w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center">
               <Settings className="h-5 w-5 mr-2 text-indigo-600" />
@@ -286,7 +286,7 @@ export function ConfigurationWidget() {
                 <Badge variant="secondary" className="text-xs">Required</Badge>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="github-owner">Organization/Owner</Label>
                   <Input
