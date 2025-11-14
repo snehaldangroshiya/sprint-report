@@ -11,6 +11,7 @@
 
 import { useParams, Link } from 'react-router-dom';
 import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   Target,
@@ -21,10 +22,12 @@ import {
   GitCommit,
   GitPullRequest,
   ExternalLink,
-  Users
+  Users,
+  RefreshCw
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
@@ -43,14 +46,30 @@ import { useIssueGroups } from '@/hooks/useIssueGroups';
 import { parseCommitMessage, formatCommitBody } from '@/utils/commit-utils.tsx';
 import { SPRINT_CONSTANTS } from '@/constants/sprint';
 import { useConfiguration } from '@/contexts/ConfigurationContext';
+import { api } from '@/lib/api';
 
 export function SprintDetails() {
   const { sprintId } = useParams<{ sprintId: string }>();
   const [apiPage, setApiPage] = useState(1);
   const [commitsPage, setCommitsPage] = useState(1);
+  const queryClient = useQueryClient();
 
   // Get configuration from context
   const { config } = useConfiguration();
+
+  // Mutation to clear cache for this sprint
+  const clearCacheMutation = useMutation({
+    mutationFn: api.clearCache,
+    onSuccess: () => {
+      // Invalidate all queries related to this sprint
+      queryClient.invalidateQueries({ queryKey: ['sprint', sprintId] });
+      queryClient.invalidateQueries({ queryKey: ['sprint-metrics', sprintId] });
+      queryClient.invalidateQueries({ queryKey: ['sprint-issues', sprintId] });
+      queryClient.invalidateQueries({ queryKey: ['commits', sprintId] });
+      queryClient.invalidateQueries({ queryKey: ['pull-requests', sprintId] });
+      queryClient.invalidateQueries({ queryKey: ['comprehensive-report', sprintId] });
+    },
+  });
 
   // Single aggregated hook for all data (replaces 7 separate queries)
   const {
@@ -146,6 +165,16 @@ export function SprintDetails() {
             </p>
           )}
         </div>
+        <Button
+          onClick={() => clearCacheMutation.mutate()}
+          variant="outline"
+          size="sm"
+          disabled={clearCacheMutation.isPending}
+          className="w-full sm:w-auto min-h-[44px] sm:min-h-0"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${clearCacheMutation.isPending ? 'animate-spin' : ''}`} />
+          {clearCacheMutation.isPending ? 'Clearing...' : 'Clear Cache'}
+        </Button>
       </div>
 
       {/* Executive Summary */}
